@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #F26122;
+  --danger: #E8453C;
+  --success: #00BFA5;
+  --warning: #FFB800;
+  --surface: #FFFFFF;
+  --background: #F7F8FA;
+  --text: #1A1A1A;
+  --muted: #6B7280;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.kpi-card {
+  @apply bg-white p-6 rounded-2xl shadow-sm border border-gray-100;
+}
+
+.btn-primary {
+  @apply bg-[#F26122] text-white py-3 px-6 rounded-xl font-bold transition-all hover:opacity-90 active:scale-95;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold hover:bg-gray-100 text-[#6B7280];
+}
+
+.sidebar-item.active {
+  @apply bg-[#F26122]/10 text-[#F26122];
+}
