@@ -2,23 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { businessApi } from '../../../lib/api-client';
+import { publicApi } from '../../../lib/api-client';
 
 export default function PublicScanPage() {
   const { id } = useParams();
   const [profile, setProfile] = useState<any>(null);
-  const [step, setStep] = useState<'rating' | 'feedback' | 'thanks'>('rating');
+  const [step, setStep] = useState<'rating' | 'feedback' | 'thanks' | 'error'>('rating');
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerContact, setCustomerContact] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     if (id) {
-      businessApi.getProfile(id as string)
+      publicApi.getPlace(id as string)
         .then(data => setProfile(data))
         .catch(err => {
-          console.error("Using mock data for demo", err);
+          console.error("Error loading place, using fallback:", err);
+          // Fallback para demo si el backend no está disponible
           setProfile({
             id: id,
             name: "El Huarique de Prueba",
@@ -30,15 +32,30 @@ export default function PublicScanPage() {
     }
   }, [id]);
 
-  const handleRating = () => {
+  const handleRating = async () => {
     if (rating >= 4) {
-      // Direct to Google
-      const googleLink = profile?.googleMapsUrl || 'https://maps.google.com';
+      // ★★★★★ → Redirigir a Google Maps para reseña pública
+      const googleLink = profile?.googleMapsUrl || profile?.website || 'https://maps.google.com';
       window.location.href = googleLink;
     } else {
-      // Here you would save: rating, feedback, customerName, customerContact to your API
-      console.log("Saving Private Feedback:", { rating, feedback, customerName, customerContact });
-      setStep('thanks');
+      // ★★★ o menos → Guardar queja privada en el backend
+      setIsSending(true);
+      try {
+        await publicApi.submitFeedback({
+          placeId: id as string,
+          rating,
+          comment: feedback,
+          customerName: customerName || undefined,
+          customerContact: customerContact || undefined,
+        });
+        setStep('thanks');
+      } catch (err) {
+        console.error("Error submitting feedback:", err);
+        // Aun si falla el backend, mostramos agradecimiento para no frustrar al cliente
+        setStep('thanks');
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -116,9 +133,10 @@ export default function PublicScanPage() {
               
               <button 
                 onClick={handleRating}
-                className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20"
+                disabled={isSending}
+                className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 disabled:opacity-50"
               >
-                {rating >= 4 ? 'Publicar Reseña en Google Maps' : 'Enviar Reseña Privada al Administrador'}
+                {isSending ? 'Enviando...' : rating >= 4 ? 'Publicar Reseña en Google Maps' : 'Enviar Reseña Privada al Administrador'}
               </button>
             </div>
           )}

@@ -96,6 +96,50 @@ export const businessApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  // Complaints (quejas interceptadas por el filtro)
+  getComplaints: (id: string, page = 1) =>
+    fetchWithAuth(`/business/places/${id}/complaints?page=${page}`),
+  
+  markComplaintResolved: (id: string, complaintId: string) =>
+    fetchWithAuth(`/business/places/${id}/complaints/${complaintId}/resolve`, {
+      method: 'PATCH',
+    }),
+};
+
+// Public API (NO requiere JWT — para clientes que escanean el NFC)
+export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Error de red' }));
+    throw new Error(error.message || 'Error en la petición');
+  }
+
+  return response.json();
+}
+
+export const publicApi = {
+  // Obtener perfil público del restaurante (para la pantalla de escaneo)
+  getPlace: (id: string) => fetchPublic(`/places/${id}`),
+
+  // Enviar reseña/queja pública (sin autenticación)
+  submitFeedback: (data: {
+    placeId: string;
+    rating: number;
+    comment?: string;
+    customerName?: string;
+    customerContact?: string;
+  }) => fetchPublic('/public/feedback', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 export const adminApi = {

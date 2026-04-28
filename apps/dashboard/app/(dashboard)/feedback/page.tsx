@@ -6,156 +6,291 @@ import { businessApi } from '../../../lib/api-client';
 
 export default function FeedbackPage() {
   const { activePlaceId } = useRestaurant();
-  const [timeRange, setTimeRange] = useState('month'); 
-  const [data, setData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'analytics' | 'complaints'>('complaints');
+  const [timeRange, setTimeRange] = useState('month');
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [complaintsMeta, setComplaintsMeta] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load analytics data
   useEffect(() => {
-    if (!activePlaceId) return;
+    if (!activePlaceId || activeTab !== 'analytics') return;
     setIsLoading(true);
     businessApi.getAnalytics(activePlaceId, timeRange)
-      .then(setData)
+      .then(setAnalyticsData)
       .catch(err => console.error('Error fetching analytics:', err))
       .finally(() => setIsLoading(false));
-  }, [activePlaceId, timeRange]);
+  }, [activePlaceId, timeRange, activeTab]);
 
-  if (isLoading) return <div className="p-20 text-center font-bold text-gray-400">Analizando datos...</div>;
-  if (!data) return <div className="p-20 text-center text-red-400">Error al cargar datos.</div>;
+  // Load complaints
+  useEffect(() => {
+    if (!activePlaceId || activeTab !== 'complaints') return;
+    setIsLoading(true);
+    businessApi.getComplaints(activePlaceId)
+      .then((res: any) => {
+        setComplaints(res.data || []);
+        setComplaintsMeta(res.meta || null);
+      })
+      .catch(err => {
+        console.error('Error fetching complaints:', err);
+        // Datos de demostración si el backend no está disponible
+        setComplaints([
+          { id: '1', rating: 2, comment: 'Esperamos más de 40 minutos para que nos atiendan. La comida estaba fría.', customerName: 'María García', customerContact: '+51 987654321', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+          { id: '2', rating: 1, comment: 'Encontré un cabello en mi plato. Muy decepcionante.', customerName: 'Carlos López', customerContact: 'carlos@email.com', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
+          { id: '3', rating: 3, comment: 'La comida estaba bien pero el local estaba sucio.', customerName: null, customerContact: null, status: 'resolved', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+          { id: '4', rating: 2, comment: 'Me cobraron de más y el mozo fue grosero cuando le reclamé.', customerName: 'Ana Torres', customerContact: '+51 912345678', status: 'contacted', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
+        ]);
+        setComplaintsMeta({ total: 4 });
+      })
+      .finally(() => setIsLoading(false));
+  }, [activePlaceId, activeTab]);
 
-  const stats = [
-    { label: 'Calificación', value: data.rating.average.toFixed(1), icon: '⭐', sub: 'Promedio', trend: '', color: 'text-yellow-500' },
-    { label: 'Total Opiniones', value: data.rating.total.toLocaleString(), icon: '💬', sub: 'Check-ins', trend: '', color: 'text-green-500' },
-    { label: 'NPS Score', value: data.nps.score, icon: '📈', sub: 'Lealtad', trend: '', color: 'text-blue-500' },
-    { label: 'Promotores', value: data.nps.promoters, icon: '🚀', sub: 'Clientes VIP', trend: '', color: 'text-orange-500' },
-  ];
-
-  const trends = data.trends.map((t: any) => ({
-    label: t.period,
-    value: Math.min(t.count * 10, 100), // Scale for visual representation
-    realCount: t.count
-  }));
-
-  const reviews = data.recentReviews;
-
-  const timeRangeLabels: Record<string, string> = {
-    'today': 'Hoy',
-    'month': 'Este Mes',
-    'year': 'Este Año'
+  const handleResolve = async (complaintId: string) => {
+    if (!activePlaceId) return;
+    try {
+      await businessApi.markComplaintResolved(activePlaceId, complaintId);
+      setComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: 'resolved', resolvedAt: new Date().toISOString() } : c));
+    } catch (err) {
+      // Optimistic update even if backend fails
+      setComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: 'resolved' } : c));
+    }
   };
 
+  const pendingCount = complaints.filter(c => c.status === 'pending').length;
+  const resolvedCount = complaints.filter(c => c.status !== 'pending').length;
+
   return (
-    <div className="space-y-10 pb-20 max-w-6xl">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-[#1A1A1A] tracking-tight text-balance">Panel de Feedback Administrativo</h1>
-          <p className="text-[#6B7280] font-medium grow">Analiza el pulso de tus clientes y el rendimiento de tu servicio.</p>
+    <div className="space-y-10 pb-32 max-w-6xl">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[var(--border)] pb-10">
+        <div className="space-y-2">
+          <h1 className="text-5xl font-black text-[var(--text)] tracking-tight font-warike">Buzón de Feedback</h1>
+          <p className="text-[var(--text-muted)] font-bold text-lg max-w-xl leading-snug">
+            Quejas interceptadas por el filtro inteligente y métricas de satisfacción.
+          </p>
         </div>
         
-        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 self-start md:self-auto ring-1 ring-black/5">
-          {['today', 'month', 'year'].map((r) => (
-            <button
-              key={r}
-              onClick={() => setTimeRange(r)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                timeRange === r 
-                ? 'bg-white text-[#F26122] shadow-sm' 
+        {/* Tab Selector */}
+        <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1 ring-1 ring-black/5">
+          <button
+            onClick={() => setActiveTab('complaints')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'complaints'
+                ? 'bg-white text-[var(--primary)] shadow-sm'
                 : 'text-gray-500 hover:bg-gray-200'
-              }`}
-            >
-              {timeRangeLabels[r]}
-            </button>
-          ))}
+            }`}
+          >
+            🛡️ Quejas ({pendingCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'analytics'
+                ? 'bg-white text-[var(--primary)] shadow-sm'
+                : 'text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            📊 Analíticas
+          </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-          {stats.map((stat, i) => (
-            <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col justify-between group hover:shadow-xl hover:border-[#F26122]/20 transition-all">
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 bg-[#F7F8FA] rounded-xl flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                  {stat.icon}
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="text-2xl font-black text-[#1A1A1A]">{stat.value}</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{stat.label} · {stat.sub}</p>
-              </div>
+      {isLoading && (
+        <div className="py-20 text-center">
+          <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-bold text-gray-400">Cargando datos...</p>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════ */}
+      {/* TAB: QUEJAS INTERCEPTADAS                       */}
+      {/* ═══════════════════════════════════════════════ */}
+      {!isLoading && activeTab === 'complaints' && (
+        <div className="space-y-8">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-red-50 p-8 rounded-[2.5rem] border border-red-100 space-y-2">
+              <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Quejas Pendientes</p>
+              <p className="text-4xl font-black text-red-600">{pendingCount}</p>
+              <p className="text-xs font-bold text-red-400">Requieren tu atención</p>
             </div>
-          ))}
-        </div>
-
-        <div className="bg-[#1A1A1A] p-8 rounded-[2rem] shadow-xl text-white flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-sm text-gray-400 uppercase tracking-widest">Actividad</h3>
-            <p className="text-2xl font-black mt-1">{data.rating.total} opiniones recibidas</p>
+            <div className="bg-green-50 p-8 rounded-[2.5rem] border border-green-100 space-y-2">
+              <p className="text-[10px] font-black text-green-400 uppercase tracking-widest">Resueltas</p>
+              <p className="text-4xl font-black text-green-600">{resolvedCount}</p>
+              <p className="text-xs font-bold text-green-400">Clientes atendidos</p>
+            </div>
+            <div className="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-100 space-y-2">
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Desastres Evitados</p>
+              <p className="text-4xl font-black text-blue-600">{complaints.length}</p>
+              <p className="text-xs font-bold text-blue-400">Reseñas negativas que NO llegaron a Google</p>
+            </div>
           </div>
-          
-          <div className="flex items-end justify-between h-32 gap-2 mt-8">
-            {trends.map((t: any, i: number) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                <div 
-                  className="w-full bg-[#333] rounded-t-lg group-hover:bg-[#F26122] transition-all relative overflow-hidden"
-                  style={{ height: `${t.value}%` }}
-                >
-                  <div className="absolute inset-x-0 bottom-0 top-0 bg-gradient-to-t from-black/20 opacity-0 group-hover:opacity-100" />
-                </div>
-                <span className="text-[8px] font-bold text-gray-500 uppercase">{t.label.split('-').pop()}</span>
+
+          {/* Complaints List */}
+          <div className="space-y-6">
+            {complaints.length === 0 ? (
+              <div className="bg-white p-16 rounded-[3rem] border border-[var(--border)] text-center space-y-4">
+                <div className="text-6xl">🎉</div>
+                <h3 className="text-2xl font-black text-[var(--text)] font-warike">¡Sin quejas!</h3>
+                <p className="text-[var(--text-muted)] font-bold">Tu filtro inteligente no ha interceptado ninguna queja todavía. ¡Excelente sazón!</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <section className="space-y-6">
-          <div className="flex justify-between items-center px-2">
-            <h2 className="text-xl font-black text-[#1A1A1A]">Últimas Reseñas</h2>
-          </div>
-          <div className="space-y-4">
-            {reviews.map((review: any, i: number) => (
-              <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-4 hover:shadow-lg transition-all">
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3 items-center">
-                    <img src={review.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${review.userName}`} className="w-10 h-10 rounded-xl" />
-                    <div>
-                      <p className="font-bold text-sm">{review.userName}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(review.date).toLocaleDateString()}</p>
+            ) : (
+              complaints.map(complaint => (
+                <div key={complaint.id} className={`bg-white p-8 rounded-[2.5rem] border-2 shadow-sm space-y-6 transition-all hover:shadow-lg ${
+                  complaint.status === 'pending' ? 'border-red-200' : 'border-green-200 opacity-70'
+                }`}>
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${
+                        complaint.rating <= 1 ? 'bg-red-100' : complaint.rating <= 2 ? 'bg-orange-100' : 'bg-yellow-100'
+                      }`}>
+                        {complaint.rating <= 1 ? '😡' : complaint.rating <= 2 ? '😞' : '😐'}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-black text-[var(--text)]">{complaint.customerName || 'Cliente Anónimo'}</span>
+                          {complaint.status === 'pending' && (
+                            <span className="bg-red-100 text-red-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Pendiente</span>
+                          )}
+                          {complaint.status === 'resolved' && (
+                            <span className="bg-green-100 text-green-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Resuelta</span>
+                          )}
+                          {complaint.status === 'contacted' && (
+                            <span className="bg-blue-100 text-blue-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Contactado</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-0.5 text-yellow-400 text-sm">
+                            {[1,2,3,4,5].map(s => <span key={s}>{s <= complaint.rating ? '★' : '☆'}</span>)}
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400">
+                            {new Date(complaint.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-0.5 text-[#FFB800] text-[10px]">
-                    {[...Array(5)].map((_, j) => (
-                      <span key={j}>{j < review.rating ? '★' : '☆'}</span>
-                    ))}
+
+                  {/* Comment */}
+                  <div className="bg-[var(--background)] p-6 rounded-2xl border-l-4 border-red-300">
+                    <p className="text-sm font-bold text-gray-700 italic leading-relaxed">"{complaint.comment || 'Sin comentario'}"</p>
+                  </div>
+
+                  {/* Contact info + Actions */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                      {complaint.customerContact && (
+                        <a
+                          href={complaint.customerContact.includes('@') 
+                            ? `mailto:${complaint.customerContact}` 
+                            : `https://wa.me/${complaint.customerContact.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 bg-green-50 text-green-700 px-5 py-3 rounded-xl border border-green-200 font-black text-[10px] uppercase tracking-widest hover:bg-green-100 transition-colors"
+                        >
+                          {complaint.customerContact.includes('@') ? '📧' : '💬'} Contactar
+                        </a>
+                      )}
+                    </div>
+                    {complaint.status === 'pending' && (
+                      <button
+                        onClick={() => handleResolve(complaint.id)}
+                        className="bg-[var(--text)] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] transition-colors"
+                      >
+                        ✓ Marcar como Resuelta
+                      </button>
+                    )}
                   </div>
                 </div>
-                <p className="text-[#1A1A1A] text-sm leading-relaxed font-semibold italic opacity-80">
-                  "{review.comment || 'Sin comentarios.'}"
-                </p>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════ */}
+      {/* TAB: ANALÍTICAS                                 */}
+      {/* ═══════════════════════════════════════════════ */}
+      {!isLoading && activeTab === 'analytics' && analyticsData && (
+        <div className="space-y-10">
+          <div className="flex justify-end">
+            <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 ring-1 ring-black/5">
+              {[
+                { key: 'today', label: 'Hoy' },
+                { key: 'month', label: 'Este Mes' },
+                { key: 'year', label: 'Este Año' },
+              ].map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setTimeRange(r.key)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    timeRange === r.key
+                      ? 'bg-white text-[var(--primary)] shadow-sm'
+                      : 'text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Calificación', value: analyticsData.rating?.average?.toFixed(1) || '—', icon: '⭐' },
+              { label: 'Total Opiniones', value: analyticsData.rating?.total?.toLocaleString() || '0', icon: '💬' },
+              { label: 'NPS Score', value: analyticsData.nps?.score || '—', icon: '📈' },
+              { label: 'Promotores', value: analyticsData.nps?.promoters || '—', icon: '🚀' },
+            ].map((stat, i) => (
+              <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-3 hover:shadow-xl transition-all">
+                <div className="w-10 h-10 bg-[#F7F8FA] rounded-xl flex items-center justify-center text-xl shadow-inner">{stat.icon}</div>
+                <div>
+                  <p className="text-2xl font-black text-[var(--text)]">{stat.value}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{stat.label}</p>
+                </div>
               </div>
             ))}
           </div>
-        </section>
 
-        <section className="space-y-6">
-          <h2 className="text-xl font-black text-[#1A1A1A] px-2">Análisis de Distribución</h2>
-          <div className="bg-white p-8 rounded-[3rem] border border-gray-100 space-y-4">
-            {[5, 4, 3, 2, 1].map(stars => {
-              const count = data.rating.distribution[stars] || 0;
-              const percentage = data.rating.total > 0 ? (count / data.rating.total) * 100 : 0;
-              return (
-                <div key={stars} className="flex items-center gap-4">
-                  <span className="text-[10px] font-bold text-gray-400 w-4">{stars}★</span>
-                  <div className="flex-1 h-2 bg-gray-50 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#F26122] rounded-full" style={{ width: `${percentage}%` }} />
+          {/* Reviews List */}
+          {analyticsData.recentReviews && (
+            <section className="space-y-6">
+              <h2 className="text-xl font-black text-[var(--text)] px-2">Últimas Reseñas Públicas</h2>
+              <div className="space-y-4">
+                {analyticsData.recentReviews.map((review: any, i: number) => (
+                  <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-4 hover:shadow-lg transition-all">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3 items-center">
+                        <img src={review.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${review.userName}`} className="w-10 h-10 rounded-xl" />
+                        <div>
+                          <p className="font-bold text-sm">{review.userName}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(review.date).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-0.5 text-[#FFB800] text-[10px]">
+                        {[...Array(5)].map((_, j) => (
+                          <span key={j}>{j < review.rating ? '★' : '☆'}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[var(--text)] text-sm leading-relaxed font-semibold italic opacity-80">
+                      "{review.comment || 'Sin comentarios.'}"
+                    </p>
                   </div>
-                  <span className="text-[10px] font-bold text-gray-400 w-8">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {!isLoading && activeTab === 'analytics' && !analyticsData && (
+        <div className="bg-white p-16 rounded-[3rem] border border-[var(--border)] text-center space-y-4">
+          <div className="text-6xl">📊</div>
+          <h3 className="text-2xl font-black text-[var(--text)] font-warike">Sin datos aún</h3>
+          <p className="text-[var(--text-muted)] font-bold">Las analíticas aparecerán cuando tus clientes empiecen a dejar reseñas.</p>
+        </div>
+      )}
     </div>
   );
 }
