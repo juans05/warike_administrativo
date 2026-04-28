@@ -17,8 +17,8 @@ export default function DashboardLayout({
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
 
     if (!token) {
       router.push('/login');
@@ -38,70 +38,71 @@ export default function DashboardLayout({
 
   return (
     <RestaurantProvider>
-      <div className="flex min-h-screen bg-[#F7F8FA]">
-      {/* Sidebar - Hidden on very small screens, visible on md+ */}
-      <aside className="w-72 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0 hidden md:flex">
-        <div className="p-8">
-          <h1 className="text-2xl font-bold text-[#F26122] tracking-tighter">WUARIKE</h1>
-          <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Administrativo</p>
+      <div className="flex min-h-screen bg-[var(--background)] texture-paper">
+      {/* Sidebar - Premium Design */}
+      <aside className="w-80 bg-white/80 backdrop-blur-xl border-r border-[var(--border)] flex flex-col h-screen sticky top-0 hidden md:flex">
+        <div className="p-10">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-black text-[var(--primary)] tracking-tighter font-warike">WARIKE</h1>
+            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">Global Reputación</p>
+          </div>
           
-          <div className="mt-8">
+          <div className="mt-10">
             <RestaurantSelector />
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
           <SidebarItem href="/" icon="🏢" label="Mi Establecimiento" active={pathname === '/'} />
-          <SidebarItem href="/carta" icon="🍽️" label="La Carta" active={pathname === '/carta'} />
-          <SidebarItem href="/feedback" icon="💬" label="Feedback" active={pathname === '/feedback'} />
+          <SidebarItem href="/reputacion" icon="⭐" label="Reputación" active={pathname === '/reputacion'} />
+          <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
+          <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
           
           {user?.role === 'admin' && (
             <>
-              <div className="pt-6 pb-2 px-4">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Platform Admin</p>
+              <div className="pt-8 pb-4 px-6">
+                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Platform Admin</p>
               </div>
-              <SidebarItem href="/moderacion" icon="🛡️" label="Moderación" active={pathname === '/moderacion'} />
-              <SidebarItem href="/comunidad" icon="👥" label="Usuarios" active={pathname === '/comunidad'} />
+              <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
+              <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
             </>
           )}
         </nav>
 
-        <div className="p-6 border-t border-gray-50 flex flex-col gap-4">
-          <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#F26122] flex items-center justify-center text-white font-bold">
+        <div className="p-8 border-t border-[var(--border)] flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--primary)] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-[var(--primary)]/20 border-2 border-white">
               {user?.fullName?.charAt(0) || 'A'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold truncate">{user?.fullName || 'Administrador'}</p>
-              <p className="text-[10px] text-[#6B7280] font-semibold uppercase">{user?.role || 'Admin'}</p>
+              <p className="text-sm font-black text-[var(--text)] truncate">{user?.fullName || 'Administrador'}</p>
+              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">{user?.role || 'Pro Partner'}</p>
             </div>
           </div>
           
           <button 
             onClick={handleLogout}
-            className="w-full text-left px-4 py-2 text-xs font-bold text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2"
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-[var(--border)] text-xs font-black text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all active:scale-95 bg-white shadow-sm"
           >
-            <span>🚪</span> Cerrar sesión
+            <span>🚪</span> CERRAR SESIÓN
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-10 lg:p-14">
+      <main className="flex-1 p-6 md:p-10 lg:p-16">
         {children}
       </main>
 
       {/* Mobile Nav - Bottom bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-100 flex items-center justify-around px-2 z-50">
-         <MobileNavItem href="/" icon="🏢" label="Resto" active={pathname === '/'} />
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
+         <MobileNavItem href="/" icon="🏢" label="Local" active={pathname === '/'} />
+         <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
          <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
-         <MobileNavItem href="/feedback" icon="💬" label="FB" active={pathname === '/feedback'} />
-         {user?.role === 'admin' && (
-           <MobileNavItem href="/moderacion" icon="🛡️" label="Mod" active={pathname === '/moderacion'} />
-         )}
-         <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-gray-400">
-           <span className="text-xl">🚪</span>
-           <span className="text-[10px] font-bold">Salir</span>
+         <MobileNavItem href="/feedback" icon="💬" label="Feedback" active={pathname === '/feedback'} />
+         <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🚪</div>
+            <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
          </button>
       </nav>
       </div>
@@ -117,7 +118,7 @@ function SidebarItem({ href, icon, label, active, badge }: { href: string, icon:
     >
       <span className="text-xl">{icon}</span>
       <span className="flex-1">{label}</span>
-      {badge && <span className="bg-[#E8453C] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{badge}</span>}
+      {badge && <span className="bg-[var(--primary)] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{badge}</span>}
     </Link>
   );
 }
@@ -126,11 +127,13 @@ function MobileNavItem({ href, icon, label, active, badge }: { href: string, ico
   return (
     <Link 
       href={href}
-      className={`flex flex-col items-center gap-1 relative ${active ? 'text-[#F26122]' : 'text-[#6B7280]'}`}
+      className={`flex flex-col items-center gap-1.5 relative ${active ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'}`}
     >
-      <span className="text-xl">{icon}</span>
-      <span className="text-[10px] font-bold">{label}</span>
-      {badge && <span className="absolute -top-1 -right-1 bg-[#E8453C] text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full font-bold border-2 border-white">{badge}</span>}
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all ${active ? 'bg-[var(--primary)]/10' : 'bg-gray-50'}`}>
+        {icon}
+      </div>
+      <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
+      {badge && <span className="absolute top-0 right-0 bg-[var(--primary)] text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-md">{badge}</span>}
     </Link>
   );
 }

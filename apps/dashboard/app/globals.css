@@ -3,34 +3,57 @@
 @tailwind utilities;
 
 :root {
-  --primary: #F26122;
-  --danger: #E8453C;
-  --success: #00BFA5;
-  --warning: #FFB800;
+  /* Warike Premium Palette */
+  --primary: #C84B31;    /* Rich Rocoto Red */
+  --primary-light: #E05D44;
+  --secondary: #ECB365;  /* Yellow Ají Ochre */
+  --accent: #606C38;     /* Herbal Green */
+  --background: #FDFCF8; /* Warm Stone / Eggshell */
   --surface: #FFFFFF;
-  --background: #F7F8FA;
-  --text: #1A1A1A;
-  --muted: #6B7280;
+  --text: #2D2424;       /* Deep Coffee / Wood */
+  --text-muted: #7D7474;
+  --border: #E8E2D9;     /* Subtle Sand Border */
+  
+  --radius-xl: 2.5rem;
+  --radius-lg: 1.5rem;
 }
 
 body {
   background-color: var(--background);
   color: var(--text);
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3, .font-warike {
+  font-family: 'Lora', serif;
+}
+
+.font-accent {
+  font-family: 'Caveat', cursive;
+}
+
+/* Custom Utilities */
 .kpi-card {
-  @apply bg-white p-6 rounded-2xl shadow-sm border border-gray-100;
+  @apply bg-white p-8 rounded-[2rem] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:border-[var(--secondary)];
 }
 
 .btn-primary {
-  @apply bg-[#F26122] text-white py-3 px-6 rounded-xl font-bold transition-all hover:opacity-90 active:scale-95;
+  @apply bg-[var(--primary)] text-white py-4 px-8 rounded-2xl font-bold transition-all hover:bg-[var(--primary-light)] hover:shadow-lg active:scale-95;
 }
 
 .sidebar-item {
-  @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-semibold hover:bg-gray-100 text-[#6B7280];
+  @apply flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-[var(--text-muted)] hover:bg-gray-50 hover:text-[var(--primary)];
 }
 
 .sidebar-item.active {
-  @apply bg-[#F26122]/10 text-[#F26122];
+  @apply bg-[var(--primary)] text-white shadow-lg;
+}
+
+.input-premium {
+  @apply w-full bg-white border border-[var(--border)] rounded-2xl py-4 px-6 focus:ring-4 focus:ring-orange-100 focus:border-[var(--primary)] outline-none transition-all font-semibold text-[var(--text)] text-sm shadow-sm;
+}
+
+.texture-paper {
+  background-image: url("https://www.transparenttextures.com/patterns/felt.png");
 }
