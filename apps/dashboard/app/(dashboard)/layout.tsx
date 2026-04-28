@@ -54,7 +54,8 @@ export default function DashboardLayout({
 
         <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
           <SidebarItem href="/" icon="🏢" label="Mi Establecimiento" active={pathname === '/'} />
-          <SidebarItem href="/reputacion" icon="⭐" label="Reputación" active={pathname === '/reputacion'} />
+          <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
+          <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
           <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
           <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
           
@@ -98,8 +99,9 @@ export default function DashboardLayout({
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
          <MobileNavItem href="/" icon="🏢" label="Local" active={pathname === '/'} />
          <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
+         <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
          <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
-         <MobileNavItem href="/feedback" icon="💬" label="Feedback" active={pathname === '/feedback'} />
+         <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
          <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
             <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🚪</div>
             <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>

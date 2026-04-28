@@ -281,7 +281,7 @@ export default function LandingPage() {
           <div className="space-y-8 md:space-y-10">
             <div className="inline-block px-6 py-2 bg-[var(--primary)]/10 rounded-full text-[var(--primary)] text-[10px] font-black uppercase tracking-[0.3em]">Lima • Ávila</div>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[var(--text)] tracking-tighter font-warike leading-[0.9]">La sazón <br/>es <span className="italic text-[var(--primary)]">tuya</span>, la reputación es <span className="underline decoration-[var(--secondary)] decoration-8 underline-offset-[12px]">nuestra</span>.</h1>
-            <p className="text-lg md:text-xl text-[var(--text-muted)] font-bold max-w-xl leading-relaxed text-balance">Protege el prestigio de tu restaurante con tecnología de filtrado inteligente. Diseñado exclusivamente para la cultura del Huarique.</p>
+            <p className="text-lg md:text-xl text-[var(--text-muted)] font-bold max-w-xl leading-relaxed text-balance">Una mala reseña te cuesta 30 clientes al mes. Protege tu prestigio con nuestro <span className="text-[var(--text)]">filtrado inteligente</span> y multiplica tus 5 estrellas automáticamente.</p>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-8">
               <a 
                 href="https://wa.me/51902191948?text=Hola%20equipo%20Warique!%20Quiero%20registrar%20afiliar%20mi%20warike"
@@ -289,15 +289,13 @@ export default function LandingPage() {
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto btn-primary text-base md:text-lg px-8 py-5 md:px-12 md:py-6 rounded-3xl shadow-xl shadow-[var(--primary)]/20 uppercase tracking-widest text-center flex items-center justify-center"
               >
-                Afiliar mi Huarique
+                Proteger mi Huarique Hoy
               </a>
               <a 
-                href="https://wa.me/51902191948?text=Hola%20equipo%20Warique!%20Quiero%20Personalizar%20tus%20stand%20a%20mi%20marca."
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#products"
                 className="w-full sm:w-auto px-8 py-5 md:px-12 md:py-6 rounded-3xl border-4 border-[var(--text)] text-[var(--text)] font-black text-base md:text-lg hover:bg-[var(--text)] hover:text-white transition-all uppercase tracking-widest text-center flex items-center justify-center gap-3"
               >
-                💬 Pide tu Stand Personalizado
+                👀 Ver Stands Premium
               </a>
             </div>
           </div>
@@ -320,8 +318,8 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-32 px-8 bg-white/50 backdrop-blur-sm border-y border-[var(--border)]">
         <div className="max-w-7xl mx-auto space-y-20">
           <div className="text-center space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black text-[var(--text)] font-warike italic">Filtrado Inteligente</h2>
-            <p className="text-[var(--text-muted)] font-bold text-lg uppercase tracking-widest text-balance">Protegemos tu sazón de las malas tardes</p>
+            <h2 className="text-4xl md:text-5xl font-black text-[var(--text)] font-warike italic">El Escudo que tu Huarique Necesita</h2>
+            <p className="text-[var(--text-muted)] font-bold text-lg uppercase tracking-widest text-balance">Atrapa las quejas en privado antes de que lleguen a Google</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             <FeatureCard img="/images/touch_review.png" title="Touch & Review" desc="Tecnología NFC y QR integrada en stands de madera premium." />
