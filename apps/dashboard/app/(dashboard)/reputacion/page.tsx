@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { businessApi } from '../../lib/api-client';
+import { businessApi } from '../../../lib/api-client';
 
 import GoogleReviews from '../../../components/GoogleReviews';
 

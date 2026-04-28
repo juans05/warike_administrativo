@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../../context/RestaurantContext';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { businessApi } from '../../lib/api-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
