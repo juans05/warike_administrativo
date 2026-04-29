@@ -51,15 +51,18 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
 
       if (item.source === 'wuarike') {
         endpoint = `/business/onboarding/claim/${item.id}`;
-      } else {
+      } else if (item.source === 'google') {
         endpoint = `/business/onboarding/import`;
         body = { googlePlaceId: item.googlePlaceId };
+      } else {
+        endpoint = `/business/onboarding/create`;
+        body = { name: item.name, address: item.address };
       }
 
       const res = await fetchWithAuth(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: item.source === 'google' ? JSON.stringify(body) : undefined
+        body: item.source !== 'wuarike' ? JSON.stringify(body) : undefined
       });
 
       setStatus({ type: 'success', message: '¡Local asignado con éxito! Reiniciando...' });
@@ -122,10 +125,26 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
         )}
 
         {query.length >= 3 && !isLoading && results.wuarike.length === 0 && results.google.length === 0 && (
-          <div className="text-center py-10 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-200">
-             <span className="text-4xl block mb-4">🤷‍♂️</span>
-             <p className="text-[var(--text-muted)] font-black uppercase tracking-widest text-xs">No lo encontramos. Prueba con otro nombre.</p>
+          <div className="text-center py-12 bg-white rounded-[3rem] border-2 border-dashed border-[var(--border)] space-y-6">
+             <span className="text-5xl block">🍳</span>
+             <div className="space-y-2">
+               <p className="text-[var(--text)] font-black uppercase tracking-widest text-sm font-warike">¿Tu restaurante es nuevo?</p>
+               <p className="text-[var(--text-muted)] font-bold text-xs">No lo encontramos en Wuarike ni en Google Maps.</p>
+             </div>
+             <button 
+              onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' as any })}
+              className="bg-[var(--primary)] text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[var(--primary)]/20 hover:scale-105 transition-all"
+             >
+               Registrar "{query}" Manualmente
+             </button>
           </div>
+        )}
+
+        {/* Option to create manually even if results exist */}
+        {query.length >= 3 && !isLoading && (results.wuarike.length > 0 || results.google.length > 0) && (
+          <p className="text-center text-[10px] font-bold text-[var(--text-muted)] pt-4">
+            ¿No es ninguno de estos? <button onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' as any })} className="text-[var(--primary)] font-black underline ml-1 uppercase">Regístralo manualmente</button>
+          </p>
         )}
       </div>
     </div>
