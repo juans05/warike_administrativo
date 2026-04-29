@@ -53,7 +53,7 @@ export default function DashboardLayout({
         </div>
 
         <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
-          <SidebarItem href="/" icon="🏢" label="Mi Establecimiento" active={pathname === '/'} />
+          <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
           <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
           <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
           <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
@@ -97,7 +97,7 @@ export default function DashboardLayout({
 
       {/* Mobile Nav - Bottom bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
-         <MobileNavItem href="/" icon="🏢" label="Local" active={pathname === '/'} />
+         <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
          <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
          <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
          <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />

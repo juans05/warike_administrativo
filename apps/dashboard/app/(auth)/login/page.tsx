@@ -38,7 +38,7 @@ export default function LoginPage() {
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      router.push('/');
+      router.push('/inicio');
     } catch (err: any) {
       setError(err.message);
     } finally {
