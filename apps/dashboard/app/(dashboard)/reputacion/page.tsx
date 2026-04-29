@@ -36,7 +36,7 @@ export default function ReputacionPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!activePlaceId) return;
+    if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
 
     // Cargar perfil para obtener googlePlaceId

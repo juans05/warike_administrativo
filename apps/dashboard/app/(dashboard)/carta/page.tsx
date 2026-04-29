@@ -34,7 +34,7 @@ export default function CartaPage() {
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
 
   const loadMenu = async () => {
-    if (!activePlaceId) return;
+    if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
       // Load digital menu

@@ -17,7 +17,7 @@ export default function BotSettingsPage() {
   });
 
   useEffect(() => {
-    if (!activePlaceId) return;
+    if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     businessApi.getBotSettings(activePlaceId)
       .then(data => {

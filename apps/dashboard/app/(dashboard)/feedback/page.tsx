@@ -15,7 +15,8 @@ export default function FeedbackPage() {
 
   // Load analytics data
   useEffect(() => {
-    if (!activePlaceId || activeTab !== 'analytics') return;
+    if (!activePlaceId) { setIsLoading(false); return; }
+    if (activeTab !== 'analytics') return;
     setIsLoading(true);
     businessApi.getAnalytics(activePlaceId, timeRange)
       .then(setAnalyticsData)
@@ -25,7 +26,7 @@ export default function FeedbackPage() {
 
   // Load complaints
   useEffect(() => {
-    if (!activePlaceId || activeTab !== 'complaints') return;
+    if (!activePlaceId || activeTab !== 'complaints') { if(!activePlaceId) setIsLoading(false); return; }
     setIsLoading(true);
     businessApi.getComplaints(activePlaceId)
       .then((res: any) => {

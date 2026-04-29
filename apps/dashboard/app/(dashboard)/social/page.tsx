@@ -45,7 +45,7 @@ export default function SocialPage() {
 
   // Load accounts
   useEffect(() => {
-    if (!activePlaceId) return;
+    if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     socialApi.getAccounts(activePlaceId)
       .then((res: any) => {
