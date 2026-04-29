@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
+import OnboardingSearch from '../../components/OnboardingSearch';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -128,35 +129,31 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
 function NoPlacesScreen({ userName }: { userName?: string }) {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="max-w-lg w-full text-center space-y-10">
+    <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full text-center space-y-12">
         <div className="space-y-4">
-          <div className="text-7xl">🏪</div>
-          <h1 className="text-4xl font-black text-[var(--text)] font-warike tracking-tight">
-            Bienvenido{userName ? `, ${userName.split(' ')[0]}` : ''}
+          <div className="text-7xl">👨‍🍳</div>
+          <h1 className="text-5xl font-black text-[var(--text)] font-warike tracking-tight italic">
+            Bienvenido{userName ? `, Chef ${userName.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-[var(--text-muted)] font-bold text-lg leading-relaxed">
-            Aún no tienes ningún establecimiento asignado a tu cuenta. Contacta al equipo Warike para que te asignen tu local.
+          <p className="text-[var(--text-muted)] font-bold text-xl leading-relaxed max-w-lg mx-auto">
+            Configura tu restaurante para empezar a gestionar tu reputación y redes sociales.
           </p>
         </div>
 
-        <div className="bg-white rounded-[3rem] border border-[var(--border)] shadow-sm p-10 space-y-6 text-left">
-          <h2 className="font-black text-[var(--text)] text-xl font-warike">¿Qué hacer ahora?</h2>
-          <div className="space-y-4">
-            <Step n="1" text="Escríbenos por WhatsApp indicando tu email de registro" />
-            <Step n="2" text="El equipo Warike asignará tu establecimiento en menos de 24h" />
-            <Step n="3" text="Vuelve a iniciar sesión y tu panel estará listo" />
-          </div>
-        </div>
+        <OnboardingSearch onComplete={() => {}} />
 
-        <a
-          href="https://wa.me/51902191948?text=Hola!%20Mi%20email%20es%20____%20y%20necesito%20que%20asignen%20mi%20establecimiento."
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-3 bg-[var(--primary)] text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[var(--primary)]/20 hover:opacity-90 transition-all"
-        >
-          <span className="text-xl">💬</span> Contactar por WhatsApp
-        </a>
+        <div className="pt-10 border-t border-[var(--border)]">
+          <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] mb-6">¿Necesitas ayuda personalizada?</p>
+          <a
+            href="https://wa.me/51902191948?text=Hola!%20Soy%20un%20Chef%20nuevo%20y%20necesito%20ayuda%20con%20mi%20registro."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-white border-2 border-[var(--border)] text-[var(--text)] px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all shadow-sm"
+          >
+            <span>💬</span> Hablar con Soporte Wuarike
+          </a>
+        </div>
       </div>
     </div>
   );
