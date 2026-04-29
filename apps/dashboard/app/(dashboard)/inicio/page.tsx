@@ -35,12 +35,28 @@ export default function RestaurantePage() {
   // Fetch Core Data
   useEffect(() => {
     setIsLoading(true);
-    fetch(`${API_BASE}/ubigeo/departments`).then(res => res.json()).then(data => setDbDepartments(Array.isArray(data) ? data : [])).catch(err => console.error(err));
-    fetch(`${API_BASE}/places/categories`).then(res => res.json()).then(data => {
-      setDbCategories(data);
-      if (data.length > 0 && !formData.categoriaId) setFormData(prev => ({ ...prev, categoriaId: data[0].id }));
-    }).catch(err => console.error(err));
-    fetch(`${API_BASE}/places/amenities`).then(res => res.json()).then(data => setDbAmenities(data)).catch(err => console.error(err)).finally(() => setIsLoading(false));
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    fetch(`${API_BASE}/ubigeo/departments`, { headers })
+      .then(res => res.json())
+      .then(data => setDbDepartments(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err));
+
+    fetch(`${API_BASE}/places/categories`, { headers })
+      .then(res => res.json())
+      .then(data => {
+        const cats = Array.isArray(data) ? data : [];
+        setDbCategories(cats);
+        if (cats.length > 0 && !formData.categoriaId) setFormData(prev => ({ ...prev, categoriaId: cats[0].id }));
+      })
+      .catch(err => console.error(err));
+
+    fetch(`${API_BASE}/places/amenities`, { headers })
+      .then(res => res.json())
+      .then(data => setDbAmenities(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+      .finally(() => setIsLoading(false));
   }, []);
 
   // Location logic (PE specific) - We'll add Spain logic later

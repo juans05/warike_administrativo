@@ -23,7 +23,14 @@ export default function DashboardLayout({
     if (!token) {
       router.push('/login');
     } else {
-      if (storedUser) setUser(JSON.parse(storedUser));
+      try {
+        if (storedUser) setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
       setIsLoaded(true);
     }
   }, [router]);

@@ -14,7 +14,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({}));
     throw new Error(error.message || 'Error en la petición');
   }
 
