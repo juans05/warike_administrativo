@@ -31,7 +31,6 @@ export default function ReputacionPage() {
   });
 
   const [recentComplaints, setRecentComplaints] = useState<any[]>([]);
-  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [googlePlaceId, setGooglePlaceId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -47,10 +46,9 @@ export default function ReputacionPage() {
     // Cargar datos de todas las fuentes en paralelo
     Promise.allSettled([
       businessApi.getComplaints(activePlaceId),
-      fetchWithAuth(`/business/places/${activePlaceId}/social/accounts`),
       fetchWithAuth(`/business/places/${activePlaceId}/social/comments`),
       businessApi.getAnalytics(activePlaceId, 'month'),
-    ]).then(([complaintsRes, accountsRes, commentsRes, analyticsRes]) => {
+    ]).then(([complaintsRes, commentsRes, analyticsRes]) => {
       // Quejas
       const complaints = complaintsRes.status === 'fulfilled' ? complaintsRes.value : null;
       if (complaints?.data) {
@@ -63,13 +61,6 @@ export default function ReputacionPage() {
           resolvedComplaints: all.filter((c: any) => c.status === 'resolved').length,
           disastersAvoided: complaints.meta?.total || all.length,
         }));
-      }
-
-      // Social Accounts
-      const accounts = accountsRes.status === 'fulfilled' ? accountsRes.value : null;
-      if (accounts?.accounts) {
-        setSocialAccounts(accounts.accounts);
-        setStats(prev => ({ ...prev, totalAccounts: accounts.total || 0 }));
       }
 
       // Social Comments
@@ -152,9 +143,9 @@ export default function ReputacionPage() {
       </div>
 
       {/* ═══════════════════════════════════════════════ */}
-      {/* FILA 2: 3 BLOQUES DETALLADOS                   */}
+      {/* FILA 2: 2 BLOQUES DETALLADOS                   */}
       {/* ═══════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
         {/* ── Bloque 1: Filtrado Inteligente ── */}
         <div className="bg-white p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm space-y-6">
@@ -212,7 +203,6 @@ export default function ReputacionPage() {
             </div>
           </div>
 
-          {/* Últimas quejas */}
           <div className="space-y-3">
             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Últimas quejas</p>
             {recentComplaints.length === 0 ? (
@@ -232,59 +222,6 @@ export default function ReputacionPage() {
 
           <a href="/feedback" className="block w-full text-center py-3 rounded-xl bg-[var(--background)] text-[var(--primary)] font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] hover:text-white transition-colors border border-[var(--border)]">
             Ver todas las quejas →
-          </a>
-        </div>
-
-        {/* ── Bloque 3: Instagram ── */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">📷</div>
-            <div>
-              <h3 className="font-black text-[var(--text)] font-warike">Instagram IA</h3>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stats.totalAccounts} cuenta{stats.totalAccounts !== 1 ? 's' : ''} vinculada{stats.totalAccounts !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-
-          {stats.totalAccounts === 0 ? (
-            <div className="text-center py-6 space-y-3">
-              <p className="text-3xl">🔗</p>
-              <p className="text-xs font-bold text-gray-400">No hay cuentas conectadas</p>
-              <a href="/social" className="inline-block bg-[var(--primary)] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest">Conectar Instagram</a>
-            </div>
-          ) : (
-            <>
-              {/* Cuentas conectadas */}
-              <div className="space-y-2">
-                {socialAccounts.map(acc => (
-                  <div key={acc.id} className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <span className="text-xs font-black text-purple-700">{acc.username}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[var(--background)] p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-[var(--primary)]">{stats.aiReplied}</p>
-                  <p className="text-[9px] font-black text-gray-400 uppercase">IA respondió</p>
-                </div>
-                <div className="bg-[var(--background)] p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-orange-500">{stats.pendingReplies}</p>
-                  <p className="text-[9px] font-black text-gray-400 uppercase">Sin responder</p>
-                </div>
-              </div>
-
-              {stats.totalComments > 0 && (
-                <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-center">
-                  <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Tasa de respuesta IA</p>
-                  <p className="text-2xl font-black text-purple-700">{Math.round((stats.aiReplied / stats.totalComments) * 100)}%</p>
-                </div>
-              )}
-            </>
-          )}
-
-          <a href="/social" className="block w-full text-center py-3 rounded-xl bg-[var(--background)] text-[var(--primary)] font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] hover:text-white transition-colors border border-[var(--border)]">
-            Gestionar Instagram IA →
           </a>
         </div>
       </div>

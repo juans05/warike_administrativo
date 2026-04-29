@@ -3,23 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { RestaurantProvider } from '../../context/RestaurantContext';
+import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
     if (!token) {
       router.push('/login');
     } else {
@@ -45,27 +39,40 @@ export default function DashboardLayout({
 
   return (
     <RestaurantProvider>
-      <div className="flex min-h-screen bg-[var(--background)] texture-paper">
-      {/* Sidebar - Premium Design */}
+      <InnerLayout user={user} handleLogout={handleLogout}>
+        {children}
+      </InnerLayout>
+    </RestaurantProvider>
+  );
+}
+
+function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: any; handleLogout: () => void }) {
+  const pathname = usePathname();
+  const { places, isLoading: contextLoading } = useRestaurant();
+
+  const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business';
+
+  return (
+    <div className="flex min-h-screen bg-[var(--background)] texture-paper">
       <aside className="w-80 bg-white/80 backdrop-blur-xl border-r border-[var(--border)] flex flex-col h-screen sticky top-0 hidden md:flex">
         <div className="p-10">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-black text-[var(--primary)] tracking-tighter font-warike">WARIKE</h1>
             <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">Global Reputación</p>
           </div>
-          
-          <div className="mt-10">
-            <RestaurantSelector />
-          </div>
+          {!noPlaces && <div className="mt-10"><RestaurantSelector /></div>}
         </div>
 
         <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
-          <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
-          <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
-          <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
-          <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
-          <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
-          
+          {!noPlaces && (
+            <>
+              <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
+              <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
+              <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
+              <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
+              <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
+            </>
+          )}
           {user?.role === 'admin' && (
             <>
               <div className="pt-8 pb-4 px-6">
@@ -87,8 +94,7 @@ export default function DashboardLayout({
               <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">{user?.role || 'Pro Partner'}</p>
             </div>
           </div>
-          
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-[var(--border)] text-xs font-black text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all active:scale-95 bg-white shadow-sm"
           >
@@ -97,25 +103,73 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 lg:p-16">
-        {children}
+        {noPlaces ? <NoPlacesScreen userName={user?.fullName} /> : children}
       </main>
 
-      {/* Mobile Nav - Bottom bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
-         <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
-         <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
-         <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
-         <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
-         <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
-         <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🚪</div>
-            <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
-         </button>
+        {!noPlaces && (
+          <>
+            <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
+            <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
+            <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
+            <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
+            <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
+          </>
+        )}
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🚪</div>
+          <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
+        </button>
       </nav>
+    </div>
+  );
+}
+
+function NoPlacesScreen({ userName }: { userName?: string }) {
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="max-w-lg w-full text-center space-y-10">
+        <div className="space-y-4">
+          <div className="text-7xl">🏪</div>
+          <h1 className="text-4xl font-black text-[var(--text)] font-warike tracking-tight">
+            Bienvenido{userName ? `, ${userName.split(' ')[0]}` : ''}
+          </h1>
+          <p className="text-[var(--text-muted)] font-bold text-lg leading-relaxed">
+            Aún no tienes ningún establecimiento asignado a tu cuenta. Contacta al equipo Warike para que te asignen tu local.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-[3rem] border border-[var(--border)] shadow-sm p-10 space-y-6 text-left">
+          <h2 className="font-black text-[var(--text)] text-xl font-warike">¿Qué hacer ahora?</h2>
+          <div className="space-y-4">
+            <Step n="1" text="Escríbenos por WhatsApp indicando tu email de registro" />
+            <Step n="2" text="El equipo Warike asignará tu establecimiento en menos de 24h" />
+            <Step n="3" text="Vuelve a iniciar sesión y tu panel estará listo" />
+          </div>
+        </div>
+
+        <a
+          href="https://wa.me/51902191948?text=Hola!%20Mi%20email%20es%20____%20y%20necesito%20que%20asignen%20mi%20establecimiento."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-3 bg-[var(--primary)] text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[var(--primary)]/20 hover:opacity-90 transition-all"
+        >
+          <span className="text-xl">💬</span> Contactar por WhatsApp
+        </a>
       </div>
-    </RestaurantProvider>
+    </div>
+  );
+}
+
+function Step({ n, text }: { n: string; text: string }) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-black text-sm shrink-0">
+        {n}
+      </div>
+      <p className="text-[var(--text-muted)] font-bold text-sm leading-relaxed pt-1">{text}</p>
+    </div>
   );
 }
 
