@@ -31,6 +31,7 @@ export default function ReputacionPage() {
   });
 
   const [recentComplaints, setRecentComplaints] = useState<any[]>([]);
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [googlePlaceId, setGooglePlaceId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
