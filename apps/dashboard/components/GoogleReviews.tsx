@@ -15,18 +15,27 @@ export default function GoogleReviews() {
     if (!activePlaceId) return;
     setIsLoading(true);
     try {
-      const data = await businessApi.getGoogleReviews(activePlaceId);
-      if (data) {
-        setReviews(data.reviews || []);
-        setRating(data.rating || 0);
-        setTotalReviews(data.totalReviews || 0);
+      // 1. Get profile for rating and total count
+      const profile = await businessApi.getProfile(activePlaceId);
+      if (profile) {
+        setRating(profile.googleRating ? parseFloat(profile.googleRating) : 0);
+        setTotalReviews(profile.googleTotalReviews || 0);
+      }
+
+      // 2. Get persisted reviews from DB
+      const dbReviews = await businessApi.getPersistedGoogleReviews(activePlaceId);
+      if (dbReviews && Array.isArray(dbReviews)) {
+        setReviews(dbReviews.map((r: any) => ({
+          author_name: r.authorName,
+          profile_photo_url: r.authorPhotoUrl,
+          rating: r.rating,
+          text: r.text,
+          relative_time_description: r.relativeTimeDescription,
+          time: r.time
+        })));
       }
     } catch (e) {
-      console.warn("Using mock data for reviews demo");
-      setReviews([
-        { author_name: "Juan Perez", rating: 5, text: "El mejor ceviche de Miraflores. El sistema de QR es súper rápido.", relative_time_description: "Hace 2 días", platform: "Google" },
-        { author_name: "Maria Garcia", rating: 4, text: "Excelente sazón, aunque el local estaba un poco lleno. Muy recomendado.", relative_time_description: "Hace 1 semana", platform: "Google" },
-      ]);
+      console.warn("Error fetching persisted reviews", e);
     }
     setIsLoading(false);
   };

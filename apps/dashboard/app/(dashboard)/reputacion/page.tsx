@@ -41,8 +41,8 @@ export default function ReputacionPage() {
 
     // Cargar perfil para obtener googlePlaceId
     businessApi.getProfile(activePlaceId).then(profile => {
-        setGooglePlaceId(profile.googlePlaceId || '');
-    }).catch(() => {});
+      setGooglePlaceId(profile.googlePlaceId || '');
+    }).catch(() => { });
 
     // Cargar datos de todas las fuentes en paralelo
     Promise.allSettled([
@@ -89,12 +89,14 @@ export default function ReputacionPage() {
         }));
       }
 
-      // Overwrite rating average with real Google Rating if profile loaded
+      // Overwrite rating average and total reviews with real Google data if profile loaded
       businessApi.getProfile(activePlaceId).then(profile => {
-        if (profile.googleRating) {
-          setStats(prev => ({ ...prev, ratingAverage: parseFloat(profile.googleRating) }));
-        }
-      }).catch(() => {});
+        setStats(prev => ({
+          ...prev,
+          ratingAverage: profile.googleRating ? parseFloat(profile.googleRating) : prev.ratingAverage,
+          reviewsSentToGoogle: profile.googleTotalReviews || prev.reviewsSentToGoogle
+        }));
+      }).catch(() => { });
     }).catch(() => {
       // Datos demo si backend no disponible
       setStats({
@@ -247,19 +249,19 @@ export default function ReputacionPage() {
           </div>
 
           <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 space-y-4 relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/50 rounded-full blur-3xl"></div>
-             <div>
-               <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Tu Enlace Base</p>
-               <p className="text-sm font-black text-[var(--text)] break-all">{publicLink}</p>
-             </div>
-             <div className="flex gap-3">
-               <button onClick={() => {navigator.clipboard.writeText(publicLink); alert('Copiado');}} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
-               <button className="flex-1 py-3 rounded-xl bg-white text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition-all">Imprimir QR</button>
-             </div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/50 rounded-full blur-3xl"></div>
+            <div>
+              <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Tu Enlace Base</p>
+              <p className="text-sm font-black text-[var(--text)] break-all">{publicLink}</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { navigator.clipboard.writeText(publicLink); alert('Copiado'); }} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
+              <button className="flex-1 py-3 rounded-xl bg-white text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition-all">Imprimir QR</button>
+            </div>
           </div>
 
           <button className="w-full py-5 rounded-2xl border-2 border-dashed border-[var(--primary)] text-[var(--primary)] font-black text-xs uppercase tracking-widest hover:bg-[var(--primary)] hover:text-white transition-all">
-             + Solicitar Nuevo Stand Físico
+            + Solicitar Nuevo Stand Físico
           </button>
         </section>
 
@@ -290,14 +292,14 @@ export default function ReputacionPage() {
                 <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" className="text-[9px] font-black text-[var(--primary)] uppercase hover:underline">¿Cómo obtener mi ID?</a>
               </div>
               <div className="flex gap-3">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={googlePlaceId}
                   onChange={(e) => setGooglePlaceId(e.target.value)}
                   placeholder="Ej: ChIJs_-... (ID de tu negocio)"
                   className="input-premium flex-1"
                 />
-                <button 
+                <button
                   onClick={async () => {
                     if (!activePlaceId) return;
                     setIsSaving(true);
