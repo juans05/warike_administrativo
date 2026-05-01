@@ -11,12 +11,12 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    console.log('[LOGIN] Instando login para:', email);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/login`, {
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/login`;
+      console.log('[LOGIN] Enviando petición a:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -24,15 +24,20 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('[LOGIN] Status de respuesta:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('[LOGIN] Error de respuesta:', errorData);
         throw new Error(errorData.message || 'Credenciales inválidas');
       }
 
       const data = await response.json();
+      console.log('[LOGIN] Login exitoso, usuario:', data.user.email, 'Rol:', data.user.role);
       
       // Check if user is admin or business
       if (data.user.role !== 'admin' && data.user.role !== 'business') {
+        console.warn('[LOGIN] Acceso denegado: rol insuficiente');
         throw new Error('Acceso restringido a administradores y dueños');
       }
 
@@ -41,6 +46,7 @@ export default function LoginPage() {
       
       router.push('/inicio');
     } catch (err: any) {
+      console.error('[LOGIN] Error en proceso de login:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);
