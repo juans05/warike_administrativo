@@ -160,6 +160,10 @@ export const adminApi = {
   verifyClaim: (id: string) => fetchWithAuth(`/admin/claims/${id}/verify`, { method: 'POST' }),
 
   getUsers: (page = 1, search = '') => fetchWithAuth(`/admin/users?page=${page}&search=${search}`),
+  createUser: (data: any) => fetchWithAuth('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
   banUser: (id: string) => fetchWithAuth(`/admin/users/${id}/ban`, { method: 'PATCH' }),
   activateUser: (id: string) => fetchWithAuth(`/admin/users/${id}/activate`, { method: 'PATCH' }),
 
