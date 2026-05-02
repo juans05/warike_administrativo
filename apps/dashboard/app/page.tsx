@@ -279,8 +279,9 @@ export default function LandingPage() {
       <section className="pt-48 pb-32 px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div className="space-y-8 md:space-y-10">
+            <h1 className="sr-only">Software para aumentar reseñas en Google Maps con NFC para restaurantes - Warique</h1>
             <div className="inline-block px-6 py-2 bg-[var(--primary)]/10 rounded-full text-[var(--primary)] text-[10px] font-black uppercase tracking-[0.3em]">Lima • Ávila</div>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[var(--text)] tracking-tighter font-warike leading-[0.9]">La sazón <br/>es <span className="italic text-[var(--primary)]">tuya</span>, la reputación es <span className="underline decoration-[var(--secondary)] decoration-8 underline-offset-[12px]">nuestra</span>.</h1>
+            <h2 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-[var(--text)] tracking-tighter font-warike leading-[0.9]">La sazón <br/>es <span className="italic text-[var(--primary)]">tuya</span>, la reputación es <span className="underline decoration-[var(--secondary)] decoration-8 underline-offset-[12px]">nuestra</span>.</h2>
             <p className="text-lg md:text-xl text-[var(--text-muted)] font-bold max-w-xl leading-relaxed text-balance">Una mala reseña te cuesta 30 clientes al mes. Protege tu prestigio con nuestro <span className="text-[var(--text)]">filtrado inteligente</span> y multiplica tus 5 estrellas automáticamente.</p>
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mt-8">
               <a 

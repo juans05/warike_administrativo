@@ -7,12 +7,13 @@ const lora = Lora({ subsets: ['latin'], variable: '--font-lora' });
 const caveat = Caveat({ subsets: ['latin'], variable: '--font-caveat' });
 
 export const metadata: Metadata = {
-  title: 'Warique | Reputación & Sazón',
-  description: 'Plataforma premium de gestión de reputación para huariques y restaurantes en Perú y España. Protege tu sazón con tecnología NFC de filtrado inteligente.',
-  keywords: ['software restaurantes', 'reputacion google', 'huariques', 'stands nfc', 'mejorar reseñas google', 'software gastronómico'],
+  metadataBase: new URL('https://warique.com'),
+  title: 'Warique | Aumenta tus Reseñas en Google Maps con NFC para Restaurantes',
+  description: 'Aumenta las reseñas positivas de tu restaurante en Google Maps y bloquea las negativas en privado. Placas y Stands NFC premium para huariques.',
+  keywords: ['aumentar reseñas google', 'nfc para restaurantes', 'reputacion google maps', 'software restaurantes', 'mejorar reseñas google', 'marketing gastronomico'],
   openGraph: {
-    title: 'Warique | Reputación & Sazón',
-    description: 'Aumenta tus estrellas en Google hasta un 40%. La plataforma definitiva para restaurantes y huariques.',
+    title: 'Warique | Aumenta tus Reseñas en Google Maps con NFC',
+    description: 'Filtra quejas en privado y multiplica tus 5 estrellas en Google automáticamente. La plataforma definitiva para restaurantes y huariques.',
     url: 'https://warique.com',
     siteName: 'Warique',
     locale: 'es_PE',
@@ -20,8 +21,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Warique | Reputación & Sazón',
-    description: 'Tecnología invisible para resultados visibles. Filtra tus reseñas negativas antes de que lleguen a Google.',
+    title: 'Warique | Reseñas Google NFC para Restaurantes',
+    description: 'Tecnología invisible para resultados visibles. Atrapa quejas antes de que lleguen a Google Maps.',
   }
 };
 
@@ -36,9 +37,10 @@ export default function RootLayout({
       {
         "@type": "SoftwareApplication",
         "name": "Warique",
+        "url": "https://warique.com",
         "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "description": "Plataforma de gestión de reputación y reseñas de Google para restaurantes y huariques usando tecnología NFC.",
+        "operatingSystem": "Web, iOS, Android",
+        "description": "Software y hardware NFC para restaurantes que incrementa reseñas positivas en Google Maps y filtra quejas internamente.",
         "offers": {
           "@type": "Offer",
           "price": "28.90",
