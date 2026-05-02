@@ -54,12 +54,12 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business';
 
   return (
-    <div className="flex min-h-screen bg-[var(--background)] texture-paper">
-      <aside className="w-80 bg-white/80 backdrop-blur-xl border-r border-[var(--border)] flex flex-col h-screen sticky top-0 hidden md:flex">
+    <div className="flex min-h-screen bg-background texture-paper">
+      <aside className="w-80 bg-white/70 backdrop-blur-2xl border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-2xl shadow-gray-200/50 z-10">
         <div className="p-10">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-black text-[var(--primary)] tracking-tighter font-warike">WARIKE</h1>
-            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">Global Reputación</p>
+          <div className="flex flex-col gap-1 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+            <h1 className="text-3xl font-black text-primary tracking-tighter font-warike">WARIKE</h1>
+            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-text-muted">Global Reputación</p>
           </div>
           {user?.role === 'business' && !noPlaces && (
             <div className="mt-10"><RestaurantSelector /></div>
@@ -79,7 +79,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           {user?.role === 'admin' && (
             <>
               <div className="pt-8 pb-4 px-6">
-                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Platform Admin</p>
+                <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Platform Admin</p>
               </div>
               <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
               <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
@@ -87,21 +87,21 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           )}
         </nav>
 
-        <div className="p-8 border-t border-[var(--border)] flex flex-col gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--primary)] flex items-center justify-center text-white font-black text-xl shadow-lg shadow-[var(--primary)]/20 border-2 border-white">
+        <div className="p-8 border-t border-border flex flex-col gap-6">
+          <div className="flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300 cursor-pointer group">
+            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/30 border-2 border-white ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
               {user?.fullName?.charAt(0) || 'A'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-black text-[var(--text)] truncate">{user?.fullName || 'Administrador'}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">{user?.role || 'Pro Partner'}</p>
+              <p className="text-sm font-black text-text truncate group-hover:text-primary transition-colors">{user?.fullName || 'Administrador'}</p>
+              <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{user?.role || 'Pro Partner'}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-[var(--border)] text-xs font-black text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all active:scale-95 bg-white shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-border text-xs font-black text-text-muted hover:text-primary hover:border-primary transition-all active:scale-95 bg-white shadow-sm hover:shadow-md duration-300"
           >
-            <span>🚪</span> CERRAR SESIÓN
+            <span className="text-lg">🚪</span> CERRAR SESIÓN
           </button>
         </div>
       </aside>
@@ -110,7 +110,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
         {noPlaces ? <NoPlacesScreen userName={user?.fullName} /> : children}
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-border flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {user?.role === 'business' && !noPlaces && (
           <>
             <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
@@ -126,8 +126,8 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             <MobileNavItem href="/comunidad" icon="👥" label="Usuarios" active={pathname === '/comunidad'} />
           </>
         )}
-        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl">🚪</div>
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-text-muted hover:text-primary transition-colors active:scale-95 duration-200">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl shadow-sm">🚪</div>
           <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
         </button>
       </nav>
@@ -141,25 +141,25 @@ function NoPlacesScreen({ userName }: { userName?: string }) {
       <div className="max-w-2xl w-full text-center space-y-12">
         <div className="space-y-4">
           <div className="text-7xl">👨‍🍳</div>
-          <h1 className="text-5xl font-black text-[var(--text)] font-warike tracking-tight italic">
+          <h1 className="text-5xl font-black text-text font-warike tracking-tight italic">
             Bienvenido{userName ? `, Chef ${userName.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-[var(--text-muted)] font-bold text-xl leading-relaxed max-w-lg mx-auto">
+          <p className="text-text-muted font-bold text-xl leading-relaxed max-w-lg mx-auto">
             Configura tu restaurante para empezar a gestionar tu reputación y redes sociales.
           </p>
         </div>
 
         <OnboardingSearch onComplete={() => {}} />
 
-        <div className="pt-10 border-t border-[var(--border)]">
-          <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.4em] mb-6">¿Necesitas ayuda personalizada?</p>
+        <div className="pt-10 border-t border-border">
+          <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.4em] mb-6">¿Necesitas ayuda personalizada?</p>
           <a
             href="https://wa.me/51902191948?text=Hola!%20Soy%20un%20Chef%20nuevo%20y%20necesito%20ayuda%20con%20mi%20registro."
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-white border-2 border-[var(--border)] text-[var(--text)] px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all shadow-sm"
+            className="inline-flex items-center gap-3 bg-white border-2 border-border text-text px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1 active:scale-95"
           >
-            <span>💬</span> Hablar con Soporte Wuarike
+            <span className="text-xl">💬</span> Hablar con Soporte Wuarike
           </a>
         </div>
       </div>
@@ -170,10 +170,10 @@ function NoPlacesScreen({ userName }: { userName?: string }) {
 function Step({ n, text }: { n: string; text: string }) {
   return (
     <div className="flex items-start gap-4">
-      <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-black text-sm shrink-0">
+      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-primary/20">
         {n}
       </div>
-      <p className="text-[var(--text-muted)] font-bold text-sm leading-relaxed pt-1">{text}</p>
+      <p className="text-text-muted font-bold text-sm leading-relaxed pt-1">{text}</p>
     </div>
   );
 }
@@ -186,7 +186,7 @@ function SidebarItem({ href, icon, label, active, badge }: { href: string, icon:
     >
       <span className="text-xl">{icon}</span>
       <span className="flex-1">{label}</span>
-      {badge && <span className="bg-[var(--primary)] text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{badge}</span>}
+      {badge && <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">{badge}</span>}
     </Link>
   );
 }
@@ -195,13 +195,13 @@ function MobileNavItem({ href, icon, label, active, badge }: { href: string, ico
   return (
     <Link 
       href={href}
-      className={`flex flex-col items-center gap-1.5 relative ${active ? 'text-[var(--primary)]' : 'text-[var(--text-muted)]'}`}
+      className={`flex flex-col items-center gap-1.5 relative transition-colors duration-300 active:scale-95 ${active ? 'text-primary' : 'text-text-muted hover:text-primary'}`}
     >
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all ${active ? 'bg-[var(--primary)]/10' : 'bg-gray-50'}`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-300 ${active ? 'bg-primary/10 shadow-inner' : 'bg-gray-50 shadow-sm hover:shadow-md'}`}>
         {icon}
       </div>
       <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
-      {badge && <span className="absolute top-0 right-0 bg-[var(--primary)] text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-md">{badge}</span>}
+      {badge && <span className="absolute top-0 right-0 bg-primary text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-md">{badge}</span>}
     </Link>
   );
 }

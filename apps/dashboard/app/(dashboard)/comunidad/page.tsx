@@ -67,13 +67,13 @@ export default function ComunidadPage() {
   if (loading && users.length === 0) return <div className="p-20 text-center font-bold text-gray-400">Cargando comunidad...</div>;
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header>
         <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Gestión de Usuarios</h1>
         <p className="text-[#6B7280] font-medium max-w-lg">Administra los roles, permisos y estados de los usuarios del ecosistema.</p>
       </header>
 
-      <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
+      <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
         <div className="p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-6">
             <h2 className="text-xl font-black text-[#1A1A1A]">Usuarios Registrados</h2>

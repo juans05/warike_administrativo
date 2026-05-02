@@ -43,7 +43,7 @@ export default function BotSettingsPage() {
   if (isLoading) return <div className="p-20 text-center font-bold text-gray-400">Cargando cerebro del bot...</div>;
 
   return (
-    <div className="max-w-4xl space-y-10 pb-20">
+    <div className="max-w-4xl space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-black text-[#1A1A1A] tracking-tight">Configuración del Bot</h1>
@@ -58,7 +58,7 @@ export default function BotSettingsPage() {
         </button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
         <div className="md:col-span-8 space-y-8">
           {/* Main Config */}
           <section className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">

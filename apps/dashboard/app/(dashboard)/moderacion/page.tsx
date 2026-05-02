@@ -60,14 +60,14 @@ export default function ModeracionPage() {
   if (loading && places.length === 0) return <div className="p-20 text-center font-bold text-gray-400">Cargando moderación...</div>;
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header>
         <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Moderación del Sistema</h1>
         <p className="text-[#6B7280] font-medium max-w-lg">Control total sobre los warikes registrados en la plataforma.</p>
       </header>
 
       {/* Stats row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
         <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Warikes</p>
           <p className="text-4xl font-black text-[#F26122]">{stats?.overview?.totalPlaces || 0}</p>
@@ -82,7 +82,7 @@ export default function ModeracionPage() {
         </div>
       </div>
 
-      <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
+      <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 fill-mode-both">
         <div className="p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6">
           <h2 className="text-xl font-black text-[#1A1A1A]">Gestionar Locales</h2>
           <div className="w-full md:w-96 relative">

@@ -122,16 +122,16 @@ export default function ReputacionPage() {
 
   if (isLoading) return (
     <div className="py-20 text-center">
-      <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
       <p className="font-bold text-gray-400">Cargando estadísticas...</p>
     </div>
   );
 
   return (
-    <div className="max-w-6xl space-y-16 pb-32">
+    <div className="max-w-6xl space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header className="space-y-2">
-        <h1 className="text-5xl font-black text-[var(--text)] tracking-tight font-warike">Motor de Reputación</h1>
-        <p className="text-[var(--text-muted)] font-bold text-lg max-w-2xl leading-snug">
+        <h1 className="text-5xl font-black text-text tracking-tight font-warike">Motor de Reputación</h1>
+        <p className="text-text-muted font-bold text-lg max-w-2xl leading-snug">
           Vista consolidada de cómo va tu negocio: escaneos NFC, quejas interceptadas y rendimiento en redes sociales.
         </p>
       </header>
@@ -139,7 +139,7 @@ export default function ReputacionPage() {
       {/* ═══════════════════════════════════════════════ */}
       {/* FILA 1: KPIs PRINCIPALES                       */}
       {/* ═══════════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150">
         <KpiCard label="Escaneos NFC" value={stats.totalTaps.toLocaleString()} icon="📱" color="bg-blue-500" />
         <KpiCard label="Rating Google" value={stats.ratingAverage.toFixed(1)} icon="⭐" color="bg-yellow-500" />
         <KpiCard label="Reseñas a Google" value={stats.reviewsSentToGoogle} icon="🚀" color="bg-green-500" />
@@ -150,14 +150,14 @@ export default function ReputacionPage() {
       {/* ═══════════════════════════════════════════════ */}
       {/* FILA 2: 2 BLOQUES DETALLADOS                   */}
       {/* ═══════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
 
         {/* ── Bloque 1: Filtrado Inteligente ── */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm space-y-6">
+        <div className="bg-white p-8 rounded-[2.5rem] border border-border shadow-sm space-y-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-2xl shadow-lg">⚡</div>
             <div>
-              <h3 className="font-black text-[var(--text)] font-warike">Filtrado NFC</h3>
+              <h3 className="font-black text-text font-warike">Filtrado NFC</h3>
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Escaneos y filtrado</p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function ReputacionPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-gray-500">NFC</span>
-              <span className="text-xs font-black text-[var(--text)]">{stats.nfcPercent}%</span>
+              <span className="text-xs font-black text-text">{stats.nfcPercent}%</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${stats.nfcPercent}%` }}></div>
@@ -173,7 +173,7 @@ export default function ReputacionPage() {
 
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-gray-500">QR</span>
-              <span className="text-xs font-black text-[var(--text)]">{stats.qrPercent}%</span>
+              <span className="text-xs font-black text-text">{stats.qrPercent}%</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${stats.qrPercent}%` }}></div>
@@ -188,11 +188,11 @@ export default function ReputacionPage() {
         </div>
 
         {/* ── Bloque 2: Buzón de Quejas ── */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm space-y-6">
+        <div className="bg-white p-8 rounded-[2.5rem] border border-border shadow-sm space-y-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center text-2xl shadow-lg">🛡️</div>
             <div>
-              <h3 className="font-black text-[var(--text)] font-warike">Quejas Privadas</h3>
+              <h3 className="font-black text-text font-warike">Quejas Privadas</h3>
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Desastres evitados</p>
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function ReputacionPage() {
                 <div key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border ${c.status === 'pending' ? 'border-red-100 bg-red-50/50' : 'border-green-100 bg-green-50/50'}`}>
                   <span className="text-lg">{c.rating <= 1 ? '😡' : c.rating <= 2 ? '😞' : '😐'}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-black text-[var(--text)] truncate">{c.comment}</p>
+                    <p className="text-[11px] font-black text-text truncate">{c.comment}</p>
                     <p className="text-[9px] font-bold text-gray-400">{c.customerName || 'Anónimo'}</p>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export default function ReputacionPage() {
             )}
           </div>
 
-          <a href="/feedback" className="block w-full text-center py-3 rounded-xl bg-[var(--background)] text-[var(--primary)] font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] hover:text-white transition-colors border border-[var(--border)]">
+          <a href="/feedback" className="block w-full text-center py-3 rounded-xl bg-background text-primary font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-colors border border-border">
             Ver todas las quejas →
           </a>
         </div>
@@ -236,12 +236,12 @@ export default function ReputacionPage() {
       {/* ═══════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Device Management */}
-        <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-[var(--border)] space-y-8">
+        <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-border space-y-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 flex items-center justify-center text-2xl">⚡</div>
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">⚡</div>
             <div>
-              <h3 className="text-xl font-black text-[var(--text)] font-warike">Dispositivos Vinculados</h3>
-              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Tus stands físicos activos</p>
+              <h3 className="text-xl font-black text-text font-warike">Dispositivos Vinculados</h3>
+              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Tus stands físicos activos</p>
             </div>
           </div>
 
@@ -254,7 +254,7 @@ export default function ReputacionPage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/50 rounded-full blur-3xl"></div>
             <div>
               <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Tu Enlace Base</p>
-              <p className="text-sm font-black text-[var(--text)] break-all">{publicLink}</p>
+              <p className="text-sm font-black text-text break-all">{publicLink}</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => { navigator.clipboard.writeText(publicLink); alert('Copiado'); }} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
@@ -262,36 +262,36 @@ export default function ReputacionPage() {
             </div>
           </div>
 
-          <button className="w-full py-5 rounded-2xl border-2 border-dashed border-[var(--primary)] text-[var(--primary)] font-black text-xs uppercase tracking-widest hover:bg-[var(--primary)] hover:text-white transition-all">
+          <button className="w-full py-5 rounded-2xl border-2 border-dashed border-primary text-primary font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
             + Solicitar Nuevo Stand Físico
           </button>
         </section>
 
         {/* Logic Configuration */}
-        <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-[var(--border)] space-y-8">
+        <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-border space-y-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center text-2xl">⚙️</div>
+            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-2xl">⚙️</div>
             <div>
-              <h3 className="text-xl font-black text-[var(--text)] font-warike">Filtrado Inteligente</h3>
-              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Configura el umbral de satisfacción</p>
+              <h3 className="text-xl font-black text-text font-warike">Filtrado Inteligente</h3>
+              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Configura el umbral de satisfacción</p>
             </div>
           </div>
 
           <div className="space-y-6">
-            <div className="flex justify-between items-center p-6 bg-[var(--background)] rounded-3xl border border-[var(--border)]">
+            <div className="flex justify-between items-center p-6 bg-background rounded-3xl border border-border">
               <div>
-                <p className="font-black text-[var(--text)] text-sm">Activar Filtrado</p>
-                <p className="text-[10px] font-bold text-[var(--text-muted)]">Redirige valoraciones bajas a buzón privado</p>
+                <p className="font-black text-text text-sm">Activar Filtrado</p>
+                <p className="text-[10px] font-bold text-text-muted">Redirige valoraciones bajas a buzón privado</p>
               </div>
-              <div className="w-14 h-8 bg-[var(--primary)] rounded-full relative cursor-pointer">
+              <div className="w-14 h-8 bg-primary rounded-full relative cursor-pointer">
                 <div className="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow-md"></div>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-end px-2">
-                <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Google Place ID</label>
-                <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" className="text-[9px] font-black text-[var(--primary)] uppercase hover:underline">¿Cómo obtener mi ID?</a>
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Google Place ID</label>
+                <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" className="text-[9px] font-black text-primary uppercase hover:underline">¿Cómo obtener mi ID?</a>
               </div>
               <div className="flex gap-3">
                 <input
@@ -312,14 +312,14 @@ export default function ReputacionPage() {
                     setIsSaving(false);
                   }}
                   disabled={isSaving}
-                  className="bg-[var(--text)] text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] transition-all disabled:opacity-50"
+                  className="bg-text text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-50"
                 >
                   {isSaving ? '...' : 'Guardar'}
                 </button>
               </div>
             </div>
 
-            <p className="text-[10px] font-bold text-[var(--text-muted)] leading-relaxed italic">
+            <p className="text-[10px] font-bold text-text-muted leading-relaxed italic">
               * El filtrado inteligente está activado por defecto. Las valoraciones de 1 a 3 estrellas no verán el enlace de Google Maps y se les invitará a dejar una sugerencia privada.
             </p>
 
@@ -365,7 +365,7 @@ export default function ReputacionPage() {
         </section>
       </div>
 
-      <hr className="border-[var(--border)]" />
+      <hr className="border-border" />
 
       {/* Google Reviews */}
       <GoogleReviews />
@@ -377,13 +377,13 @@ export default function ReputacionPage() {
 
 function KpiCard({ label, value, icon, color }: { label: string; value: any; icon: string; color: string }) {
   return (
-    <div className="bg-white p-6 rounded-[2rem] border border-[var(--border)] shadow-sm space-y-3 hover:shadow-xl transition-all group">
+    <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-3 hover:shadow-xl transition-all group">
       <div className={`w-11 h-11 ${color} rounded-2xl flex items-center justify-center text-xl shadow-lg border-2 border-white group-hover:scale-110 transition-transform`}>
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-black text-[var(--text)]">{value}</p>
-        <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em] mt-1">{label}</p>
+        <p className="text-2xl font-black text-text">{value}</p>
+        <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.15em] mt-1">{label}</p>
       </div>
     </div>
   );
@@ -391,23 +391,23 @@ function KpiCard({ label, value, icon, color }: { label: string; value: any; ico
 
 function DeviceCard({ name, action }: { name: string; action: string }) {
   return (
-    <div className="p-6 bg-[var(--background)] rounded-3xl border border-[var(--border)] group hover:border-[var(--primary)] transition-colors space-y-4">
+    <div className="p-6 bg-background rounded-3xl border border-border group hover:border-primary transition-colors space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="text-3xl">🪧</div>
           <div>
-            <p className="font-black text-[var(--text)] text-sm">{name}</p>
+            <p className="font-black text-text text-sm">{name}</p>
             <div className="flex gap-2 items-center mt-1">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Activo</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Activo</p>
             </div>
           </div>
         </div>
-        <button className="text-[10px] font-black text-[var(--primary)] uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Opciones</button>
+        <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Opciones</button>
       </div>
       <div className="pt-4 border-t border-gray-100">
-        <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest block mb-2">Acción al escanear:</label>
-        <select className="input-premium py-2 text-xs font-bold text-[var(--text)] w-full cursor-pointer" defaultValue={action}>
+        <label className="text-[9px] font-black text-text-muted uppercase tracking-widest block mb-2">Acción al escanear:</label>
+        <select className="input-premium py-2 text-xs font-bold text-text w-full cursor-pointer" defaultValue={action}>
           <option value="reputation">⭐ Captar Reseñas (Filtrado Inteligente)</option>
           <option value="raffle">🎁 Formulario de Sorteo / Promoción</option>
           <option value="menu">🍽️ Ver Menú Digital</option>

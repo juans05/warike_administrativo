@@ -35,23 +35,23 @@ h1, h2, h3, .font-warike {
 
 /* Custom Utilities */
 .kpi-card {
-  @apply bg-white p-8 rounded-[2rem] shadow-sm border border-[var(--border)] transition-all hover:shadow-xl hover:border-[var(--secondary)];
+  @apply bg-white p-8 rounded-[2rem] shadow-sm border border-border transition-all hover:shadow-xl hover:-translate-y-1 hover:border-secondary duration-300;
 }
 
 .btn-primary {
-  @apply bg-[var(--primary)] text-white py-4 px-8 rounded-2xl font-bold transition-all hover:bg-[var(--primary-light)] hover:shadow-lg active:scale-95;
+  @apply bg-primary text-white py-4 px-8 rounded-2xl font-bold transition-all hover:bg-primary-light hover:shadow-lg hover:-translate-y-0.5 active:scale-95 duration-200;
 }
 
 .sidebar-item {
-  @apply flex items-center gap-4 px-6 py-4 rounded-2xl transition-all font-bold text-[var(--text-muted)] hover:bg-gray-50 hover:text-[var(--primary)];
+  @apply flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 font-bold text-text-muted hover:bg-gray-50 hover:text-primary hover:-translate-y-0.5;
 }
 
 .sidebar-item.active {
-  @apply bg-[var(--primary)] text-white shadow-lg;
+  @apply bg-primary text-white shadow-lg shadow-primary/30;
 }
 
 .input-premium {
-  @apply w-full bg-white border border-[var(--border)] rounded-2xl py-4 px-6 focus:ring-4 focus:ring-orange-100 focus:border-[var(--primary)] outline-none transition-all font-semibold text-[var(--text)] text-sm shadow-sm;
+  @apply w-full bg-white border border-border rounded-2xl py-4 px-6 focus:ring-4 focus:ring-primary/20 focus:border-primary outline-none transition-all duration-300 font-semibold text-text text-sm shadow-sm;
 }
 
 .texture-paper {

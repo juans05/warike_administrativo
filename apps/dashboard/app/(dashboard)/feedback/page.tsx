@@ -62,11 +62,11 @@ export default function FeedbackPage() {
   const resolvedCount = complaints.filter(c => c.status !== 'pending').length;
 
   return (
-    <div className="space-y-10 pb-32 max-w-6xl">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-[var(--border)] pb-10">
+    <div className="space-y-10 pb-32 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-border pb-10">
         <div className="space-y-2">
-          <h1 className="text-5xl font-black text-[var(--text)] tracking-tight font-warike">Buzón de Feedback</h1>
-          <p className="text-[var(--text-muted)] font-bold text-lg max-w-xl leading-snug">
+          <h1 className="text-5xl font-black text-text tracking-tight font-warike">Buzón de Feedback</h1>
+          <p className="text-text-muted font-bold text-lg max-w-xl leading-snug">
             Quejas interceptadas por el filtro inteligente y métricas de satisfacción.
           </p>
         </div>
@@ -77,7 +77,7 @@ export default function FeedbackPage() {
             onClick={() => setActiveTab('complaints')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'complaints'
-                ? 'bg-white text-[var(--primary)] shadow-sm'
+                ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-500 hover:bg-gray-200'
             }`}
           >
@@ -87,7 +87,7 @@ export default function FeedbackPage() {
             onClick={() => setActiveTab('analytics')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'analytics'
-                ? 'bg-white text-[var(--primary)] shadow-sm'
+                ? 'bg-white text-primary shadow-sm'
                 : 'text-gray-500 hover:bg-gray-200'
             }`}
           >
@@ -98,7 +98,7 @@ export default function FeedbackPage() {
 
       {isLoading && (
         <div className="py-20 text-center">
-          <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="font-bold text-gray-400">Cargando datos...</p>
         </div>
       )}
@@ -109,7 +109,7 @@ export default function FeedbackPage() {
       {!isLoading && activeTab === 'complaints' && (
         <div className="space-y-8">
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
             <div className="bg-red-50 p-8 rounded-[2.5rem] border border-red-100 space-y-2">
               <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Quejas Pendientes</p>
               <p className="text-4xl font-black text-red-600">{pendingCount}</p>
@@ -130,10 +130,10 @@ export default function FeedbackPage() {
           {/* Complaints List */}
           <div className="space-y-6">
             {complaints.length === 0 ? (
-              <div className="bg-white p-16 rounded-[3rem] border border-[var(--border)] text-center space-y-4">
+              <div className="bg-white p-16 rounded-[3rem] border border-border text-center space-y-4">
                 <div className="text-6xl">🎉</div>
-                <h3 className="text-2xl font-black text-[var(--text)] font-warike">¡Sin quejas!</h3>
-                <p className="text-[var(--text-muted)] font-bold">Tu filtro inteligente no ha interceptado ninguna queja todavía. ¡Excelente sazón!</p>
+                <h3 className="text-2xl font-black text-text font-warike">¡Sin quejas!</h3>
+                <p className="text-text-muted font-bold">Tu filtro inteligente no ha interceptado ninguna queja todavía. ¡Excelente sazón!</p>
               </div>
             ) : (
               complaints.map(complaint => (
@@ -149,7 +149,7 @@ export default function FeedbackPage() {
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
-                          <span className="font-black text-[var(--text)]">{complaint.customerName || 'Cliente Anónimo'}</span>
+                          <span className="font-black text-text">{complaint.customerName || 'Cliente Anónimo'}</span>
                           {complaint.status === 'pending' && (
                             <span className="bg-red-100 text-red-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Pendiente</span>
                           )}
@@ -173,7 +173,7 @@ export default function FeedbackPage() {
                   </div>
 
                   {/* Comment */}
-                  <div className="bg-[var(--background)] p-6 rounded-2xl border-l-4 border-red-300">
+                  <div className="bg-background p-6 rounded-2xl border-l-4 border-red-300">
                     <p className="text-sm font-bold text-gray-700 italic leading-relaxed">"{complaint.comment || 'Sin comentario'}"</p>
                   </div>
 
@@ -196,7 +196,7 @@ export default function FeedbackPage() {
                     {complaint.status === 'pending' && (
                       <button
                         onClick={() => handleResolve(complaint.id)}
-                        className="bg-[var(--text)] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] transition-colors"
+                        className="bg-text text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-colors"
                       >
                         ✓ Marcar como Resuelta
                       </button>
@@ -226,7 +226,7 @@ export default function FeedbackPage() {
                   onClick={() => setTimeRange(r.key)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     timeRange === r.key
-                      ? 'bg-white text-[var(--primary)] shadow-sm'
+                      ? 'bg-white text-primary shadow-sm'
                       : 'text-gray-500 hover:bg-gray-200'
                   }`}
                 >
@@ -236,7 +236,7 @@ export default function FeedbackPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
             {[
               { label: 'Calificación', value: analyticsData.rating?.average?.toFixed(1) || '—', icon: '⭐' },
               { label: 'Total Opiniones', value: analyticsData.rating?.total?.toLocaleString() || '0', icon: '💬' },
@@ -246,7 +246,7 @@ export default function FeedbackPage() {
               <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-3 hover:shadow-xl transition-all">
                 <div className="w-10 h-10 bg-[#F7F8FA] rounded-xl flex items-center justify-center text-xl shadow-inner">{stat.icon}</div>
                 <div>
-                  <p className="text-2xl font-black text-[var(--text)]">{stat.value}</p>
+                  <p className="text-2xl font-black text-text">{stat.value}</p>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{stat.label}</p>
                 </div>
               </div>
@@ -256,7 +256,7 @@ export default function FeedbackPage() {
           {/* Reviews List */}
           {analyticsData.recentReviews && (
             <section className="space-y-6">
-              <h2 className="text-xl font-black text-[var(--text)] px-2">Últimas Reseñas Públicas</h2>
+              <h2 className="text-xl font-black text-text px-2">Últimas Reseñas Públicas</h2>
               <div className="space-y-4">
                 {analyticsData.recentReviews.map((review: any, i: number) => (
                   <div key={i} className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-4 hover:shadow-lg transition-all">
@@ -274,7 +274,7 @@ export default function FeedbackPage() {
                         ))}
                       </div>
                     </div>
-                    <p className="text-[var(--text)] text-sm leading-relaxed font-semibold italic opacity-80">
+                    <p className="text-text text-sm leading-relaxed font-semibold italic opacity-80">
                       "{review.comment || 'Sin comentarios.'}"
                     </p>
                   </div>
@@ -286,10 +286,10 @@ export default function FeedbackPage() {
       )}
 
       {!isLoading && activeTab === 'analytics' && !analyticsData && (
-        <div className="bg-white p-16 rounded-[3rem] border border-[var(--border)] text-center space-y-4">
+        <div className="bg-white p-16 rounded-[3rem] border border-border text-center space-y-4">
           <div className="text-6xl">📊</div>
-          <h3 className="text-2xl font-black text-[var(--text)] font-warike">Sin datos aún</h3>
-          <p className="text-[var(--text-muted)] font-bold">Las analíticas aparecerán cuando tus clientes empiecen a dejar reseñas.</p>
+          <h3 className="text-2xl font-black text-text font-warike">Sin datos aún</h3>
+          <p className="text-text-muted font-bold">Las analíticas aparecerán cuando tus clientes empiecen a dejar reseñas.</p>
         </div>
       )}
     </div>

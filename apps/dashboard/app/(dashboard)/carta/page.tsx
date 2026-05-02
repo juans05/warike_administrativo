@@ -124,7 +124,7 @@ export default function CartaPage() {
   if (isLoading) return <div className="p-20 text-center font-bold text-gray-400">Cargando la carta...</div>;
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">La Carta</h1>
@@ -229,7 +229,7 @@ export default function CartaPage() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
                     {category.items.map((item) => (
                       <div key={item.id} className="group bg-white rounded-[3rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all">
                         <div className="aspect-[4/3] relative overflow-hidden">
