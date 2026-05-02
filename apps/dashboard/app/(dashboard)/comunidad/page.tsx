@@ -18,6 +18,9 @@ export default function ComunidadPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'business' });
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -27,6 +30,19 @@ export default function ComunidadPage() {
       console.error('Error loading users:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminApi.createUser(newUser);
+      setIsModalOpen(false);
+      setNewUser({ fullName: '', email: '', password: '', role: 'business' });
+      loadUsers();
+      alert('Usuario creado exitosamente');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error al crear usuario');
     }
   };
 
@@ -59,7 +75,15 @@ export default function ComunidadPage() {
 
       <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-10 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center gap-6">
-          <h2 className="text-xl font-black text-[#1A1A1A]">Usuarios Registrados</h2>
+          <div className="flex items-center gap-6">
+            <h2 className="text-xl font-black text-[#1A1A1A]">Usuarios Registrados</h2>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-[#F26122] text-white px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#F26122]/20 hover:scale-105 transition-all"
+            >
+              + Registrar Usuario
+            </button>
+          </div>
           <div className="w-full md:w-96">
              <input 
               type="text" 
@@ -70,6 +94,75 @@ export default function ComunidadPage() {
              />
           </div>
         </div>
+
+        {/* Create User Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl scale-in-center">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h3 className="text-2xl font-black text-[#1A1A1A]">Nuevo Usuario</h3>
+                  <p className="text-gray-400 text-sm font-medium">Registra un nuevo socio o administrador.</p>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-bold">×</button>
+              </div>
+
+              <form onSubmit={handleCreateUser} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Nombre Completo</label>
+                  <input 
+                    required
+                    type="text" 
+                    value={newUser.fullName}
+                    onChange={(e) => setNewUser({...newUser, fullName: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl outline-none font-bold text-sm focus:border-[#F26122]"
+                    placeholder="Ej. Juan Pérez"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Email</label>
+                  <input 
+                    required
+                    type="email" 
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl outline-none font-bold text-sm focus:border-[#F26122]"
+                    placeholder="socio@wuarike.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Contraseña Temporal</label>
+                  <input 
+                    required
+                    type="password" 
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl outline-none font-bold text-sm focus:border-[#F26122]"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Rol del Usuario</label>
+                  <select 
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl outline-none font-bold text-sm focus:border-[#F26122] appearance-none"
+                  >
+                    <option value="business">Business (Dueño de Local)</option>
+                    <option value="admin">Administrador</option>
+                    <option value="user">Usuario Común</option>
+                  </select>
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full bg-[#F26122] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#F26122]/20 hover:opacity-90 active:scale-95 transition-all mt-4"
+                >
+                  Confirmar Registro
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">

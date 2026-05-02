@@ -61,11 +61,13 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             <h1 className="text-3xl font-black text-[var(--primary)] tracking-tighter font-warike">WARIKE</h1>
             <p className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">Global Reputación</p>
           </div>
-          {!noPlaces && <div className="mt-10"><RestaurantSelector /></div>}
+          {user?.role === 'business' && !noPlaces && (
+            <div className="mt-10"><RestaurantSelector /></div>
+          )}
         </div>
 
         <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
-          {!noPlaces && (
+          {user?.role === 'business' && !noPlaces && (
             <>
               <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
               <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
@@ -109,13 +111,19 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
       </main>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-2xl">
-        {!noPlaces && (
+        {user?.role === 'business' && !noPlaces && (
           <>
             <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
             <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
             <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
             <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
             <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
+          </>
+        )}
+        {user?.role === 'admin' && (
+          <>
+            <MobileNavItem href="/moderacion" icon="🛡️" label="Locales" active={pathname === '/moderacion'} />
+            <MobileNavItem href="/comunidad" icon="👥" label="Usuarios" active={pathname === '/comunidad'} />
           </>
         )}
         <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-[var(--text-muted)]">
