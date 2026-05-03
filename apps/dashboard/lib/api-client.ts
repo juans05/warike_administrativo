@@ -97,9 +97,13 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
-  // Complaints (quejas interceptadas por el filtro)
+  // Complaints (quejas interceptadas por el filtro — rating <= 3)
   getComplaints: (id: string, page = 1) =>
-    fetchWithAuth(`/business/places/${id}/complaints?page=${page}`),
+    fetchWithAuth(`/business/places/${id}/complaints?page=${page}&type=complaint`),
+
+  // Reviews (reseñas positivas — rating >= 4)
+  getReviews: (id: string, page = 1) =>
+    fetchWithAuth(`/business/places/${id}/complaints?page=${page}&type=review`),
   
   markComplaintResolved: (id: string, complaintId: string) =>
     fetchWithAuth(`/business/places/${id}/complaints/${complaintId}/resolve`, {

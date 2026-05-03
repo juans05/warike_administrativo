@@ -6,11 +6,13 @@ import { businessApi } from '../../../lib/api-client';
 
 export default function FeedbackPage() {
   const { activePlaceId } = useRestaurant();
-  const [activeTab, setActiveTab] = useState<'analytics' | 'complaints'>('complaints');
+  const [activeTab, setActiveTab] = useState<'reviews' | 'complaints' | 'analytics'>('reviews');
   const [timeRange, setTimeRange] = useState('month');
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [complaintsMeta, setComplaintsMeta] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsMeta, setReviewsMeta] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load analytics data
@@ -24,9 +26,25 @@ export default function FeedbackPage() {
       .finally(() => setIsLoading(false));
   }, [activePlaceId, timeRange, activeTab]);
 
-  // Load complaints
+  // Load reviews (rating >= 4)
   useEffect(() => {
-    if (!activePlaceId || activeTab !== 'complaints') { if(!activePlaceId) setIsLoading(false); return; }
+    if (!activePlaceId || activeTab !== 'reviews') { if (!activePlaceId) setIsLoading(false); return; }
+    setIsLoading(true);
+    businessApi.getReviews(activePlaceId)
+      .then((res: any) => {
+        setReviews(res.data || []);
+        setReviewsMeta(res.meta || null);
+      })
+      .catch(err => {
+        console.error('Error fetching reviews:', err);
+        setReviews([]);
+      })
+      .finally(() => setIsLoading(false));
+  }, [activePlaceId, activeTab]);
+
+  // Load complaints (rating <= 3)
+  useEffect(() => {
+    if (!activePlaceId || activeTab !== 'complaints') { if (!activePlaceId) setIsLoading(false); return; }
     setIsLoading(true);
     businessApi.getComplaints(activePlaceId)
       .then((res: any) => {
@@ -35,7 +53,6 @@ export default function FeedbackPage() {
       })
       .catch(err => {
         console.error('Error fetching complaints:', err);
-        // Datos de demostración si el backend no está disponible
         setComplaints([
           { id: '1', rating: 2, comment: 'Esperamos más de 40 minutos para que nos atiendan. La comida estaba fría.', customerName: 'María García', customerContact: '+51 987654321', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
           { id: '2', rating: 1, comment: 'Encontré un cabello en mi plato. Muy decepcionante.', customerName: 'Carlos López', customerContact: 'carlos@email.com', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
@@ -74,6 +91,16 @@ export default function FeedbackPage() {
         {/* Tab Selector */}
         <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1 ring-1 ring-black/5">
           <button
+            onClick={() => setActiveTab('reviews')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === 'reviews'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            ⭐ Reseñas ({reviews.length})
+          </button>
+          <button
             onClick={() => setActiveTab('complaints')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === 'complaints'
@@ -100,6 +127,47 @@ export default function FeedbackPage() {
         <div className="py-20 text-center">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="font-bold text-gray-400">Cargando datos...</p>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════ */}
+      {/* TAB: RESEÑAS POSITIVAS                          */}
+      {/* ═══════════════════════════════════════════════ */}
+      {!isLoading && activeTab === 'reviews' && (
+        <div className="space-y-6">
+          {reviews.length === 0 ? (
+            <div className="bg-white p-16 rounded-[3rem] border border-border text-center space-y-4">
+              <div className="text-6xl">⭐</div>
+              <h3 className="text-2xl font-black text-text font-warike">Sin reseñas aún</h3>
+              <p className="text-text-muted font-bold">Cuando tus clientes dejen 4 o 5 estrellas, aparecerán aquí.</p>
+            </div>
+          ) : (
+            reviews.map((review) => (
+              <div key={review.id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5 hover:shadow-lg transition-all">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-yellow-50 flex items-center justify-center text-2xl shrink-0">
+                      {review.rating === 5 ? '🤩' : '😊'}
+                    </div>
+                    <div>
+                      <p className="font-black text-text">{review.customerName || 'Cliente Anónimo'}</p>
+                      <div className="flex gap-0.5 text-yellow-400 text-sm mt-0.5">
+                        {[1,2,3,4,5].map(s => <span key={s}>{s <= review.rating ? '★' : '☆'}</span>)}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-400">
+                    {new Date(review.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                {review.comment && (
+                  <div className="bg-yellow-50 p-6 rounded-2xl border-l-4 border-yellow-300">
+                    <p className="text-sm font-bold text-gray-700 italic leading-relaxed">"{review.comment}"</p>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
 
