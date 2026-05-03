@@ -54,15 +54,13 @@ export default function PublicScanPage() {
     if (rating >= 4) {
       const link = profile?.googlePlaceId
         ? `https://search.google.com/local/writereview?placeid=${profile.googlePlaceId}`
-        : (profile?.googleMapsUrl || null);
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile?.name || '')}`;
       setGoogleLink(link);
 
       // Copy review text to clipboard so customer can paste it in Google Maps
       if (feedback && navigator.clipboard) {
         navigator.clipboard.writeText(feedback).catch(() => {});
       }
-
-      if (link) window.open(link, '_blank');
     }
     setStep('thanks');
   };
@@ -177,8 +175,6 @@ export default function PublicScanPage() {
               )}
               <a
                 href={googleLink}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center gap-3"
               >
                 <span>⭐</span> Publicar en Google Maps — solo pega
