@@ -111,9 +111,9 @@ export const businessApi = {
     }),
 
   // Google Maps Integration
-  getGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-sync`, { method: 'POST' }),
   syncGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-sync`, { method: 'POST' }),
   getPersistedGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-reviews`),
+  findGooglePlaceId: (id: string) => fetchWithAuth(`/business/places/${id}/find-google-place-id`),
 };
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)

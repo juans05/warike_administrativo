@@ -34,6 +34,8 @@ export default function ReputacionPage() {
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
   const [googlePlaceId, setGooglePlaceId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [placeIdCandidates, setPlaceIdCandidates] = useState<any[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   useEffect(() => {
@@ -294,13 +296,29 @@ export default function ReputacionPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-end px-2">
                 <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Google Place ID</label>
-                <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" className="text-[9px] font-black text-primary uppercase hover:underline">¿Cómo obtener mi ID?</a>
+                <button
+                  onClick={async () => {
+                    if (!activePlaceId) return;
+                    setIsSearching(true);
+                    setPlaceIdCandidates([]);
+                    try {
+                      const res = await businessApi.findGooglePlaceId(activePlaceId);
+                      setPlaceIdCandidates(res.candidates || []);
+                      if (!res.candidates?.length) alert('No se encontraron resultados. Intenta ingresar el ID manualmente.');
+                    } catch { alert('Error al buscar en Google'); }
+                    finally { setIsSearching(false); }
+                  }}
+                  disabled={isSearching}
+                  className="text-[9px] font-black text-primary uppercase hover:underline disabled:opacity-50"
+                >
+                  {isSearching ? 'Buscando...' : '🔍 Buscar automáticamente'}
+                </button>
               </div>
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={googlePlaceId}
-                  onChange={(e) => setGooglePlaceId(e.target.value)}
+                  onChange={(e) => { setGooglePlaceId(e.target.value); setPlaceIdCandidates([]); }}
                   placeholder="Ej: ChIJs_-... (ID de tu negocio)"
                   className="input-premium flex-1"
                 />
@@ -310,6 +328,7 @@ export default function ReputacionPage() {
                     setIsSaving(true);
                     try {
                       await businessApi.updateProfile(activePlaceId, { googlePlaceId });
+                      setPlaceIdCandidates([]);
                       alert('ID de Google guardado. Ahora puedes sincronizar las reseñas.');
                     } catch (e) { alert('Error al guardar'); }
                     setIsSaving(false);
@@ -320,6 +339,23 @@ export default function ReputacionPage() {
                   {isSaving ? '...' : 'Guardar'}
                 </button>
               </div>
+
+              {/* Candidatos encontrados */}
+              {placeIdCandidates.length > 0 && (
+                <div className="border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100">
+                  {placeIdCandidates.map((c: any) => (
+                    <button
+                      key={c.googlePlaceId}
+                      onClick={() => { setGooglePlaceId(c.googlePlaceId); setPlaceIdCandidates([]); }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <p className="font-black text-sm text-text">{c.name}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{c.address}</p>
+                      <p className="text-[9px] text-primary font-black mt-0.5">{c.googlePlaceId}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <p className="text-[10px] font-bold text-text-muted leading-relaxed italic">
