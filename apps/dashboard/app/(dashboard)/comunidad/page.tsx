@@ -16,7 +16,7 @@ export default function ComunidadPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [page] = useState(1);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'business' });
@@ -97,8 +97,8 @@ export default function ComunidadPage() {
 
         {/* Create User Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl scale-in-center">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl scale-in-center my-auto">
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h3 className="text-2xl font-black text-[#1A1A1A]">Nuevo Usuario</h3>
@@ -175,6 +175,13 @@ export default function ComunidadPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {users.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={4} className="px-10 py-16 text-center text-gray-400 font-medium text-sm">
+                    No hay usuarios registrados aún.
+                  </td>
+                </tr>
+              )}
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-10 py-6">
