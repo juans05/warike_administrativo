@@ -34,9 +34,13 @@ export default function PublicScanPage() {
   }, [id]);
 
   const handleRating = async () => {
+    // Copy FIRST while we still have the user gesture context — after await it's lost on mobile
+    if (rating >= 4 && feedback && navigator.clipboard) {
+      navigator.clipboard.writeText(feedback).catch(() => {});
+    }
+
     setIsSending(true);
     try {
-      // Always save in Warike regardless of rating
       await publicApi.submitFeedback({
         placeId: id as string,
         rating,
@@ -46,24 +50,17 @@ export default function PublicScanPage() {
       });
     } catch (err) {
       console.error("Error submitting feedback:", err);
-      // Continue even if backend save fails — don't frustrate the customer
     } finally {
       setIsSending(false);
     }
 
     if (rating >= 4) {
-      // Use direct review link only if Place ID looks valid (>20 chars starting with ChIJ)
       const placeId = profile?.googlePlaceId;
       const validPlaceId = placeId && placeId.startsWith('ChIJ') && placeId.length > 20;
       const link = validPlaceId
         ? `https://search.google.com/local/writereview?placeid=${placeId}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile?.name || '')}`;
       setGoogleLink(link);
-
-      // Copy review text to clipboard so customer can paste it in Google Maps
-      if (feedback && navigator.clipboard) {
-        navigator.clipboard.writeText(feedback).catch(() => {});
-      }
     }
     setStep('thanks');
   };
@@ -110,12 +107,18 @@ export default function PublicScanPage() {
 
           {rating > 0 && (
             <div className="space-y-6 animate-in fade-in zoom-in duration-500 text-left">
-              <textarea 
+              <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 className="input-premium min-h-[100px] resize-none py-6 text-sm w-full"
                 placeholder={rating >= 4 ? "Escribe aquí tu reseña sobre lo que más te gustó..." : "Escribe aquí tu reseña para ayudarnos a mejorar..."}
               />
+              {rating >= 4 && feedback && (
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-green-500 text-sm">📋</span>
+                  <p className="text-green-600 font-bold text-[10px] uppercase tracking-widest">Tu texto se copiará automáticamente — solo pégalo en Google Maps</p>
+                </div>
+              )}
               
               {rating <= 3 && (
                 <div className="space-y-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-4">
