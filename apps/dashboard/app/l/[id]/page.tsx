@@ -13,6 +13,7 @@ export default function PublicScanPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerContact, setCustomerContact] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [googleLink, setGoogleLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -33,30 +34,32 @@ export default function PublicScanPage() {
   }, [id]);
 
   const handleRating = async () => {
-    if (rating >= 4) {
-      // ★★★★★ → Redirigir a Google Maps para reseña pública
-      const googleLink = profile?.googleMapsUrl || profile?.website || 'https://maps.google.com';
-      window.location.href = googleLink;
-    } else {
-      // ★★★ o menos → Guardar queja privada en el backend
-      setIsSending(true);
-      try {
-        await publicApi.submitFeedback({
-          placeId: id as string,
-          rating,
-          comment: feedback,
-          customerName: customerName || undefined,
-          customerContact: customerContact || undefined,
-        });
-        setStep('thanks');
-      } catch (err) {
-        console.error("Error submitting feedback:", err);
-        // Aun si falla el backend, mostramos agradecimiento para no frustrar al cliente
-        setStep('thanks');
-      } finally {
-        setIsSending(false);
-      }
+    setIsSending(true);
+    try {
+      // Always save in Warike regardless of rating
+      await publicApi.submitFeedback({
+        placeId: id as string,
+        rating,
+        comment: feedback,
+        customerName: customerName || undefined,
+        customerContact: customerContact || undefined,
+      });
+    } catch (err) {
+      console.error("Error submitting feedback:", err);
+      // Continue even if backend save fails — don't frustrate the customer
+    } finally {
+      setIsSending(false);
     }
+
+    if (rating >= 4) {
+      // High rating: open Google Maps write-a-review form directly
+      const link = profile?.googlePlaceId
+        ? `https://search.google.com/local/writereview?placeid=${profile.googlePlaceId}`
+        : (profile?.googleMapsUrl || null);
+      setGoogleLink(link);
+      if (link) window.open(link, '_blank');
+    }
+    setStep('thanks');
   };
 
   if (!profile) return (
@@ -153,9 +156,23 @@ export default function PublicScanPage() {
           <div className="text-6xl animate-bounce">🙏</div>
           <div className="space-y-4">
             <h2 className="text-3xl font-black text-[var(--text)] font-warike">¡Muchas Gracias!</h2>
-            <p className="text-[var(--text-muted)] font-bold text-sm leading-relaxed">Hemos recibido tu reseña. Trabajaremos duro para que tu próxima visita sea perfecta.</p>
+            <p className="text-[var(--text-muted)] font-bold text-sm leading-relaxed">
+              {googleLink
+                ? 'Tu reseña fue guardada en Warike. ¿También quieres publicarla en Google Maps para ayudar a otros?'
+                : 'Hemos recibido tu reseña. Trabajaremos duro para que tu próxima visita sea perfecta.'}
+            </p>
           </div>
-          <button 
+          {googleLink && (
+            <a
+              href={googleLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center gap-3"
+            >
+              <span>⭐</span> Publicar reseña en Google Maps
+            </a>
+          )}
+          <button
             onClick={() => window.location.reload()}
             className="w-full py-5 rounded-2xl bg-[var(--background)] text-[var(--text)] font-black text-xs uppercase tracking-widest"
           >
