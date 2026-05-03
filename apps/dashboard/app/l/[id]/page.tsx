@@ -52,8 +52,11 @@ export default function PublicScanPage() {
     }
 
     if (rating >= 4) {
-      const link = profile?.googlePlaceId
-        ? `https://search.google.com/local/writereview?placeid=${profile.googlePlaceId}`
+      // Use direct review link only if Place ID looks valid (>20 chars starting with ChIJ)
+      const placeId = profile?.googlePlaceId;
+      const validPlaceId = placeId && placeId.startsWith('ChIJ') && placeId.length > 20;
+      const link = validPlaceId
+        ? `https://search.google.com/local/writereview?placeid=${placeId}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile?.name || '')}`;
       setGoogleLink(link);
 
