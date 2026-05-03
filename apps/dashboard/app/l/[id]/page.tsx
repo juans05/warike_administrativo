@@ -52,11 +52,16 @@ export default function PublicScanPage() {
     }
 
     if (rating >= 4) {
-      // High rating: open Google Maps write-a-review form directly
       const link = profile?.googlePlaceId
         ? `https://search.google.com/local/writereview?placeid=${profile.googlePlaceId}`
         : (profile?.googleMapsUrl || null);
       setGoogleLink(link);
+
+      // Copy review text to clipboard so customer can paste it in Google Maps
+      if (feedback && navigator.clipboard) {
+        navigator.clipboard.writeText(feedback).catch(() => {});
+      }
+
       if (link) window.open(link, '_blank');
     }
     setStep('thanks');
@@ -158,19 +163,27 @@ export default function PublicScanPage() {
             <h2 className="text-3xl font-black text-[var(--text)] font-warike">¡Muchas Gracias!</h2>
             <p className="text-[var(--text-muted)] font-bold text-sm leading-relaxed">
               {googleLink
-                ? 'Tu reseña fue guardada en Warike. ¿También quieres publicarla en Google Maps para ayudar a otros?'
-                : 'Hemos recibido tu reseña. Trabajaremos duro para que tu próxima visita sea perfecta.'}
+                ? 'Tu opinión fue guardada. Ayuda a otros publicándola también en Google Maps — ya copiamos tu texto, ¡solo pégalo!'
+                : 'Hemos recibido tu opinión. Trabajaremos para que tu próxima visita sea perfecta.'}
             </p>
           </div>
           {googleLink && (
-            <a
-              href={googleLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center gap-3"
-            >
-              <span>⭐</span> Publicar reseña en Google Maps
-            </a>
+            <>
+              {feedback && (
+                <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 flex items-center gap-3">
+                  <span className="text-green-500 text-lg">📋</span>
+                  <p className="text-green-700 font-bold text-xs">Tu reseña fue copiada al portapapeles</p>
+                </div>
+              )}
+              <a
+                href={googleLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center gap-3"
+              >
+                <span>⭐</span> Publicar en Google Maps — solo pega
+              </a>
+            </>
           )}
           <button
             onClick={() => window.location.reload()}
