@@ -43,7 +43,10 @@ export default function ReputacionPage() {
     // Cargar perfil para obtener googlePlaceId y estado de conexión Google
     businessApi.getProfile(activePlaceId).then(profile => {
       setGooglePlaceId(profile.googlePlaceId || '');
-      setIsGoogleConnected(!!profile.googleAccessToken || !!profile.googleRefreshToken);
+      setIsGoogleConnected(
+        !!profile.googlePlaceId &&
+        (!!profile.googleRating || (profile.googleTotalReviews > 0))
+      );
     }).catch(() => { });
 
     // Cargar datos de todas las fuentes en paralelo
@@ -340,11 +343,15 @@ export default function ReputacionPage() {
                     return;
                   }
                   try {
-                    await businessApi.syncGoogleReviews(activePlaceId);
-                    setIsGoogleConnected(true);
-                    alert('¡Reseñas de Google sincronizadas correctamente!');
-                  } catch {
-                    alert('Error al sincronizar. Verifica que el Place ID sea correcto.');
+                    const result = await businessApi.syncGoogleReviews(activePlaceId);
+                    if (result?.rating || result?.totalReviews) {
+                      setIsGoogleConnected(true);
+                      alert(`¡Sincronizado! Rating: ${result.rating} ⭐ · ${result.totalReviews} reseñas`);
+                    } else {
+                      alert('Sincronizado, pero no se encontraron reseñas para ese Place ID. Verifica que sea correcto.');
+                    }
+                  } catch (err: any) {
+                    alert(err?.message || 'Error al sincronizar. Verifica que el Place ID sea correcto.');
                   }
                 }}
                 className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] group cursor-pointer"

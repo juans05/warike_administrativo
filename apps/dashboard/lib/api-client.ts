@@ -147,6 +147,19 @@ export const publicApi = {
   }),
 };
 
+export const subscriptionApi = {
+  getPlan: () => fetchWithAuth('/subscriptions/plan'),
+  getMy: () => fetchWithAuth('/subscriptions/my'),
+  getMyPayments: () => fetchWithAuth('/subscriptions/my/payments'),
+  subscribe: (token: string) => fetchWithAuth('/subscriptions/subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  }),
+  cancel: () => fetchWithAuth('/subscriptions/my', { method: 'DELETE' }),
+  adminGetAll: (page = 1) => fetchWithAuth(`/subscriptions/admin/all?page=${page}`),
+  adminGetStats: () => fetchWithAuth('/subscriptions/admin/stats'),
+};
+
 export const adminApi = {
   getStats: () => fetchWithAuth('/admin/stats'),
   getPendingSubmissions: () => fetchWithAuth('/admin/submissions'),

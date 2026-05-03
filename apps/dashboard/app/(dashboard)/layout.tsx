@@ -74,6 +74,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
               <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
               <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
               <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
+              <SidebarItem href="/suscripcion" icon="💳" label="Mi Suscripción" active={pathname === '/suscripcion'} />
             </>
           )}
           {user?.role === 'admin' && (
@@ -83,6 +84,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
               </div>
               <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
               <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
+              <SidebarItem href="/suscripciones" icon="💳" label="Suscripciones" active={pathname === '/suscripciones'} />
             </>
           )}
         </nav>
@@ -118,6 +120,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
             <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
             <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
+            <MobileNavItem href="/suscripcion" icon="💳" label="Plan" active={pathname === '/suscripcion'} />
           </>
         )}
         {user?.role === 'admin' && (
@@ -167,16 +170,6 @@ function NoPlacesScreen({ userName }: { userName?: string }) {
   );
 }
 
-function Step({ n, text }: { n: string; text: string }) {
-  return (
-    <div className="flex items-start gap-4">
-      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-primary/20">
-        {n}
-      </div>
-      <p className="text-text-muted font-bold text-sm leading-relaxed pt-1">{text}</p>
-    </div>
-  );
-}
 
 function SidebarItem({ href, icon, label, active, badge }: { href: string, icon: string, label: string, active?: boolean, badge?: string }) {
   return (
