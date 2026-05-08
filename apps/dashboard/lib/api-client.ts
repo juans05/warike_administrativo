@@ -145,10 +145,8 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 }
 
 export const publicApi = {
-  // Obtener perfil público del restaurante (para la pantalla de escaneo)
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
 
-  // Enviar reseña/queja pública (sin autenticación)
   submitFeedback: (data: {
     placeId: string;
     rating: number;
@@ -159,6 +157,18 @@ export const publicApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  // Loyalty (fidelización) — público, sin JWT
+  getLoyaltyProgram: (placeId: string) => fetchPublic(`/public/loyalty/${placeId}/program`),
+  loyaltyScan: (placeId: string, data: { phone: string; name?: string }) =>
+    fetchPublic(`/public/loyalty/${placeId}/scan`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getLoyaltyCard: (placeId: string, phone: string) =>
+    fetchPublic(`/public/loyalty/${placeId}/card/${phone}`),
+  getLoyaltyHistory: (cardId: string) =>
+    fetchPublic(`/public/loyalty/card/${cardId}/history`),
 };
 
 export const subscriptionApi = {

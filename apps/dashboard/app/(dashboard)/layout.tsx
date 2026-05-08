@@ -71,7 +71,9 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             <>
               <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
               <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
-              <SidebarItem href="/social" icon="📷" label="Instagram IA" badge="NUEVO" active={pathname === '/social'} />
+              <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NUEVO" active={pathname === '/fidelizacion'} />
+              <SidebarItem href="/clientes" icon="👥" label="Clientes CRM" active={pathname === '/clientes'} />
+              <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
               <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
               <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
               <SidebarItem href="/suscripcion" icon="💳" label="Mi Suscripción" active={pathname === '/suscripcion'} />
@@ -117,10 +119,10 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           <>
             <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
             <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
-            <MobileNavItem href="/social" icon="📷" label="Social" badge="IA" active={pathname === '/social'} />
+            <MobileNavItem href="/fidelizacion" icon="🎁" label="Fideliz" badge="NEW" active={pathname === '/fidelizacion'} />
+            <MobileNavItem href="/clientes" icon="👥" label="CRM" active={pathname === '/clientes'} />
             <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
             <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
-            <MobileNavItem href="/suscripcion" icon="💳" label="Plan" active={pathname === '/suscripcion'} />
           </>
         )}
         {user?.role === 'admin' && (
