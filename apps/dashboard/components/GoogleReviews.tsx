@@ -38,7 +38,7 @@ export default function GoogleReviews() {
       const profile = await businessApi.getProfile(activePlaceId!);
       if (profile.googleLocationName) {
         await fetchAllReviews();
-      } else if (profile.googleAccessToken) {
+      } else if (profile.googleConnected) {
         await loadLocations();
       } else {
         setStep('not_connected');
