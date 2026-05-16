@@ -124,6 +124,28 @@ export const businessApi = {
       body: JSON.stringify({ locationName }),
     }),
   getAllGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/all-google-reviews`),
+
+  // Devices Management
+  getDevices: (placeId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/devices`),
+  createDevice: (placeId: string, data: any) =>
+    fetchWithAuth(`/business/places/${placeId}/devices`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateDevice: (placeId: string, deviceId: string, data: any) =>
+    fetchWithAuth(`/business/places/${placeId}/devices/${deviceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteDevice: (placeId: string, deviceId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/devices/${deviceId}`, {
+      method: 'DELETE',
+    }),
+  syncDevice: (placeId: string, deviceId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/devices/${deviceId}/sync`, {
+      method: 'PATCH',
+    }),
 };
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)
@@ -153,6 +175,7 @@ export const publicApi = {
     comment?: string;
     customerName?: string;
     customerContact?: string;
+    deviceId?: string;
   }) => fetchPublic('/public/feedback', {
     method: 'POST',
     body: JSON.stringify(data),

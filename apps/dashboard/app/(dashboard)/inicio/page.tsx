@@ -29,6 +29,7 @@ export default function RestaurantePage() {
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [dbAmenities, setDbAmenities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState<'PE' | 'ES'>('PE');
 
@@ -38,7 +39,7 @@ export default function RestaurantePage() {
     const token = localStorage.getItem('token');
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-    fetch(`${API_BASE}/ubigeo/departments`, { headers })
+    fetch(`${API_BASE}/api/ubigeo/departments`, { headers })
       .then(res => res.json())
       .then(data => setDbDepartments(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
@@ -54,75 +55,94 @@ export default function RestaurantePage() {
 
     fetch(`${API_BASE}/places/amenities`, { headers })
       .then(res => res.json())
-      .then(data => setDbAmenities(Array.isArray(data) ? data : []))
-      .catch(err => console.error(err))
+      .then(data => {
+        const amenities = Array.isArray(data) && data.length > 0 ? data : [
+          { id: '1', name: 'Wifi Gratis', icon: '📶' },
+          { id: '2', name: 'Cochera', icon: '🅿️' },
+          { id: '3', name: 'Aire Acondicionado', icon: '❄️' },
+          { id: '4', name: 'Mascotas', icon: '🐾' },
+          { id: '5', name: 'Estacionamiento', icon: '🚗' },
+          { id: '6', name: 'Terraza', icon: '☀️' },
+          { id: '7', name: 'Música en Vivo', icon: '🎵' },
+          { id: '8', name: 'Juegos de Mesa', icon: '🎲' }
+        ];
+        setDbAmenities(amenities);
+      })
+      .catch(err => {
+        console.error(err);
+        setDbAmenities([
+          { id: '1', name: 'Wifi Gratis', icon: '📶' },
+          { id: '2', name: 'Cochera', icon: '🅿️' },
+          { id: '3', name: 'Aire Acondicionado', icon: '❄️' },
+          { id: '4', name: 'Mascotas', icon: '🐾' },
+          { id: '5', name: 'Estacionamiento', icon: '🚗' },
+          { id: '6', name: 'Terraza', icon: '☀️' },
+          { id: '7', name: 'Música en Vivo', icon: '🎵' },
+          { id: '8', name: 'Juegos de Mesa', icon: '🎲' }
+        ]);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Location logic (PE specific) - We'll add Spain logic later
+  // Location logic - Cascada de ubicación
   useEffect(() => {
-    if (!formData.departamento) return;
-    fetch(`${API_BASE}/ubigeo/provinces?department=${formData.departamento}`)
+    if (!formData.departamento || country !== 'PE') return;
+    setIsLoadingLocation(true);
+    fetch(`${API_BASE}/api/ubigeo/provinces?department=${formData.departamento}`)
       .then(res => res.json())
       .then(data => setDbProvinces(Array.isArray(data) ? data : []))
-      .catch(err => console.error(err));
-  }, [formData.departamento]);
+      .catch(err => console.error(err))
+      .finally(() => setIsLoadingLocation(false));
+  }, [formData.departamento, country]);
 
   useEffect(() => {
-    if (!formData.departamento || !formData.provincia) return;
-    fetch(`${API_BASE}/ubigeo/districts?department=${formData.departamento}&province=${formData.provincia}`)
+    if (!formData.departamento || !formData.provincia || country !== 'PE') return;
+    setIsLoadingLocation(true);
+    fetch(`${API_BASE}/api/ubigeo/districts?department=${formData.departamento}&province=${formData.provincia}`)
       .then(res => res.json())
       .then(data => {
         const fullDistricts = Array.isArray(data) ? data : [];
         setDbDistricts(fullDistricts);
-        const currentBatch = fullDistricts.find(d => d.district === formData.distrito);
-        if (currentBatch) setFormData(prev => ({ ...prev, ubigeoCode: currentBatch.ubigeoCode, ubigeoId: currentBatch.id }));
       })
-      .catch(err => console.error(err));
-  }, [formData.provincia, formData.departamento]);
+      .catch(err => console.error(err))
+      .finally(() => setIsLoadingLocation(false));
+  }, [formData.provincia, formData.departamento, country]);
+
+  useEffect(() => {
+    if (!formData.distrito || dbDistricts.length === 0 || country !== 'PE') return;
+    const district = dbDistricts.find(d => d.district === formData.distrito);
+    if (district && district.ubigeoCode !== formData.ubigeoCode) {
+      setFormData(prev => ({ ...prev, ubigeoCode: district.ubigeoCode, ubigeoId: district.id }));
+    }
+  }, [formData.distrito, dbDistricts, country]);
 
   useEffect(() => {
     if (!activePlaceId) return;
     setIsLoading(true);
-    Promise.all([
-      businessApi.getProfile(activePlaceId),
-      businessApi.getMenu(activePlaceId)
-    ]).then(([profile, menu]) => {
-      setFormData(prev => ({
-        ...prev,
-        nombre: profile.name || '',
-        direccion: profile.address || '',
-        categoriaId: profile.categoryId || '',
-        ubigeoCode: profile.ubigeoCode || '',
-        horarios: profile.openHoursText || '',
-        precio: profile.priceMin ? String(profile.priceMin) : '',
-        foto: profile.coverImageUrl || '',
-        amenityIds: profile.amenityIds || []
-      }));
-      const allItems = menu.flatMap((cat: any) => cat.items.map((item: any) => ({
-        id: item.id,
-        nombre: item.name,
-        descripcion: item.description,
-        precio: String(item.price),
-        foto: item.imageUrl,
-        categoryId: cat.id
-      })));
-      setMenuItems(allItems);
-    }).catch(err => {
-      console.warn("Using mock data for profile demo");
-      setFormData(prev => ({
-        ...prev,
-        nombre: "La Picantería del Sur",
-        direccion: "Calle San Martín 456, Miraflores",
-        horarios: "Lunes a Sábado: 12:00 PM - 11:00 PM",
-        precio: "S/. 45 - 90",
-        foto: "/images/interior.png"
-      }));
-      setMenuItems([
-        { id: '1', nombre: 'Ceviche de la Casa', descripcion: 'Nuestro plato estrella con pesca del día y ají limo.', precio: '45', foto: '/images/hero.png' },
-        { id: '2', nombre: 'Lomo Saltado Premium', descripcion: 'Finos cortes de lomo fino al wok con papas nativas.', precio: '55', foto: '/images/interior.png' }
-      ]);
-    }).finally(() => setIsLoading(false));
+    businessApi.getProfile(activePlaceId)
+      .then((profile) => {
+        setFormData(prev => ({
+          ...prev,
+          nombre: profile.name || '',
+          direccion: profile.address || '',
+          categoriaId: profile.categoryId || '',
+          ubigeoCode: profile.ubigeoCode || '',
+          horarios: profile.openHoursText || '',
+          precio: profile.priceMin ? String(profile.priceMin) : '',
+          foto: profile.coverImageUrl || '',
+          amenityIds: profile.amenityIds || []
+        }));
+      }).catch(err => {
+        console.warn("Using mock data for profile demo");
+        setFormData(prev => ({
+          ...prev,
+          nombre: "La Picantería del Sur",
+          direccion: "Calle San Martín 456, Miraflores",
+          horarios: "Lunes a Sábado: 12:00 PM - 11:00 PM",
+          precio: "S/. 45 - 90",
+          foto: "/images/interior.png"
+        }));
+      }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
   const handleSave = async () => {
@@ -147,59 +167,6 @@ export default function RestaurantePage() {
     }
   };
 
-  // --- Menu Management ---
-  const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [modalData, setModalData] = useState({ nombre: '', descripcion: '', precio: '', foto: '' });
-
-  const openModal = (item: any = null) => {
-    if (item) {
-      setEditingItem(item);
-      setModalData({ ...item });
-    } else {
-      setEditingItem(null);
-      setModalData({ nombre: '', descripcion: '', precio: '', foto: '' });
-    }
-    setShowModal(true);
-  };
-
-  const saveMenuItem = async () => {
-    if (!activePlaceId) return;
-    try {
-      if (editingItem) {
-        await businessApi.updateMenuItem(activePlaceId, editingItem.id, {
-          name: modalData.nombre,
-          description: modalData.descripcion,
-          price: parseFloat(modalData.precio),
-          imageUrl: modalData.foto
-        });
-      } else {
-        const menu = await businessApi.getMenu(activePlaceId);
-        const catId = menu[0]?.id;
-        if (!catId) throw new Error('Crea una categoría primero.');
-        await businessApi.createMenuItem(activePlaceId, {
-          name: modalData.nombre,
-          description: modalData.descripcion,
-          price: parseFloat(modalData.precio),
-          imageUrl: modalData.foto,
-          categoryId: catId
-        });
-      }
-      const menu = await businessApi.getMenu(activePlaceId);
-      setMenuItems(menu.flatMap((cat: any) => cat.items.map((item: any) => ({
-        id: item.id,
-        nombre: item.name,
-        descripcion: item.description,
-        precio: String(item.price),
-        foto: item.imageUrl,
-        categoryId: cat.id
-      }))));
-      setShowModal(false);
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
 
   return (
     <div className="max-w-6xl space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -208,7 +175,7 @@ export default function RestaurantePage() {
           <h1 className="text-5xl font-black text-text tracking-tight font-warike">Mi Establecimiento</h1>
           <p className="text-text-muted font-bold text-lg max-w-xl leading-snug">Gestiona la identidad de tu Huarique para tus clientes en Perú y España.</p>
         </div>
-        <button 
+        <button
           onClick={handleSave}
           className="btn-primary flex items-center gap-3 text-lg"
         >
@@ -223,15 +190,15 @@ export default function RestaurantePage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-        
+
         {/* Left Column: Media & Amenities */}
         <div className="lg:col-span-4 space-y-12">
           <div className="space-y-6">
             <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.3em] ml-2">Imagen de Portada</label>
             <div className="aspect-[4/5] bg-white rounded-[3.5rem] overflow-hidden border-8 border-white shadow-2xl relative group cursor-pointer transition-all hover:scale-[1.02] duration-500 ring-1 ring-border">
-              <img 
-                src={formData.foto || '/images/interior.png'} 
-                alt="Preview" 
+              <img
+                src={formData.foto || '/images/interior.png'}
+                alt="Preview"
                 className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-1000"
               />
               <div className="absolute inset-0 bg-text/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
@@ -241,30 +208,48 @@ export default function RestaurantePage() {
             </div>
           </div>
 
-          <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-border space-y-6">
-             <h3 className="font-black text-text text-xl flex justify-between items-center font-warike">
-                Servicios 
-                <span className="text-[10px] bg-background px-3 py-1.5 rounded-full text-text-muted font-black">
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-border space-y-5">
+             <h3 className="font-black text-text text-base flex justify-between items-center font-warike">
+                Servicios
+                <span className={`text-[9px] px-2.5 py-1 rounded-full font-black tracking-wider transition-all duration-300 ${
+                  formData.amenityIds.length > 0
+                    ? 'bg-orange-50 text-primary'
+                    : 'bg-red-50 text-red-500'
+                }`}>
                   {formData.amenityIds.length} ACTIVOS
                 </span>
              </h3>
-             <div className="flex flex-wrap gap-2.5">
+             <div className="grid grid-cols-2 gap-3">
                 {dbAmenities.map(amenity => (
                   <button
                     key={amenity.id}
+                    type="button"
                     onClick={() => setFormData(prev => ({
                       ...prev,
-                      amenityIds: prev.amenityIds.includes(amenity.id) 
-                        ? prev.amenityIds.filter(s => s !== amenity.id) 
+                      amenityIds: prev.amenityIds.includes(amenity.id)
+                        ? prev.amenityIds.filter(s => s !== amenity.id)
                         : [...prev.amenityIds, amenity.id]
                     }))}
-                    className={`px-5 py-3 rounded-2xl text-[11px] font-black transition-all border-2 ${
+                    className={`group p-4 rounded-[1.5rem] transition-all duration-300 border-2 flex flex-col items-center justify-center text-center space-y-2 min-h-[110px] ${
                       formData.amenityIds.includes(amenity.id)
-                      ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                      : 'bg-white border-border text-text-muted hover:border-primary'
+                      ? 'bg-primary/5 border-primary shadow-lg shadow-primary/10 -translate-y-0.5'
+                      : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5'
                     }`}
                   >
-                    {amenity.name.toUpperCase()}
+                    <div className={`transition-all duration-300 ${
+                      formData.amenityIds.includes(amenity.id)
+                      ? 'scale-105 drop-shadow-sm'
+                      : 'opacity-70 group-hover:opacity-100 group-hover:scale-105'
+                    }`}>
+                      <AmenityIcon name={amenity.name} className="w-11 h-11" />
+                    </div>
+                    <p className={`font-black text-[10px] uppercase tracking-wider transition-all duration-300 leading-tight ${
+                      formData.amenityIds.includes(amenity.id)
+                      ? 'text-primary'
+                      : 'text-text-muted group-hover:text-text'
+                    }`}>
+                      {amenity.name}
+                    </p>
                   </button>
                 ))}
              </div>
@@ -273,218 +258,473 @@ export default function RestaurantePage() {
 
         {/* Right Column: Main Data */}
         <div className="lg:col-span-8 space-y-12">
-          
-          <section className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-border space-y-10">
-            <h3 className="text-2xl font-black text-text flex items-center gap-4 font-warike">
-              <div className="w-4 h-4 bg-secondary rounded-full"></div> 
+
+          {/* Información del Local Section */}
+          <section className="bg-white p-10 rounded-[3rem] shadow-sm border border-border space-y-8">
+            <h3 className="text-lg font-black text-text flex items-center gap-3 font-warike">
+              <div className="w-3 h-3 bg-secondary rounded-full"></div>
               Información del Local
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="md:col-span-2">
-                <InputGroup 
-                  label="Nombre del Huarique" 
-                  value={formData.nombre} 
-                  onChange={(v) => setFormData({...formData, nombre: v})} 
-                  placeholder="Ej. El Secreto de Surquillo"
-                />
-              </div>
-              
-              <div className="space-y-3">
-                <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Especialidad</label>
-                <div className="relative">
-                  <select 
-                    value={formData.categoriaId}
-                    onChange={(e) => setFormData({...formData, categoriaId: e.target.value})}
-                    className="input-premium appearance-none cursor-pointer"
-                  >
-                    {dbCategories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                  <span className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">▼</span>
-                </div>
-              </div>
 
-              <InputGroup 
-                label="Precio Promedio (Rango)" 
-                value={formData.precio} 
-                onChange={(v) => setFormData({...formData, precio: v})} 
-                placeholder="S/. 30 - 60"
+            <div className="space-y-6">
+              <InputGroup
+                label="Nombre del Huarique"
+                value={formData.nombre}
+                onChange={(v) => setFormData({...formData, nombre: v})}
+                placeholder="Ej. La Picantería del Sur"
               />
-            </div>
 
-            <div className="space-y-4">
-              <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Horarios de Atención</label>
-              <div className="relative">
-                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl">🕒</span>
-                <input 
-                  type="text" 
-                  value={formData.horarios}
-                  onChange={(e) => setFormData({...formData, horarios: e.target.value})}
-                  className="input-premium pl-16"
-                  placeholder="Lun a Dom: 12:00 PM - 10:00 PM"
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Especialidades</label>
+                  <div className="relative">
+                    <select
+                      value={formData.categoriaId}
+                      onChange={(e) => setFormData({...formData, categoriaId: e.target.value})}
+                      className="input-premium appearance-none cursor-pointer text-sm"
+                    >
+                      {dbCategories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">▼</span>
+                  </div>
+                </div>
+
+                <InputGroup
+                  label="Precio Promedio Inmenso"
+                  value={formData.precio}
+                  onChange={(v) => setFormData({...formData, precio: v})}
+                  placeholder="S/. 45 - 90"
                 />
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Horarios de Atención</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">🕐</span>
+                  <input
+                    type="text"
+                    value={formData.horarios}
+                    onChange={(e) => setFormData({...formData, horarios: e.target.value})}
+                    className="input-premium !pl-14 text-sm"
+                    placeholder="Lunes a Sábado: 12:00 PM - 11:00 PM"
+                  />
+                </div>
               </div>
             </div>
           </section>
 
           {/* Location Section */}
-          <section className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-border space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <h3 className="text-2xl font-black text-text flex items-center gap-4 font-warike">
-                <div className="w-4 h-4 bg-accent rounded-full"></div> 
-                Ubicación Geográfica
-              </h3>
-              <div className="flex bg-background p-1.5 rounded-2xl border border-border">
-                <button 
-                  onClick={() => setCountry('PE')}
-                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'PE' ? 'bg-white text-primary shadow-sm' : 'text-text-muted'}`}
-                >
-                  🇵🇪 Perú
-                </button>
-                <button 
-                  onClick={() => setCountry('ES')}
-                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'ES' ? 'bg-white text-primary shadow-sm' : 'text-text-muted'}`}
-                >
-                  🇪🇸 España
-                </button>
-              </div>
+          <section className="bg-white p-10 rounded-[3rem] shadow-sm border border-border space-y-6">
+            <h3 className="text-lg font-black text-text flex items-center gap-3 font-warike">
+              <div className="w-3 h-3 bg-accent rounded-full"></div>
+              Ubicación Geográfica
+            </h3>
+
+            {/* Country Selector */}
+            <div className="flex bg-background p-2 rounded-2xl border border-border gap-2">
+              <button
+                onClick={() => {
+                  setCountry('PE');
+                  setFormData({...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setDbProvinces([]);
+                  setDbDistricts([]);
+                }}
+                className={`flex-1 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'PE' ? 'bg-white text-primary shadow-md' : 'text-text-muted hover:text-text'}`}
+              >
+                🇵🇪 Perú
+              </button>
+              <button
+                onClick={() => {
+                  setCountry('ES');
+                  setFormData({...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setDbProvinces([]);
+                  setDbDistricts([]);
+                }}
+                className={`flex-1 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'ES' ? 'bg-white text-primary shadow-md' : 'text-text-muted hover:text-text'}`}
+              >
+                🇪🇸 España
+              </button>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <SelectGroup 
-                label={country === 'PE' ? "Departamento" : "C. Autónoma"} 
-                value={formData.departamento} 
-                onChange={(v) => setFormData({...formData, departamento: v})} 
-                options={country === 'PE' ? dbDepartments : ['Madrid', 'Cataluña', 'Andalucía', 'Valencia']} 
-                isLoading={isLoading} 
+
+            <div className="grid grid-cols-3 gap-4">
+              <SelectGroup
+                label={country === 'PE' ? "Departamento" : "C. Autónoma"}
+                value={formData.departamento}
+                onChange={(v) => {
+                  setFormData({...formData, departamento: v, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setDbProvinces([]);
+                  setDbDistricts([]);
+                }}
+                options={country === 'PE' ? dbDepartments : ['Madrid', 'Cataluña', 'Andalucía', 'Valencia']}
+                isLoading={isLoadingLocation}
               />
-              <SelectGroup 
-                label="Provincia" 
-                value={formData.provincia} 
-                onChange={(v) => setFormData({...formData, provincia: v})} 
-                options={country === 'PE' ? dbProvinces : ['Madrid', 'Barcelona', 'Sevilla', 'Valencia']} 
+              <SelectGroup
+                label="Provincia"
+                value={formData.provincia}
+                onChange={(v) => {
+                  setFormData({...formData, provincia: v, distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setDbDistricts([]);
+                }}
+                options={country === 'PE' ? dbProvinces : ['Madrid', 'Barcelona', 'Sevilla', 'Valencia']}
+                isLoading={isLoadingLocation}
               />
-              <SelectGroup 
-                label={country === 'PE' ? "Distrito" : "Municipio"} 
-                value={formData.distrito} 
-                onChange={(v) => setFormData({...formData, distrito: v})} 
-                options={country === 'PE' ? dbDistricts.map(d => d.district) : ['Centro', 'Salamanca', 'Chamberí', 'Retiro']} 
+              <SelectGroup
+                label={country === 'PE' ? "Distrito" : "Municipio"}
+                value={formData.distrito}
+                onChange={(v) => setFormData({...formData, distrito: v})}
+                options={country === 'PE' ? dbDistricts.map(d => d.district) : ['Centro', 'Salamanca', 'Chamberí', 'Retiro']}
+                isLoading={isLoadingLocation}
               />
             </div>
 
-            {country === 'PE' && (
-              <div className="bg-background p-6 rounded-3xl border border-border flex justify-between items-center px-8">
-                <span className="text-[10px] font-black text-text-muted uppercase tracking-[0.3em]">CÓDIGO UBIGEO</span>
-                <span className="text-lg font-black text-primary">{formData.ubigeoCode || '---'}</span>
-              </div>
-            )}
+            {/* Map Section */}
+            <MapSelector
+              locationName={formData.nombre || 'Tu ubicación'}
+              direccion={formData.direccion}
+              onLocationSelect={(lat, lng) => {
+                console.log('Ubicación seleccionada:', lat, lng);
+              }}
+              onUbigeoFound={(dept, prov, dist, ubigeoCode, ubigeoId) => {
+                setFormData(prev => ({
+                  ...prev,
+                  departamento: dept,
+                  provincia: prov,
+                  distrito: dist,
+                  ubigeoCode: ubigeoCode,
+                  ubigeoId: ubigeoId
+                }));
+              }}
+            />
 
-            <InputGroup 
-              label="Dirección Exacta" 
-              value={formData.direccion} 
-              onChange={(v) => setFormData({...formData, direccion: v})} 
+            <InputGroup
+              label="Dirección Exacta"
+              value={formData.direccion}
+              onChange={(v) => setFormData({...formData, direccion: v})}
               placeholder="Av. Principal 123, Miraflores..."
               icon="📍"
             />
           </section>
         </div>
       </div>
-
-      {/* Menu Management Section */}
-      <section className="space-y-12 pt-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-border pb-10">
-          <div>
-            <h2 className="text-5xl font-black text-text tracking-tighter font-warike italic">La Carta</h2>
-            <p className="text-text-muted font-bold text-lg mt-2">Tus platos estrella, los que generan las mejores reseñas.</p>
-          </div>
-          <button 
-            onClick={() => openModal()}
-            className="bg-text text-white px-10 py-5 rounded-2xl font-black text-sm hover:scale-[1.05] transition-all flex items-center gap-3 shadow-2xl shadow-black/20 uppercase tracking-widest"
-          >
-            <span className="text-2xl">+</span> Agregar Plato
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
-          {menuItems.map(item => (
-            <div key={item.id} className="bg-white rounded-[3.5rem] overflow-hidden border border-border shadow-sm group hover:shadow-2xl transition-all duration-700 hover:-translate-y-2">
-              <div className="aspect-[4/3] relative overflow-hidden">
-                <img src={item.foto} alt={item.nombre} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                <div className="absolute top-6 right-6 flex gap-3 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-                  <button onClick={() => openModal(item)} className="bg-white/90 backdrop-blur-md w-12 h-12 rounded-2xl text-text flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-xl font-bold">✏️</button>
-                  <button onClick={() => {}} className="bg-white/90 backdrop-blur-md w-12 h-12 rounded-2xl text-red-600 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-xl font-bold">🗑️</button>
-                </div>
-                <div className="absolute bottom-6 left-6">
-                  <span className="bg-white/95 backdrop-blur-xl px-6 py-3 rounded-2xl font-black text-primary text-lg shadow-xl border border-white">S/. {item.precio}</span>
-                </div>
-              </div>
-              <div className="p-10 space-y-4">
-                <h4 className="font-black text-text text-2xl leading-tight font-warike uppercase">{item.nombre}</h4>
-                <p className="text-text-muted text-[15px] font-bold leading-relaxed line-clamp-2">{item.descripcion}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Dish Modal (Styled) */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-2xl bg-text/40 animate-in fade-in duration-500">
-          <div className="bg-white w-full max-w-xl rounded-[4rem] shadow-2xl relative overflow-hidden border-8 border-white">
-            <div className="p-12 space-y-10">
-              <div className="text-center">
-                <h3 className="text-4xl font-black text-text tracking-tighter font-warike uppercase">{editingItem ? 'Editar Especialidad' : 'Nueva Especialidad'}</h3>
-                <p className="text-text-muted text-sm font-bold mt-2 uppercase tracking-widest">Presume tu mejor sazón</p>
-              </div>
-
-              <div className="space-y-6">
-                <InputGroup label="Nombre del Plato" value={modalData.nombre} onChange={(v) => setModalData({...modalData, nombre: v})} />
-                <div className="space-y-3">
-                  <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Descripción del Sabor</label>
-                  <textarea value={modalData.descripcion} onChange={(e) => setModalData({...modalData, descripcion: e.target.value})} className="input-premium min-h-[140px] resize-none py-5" placeholder="Cuéntanos el secreto de este plato..." />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <InputGroup label="Precio" value={modalData.precio} onChange={(v) => setModalData({...modalData, precio: v})} />
-                  <InputGroup label="URL Imagen" value={modalData.foto} onChange={(v) => setModalData({...modalData, foto: v})} />
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button onClick={() => setShowModal(false)} className="flex-1 bg-background text-text-muted py-5 rounded-3xl font-black hover:bg-gray-200 transition-all uppercase tracking-widest text-xs">Cancelar</button>
-                <button onClick={saveMenuItem} className="flex-[2] btn-primary uppercase tracking-[0.2em] text-xs">Guardar Cambios</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 function InputGroup({ label, value, onChange, icon, placeholder }: { label: string, value: string, onChange: (v: string) => void, icon?: string, placeholder?: string }) {
+  const [isFocused, setIsFocused] = React.useState(false);
+
   return (
     <div className="space-y-3">
       <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">{label}</label>
-      <div className="relative">
-        {icon && <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl">{icon}</span>}
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`input-premium ${icon ? 'pl-16' : ''}`} />
+      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${
+        isFocused || value
+          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+          : 'border-border bg-white hover:border-primary/30'
+      }`}>
+        {icon && <span className={`absolute left-5 top-1/2 -translate-y-1/2 text-xl transition-all duration-300 ${isFocused ? 'scale-110' : ''}`}>{icon}</span>}
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder={placeholder}
+          className={`w-full bg-transparent outline-none text-text font-bold py-4 px-5 placeholder-text-muted/50 transition-all duration-300 ${icon ? 'pl-16' : ''} rounded-xl`}
+        />
+        {value && (
+          <button
+            onClick={() => onChange('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors text-lg"
+          >
+            ✕
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
 function SelectGroup({ label, value, onChange, options, isLoading }: { label: string, value: string, onChange: (v: string) => void, options: string[], isLoading?: boolean }) {
+  const [isFocused, setIsFocused] = React.useState(false);
+
   return (
     <div className="space-y-3">
       <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">{label}</label>
-      <div className="relative">
-        <select value={value} onChange={(e) => onChange(e.target.value)} disabled={isLoading} className="input-premium appearance-none cursor-pointer disabled:opacity-50">
+      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${
+        isFocused || value
+          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+          : 'border-border bg-white hover:border-primary/30'
+      }`}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          disabled={isLoading}
+          className="w-full bg-transparent appearance-none outline-none text-text font-bold py-4 px-5 cursor-pointer disabled:opacity-50 transition-all duration-300 rounded-xl"
+        >
           {!isLoading && options.length === 0 && <option value="">Seleccione...</option>}
           {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
-        <span className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">{isLoading ? '⌛' : '▼'}</span>
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-sm transition-transform duration-300">
+          {isLoading ? '⌛' : '▼'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; className?: string }) {
+  const normName = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  if (normName.includes('wifi')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#2563EB" stroke="black" strokeWidth="4.5" />
+        <path d="M50 32C59 32 67 35 73 41" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M50 46C55 46 60 48 64 51" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M50 60C52 60 54 61 56 62" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+        <circle cx="50" cy="72" r="5" fill="white" />
+      </svg>
+    );
+  }
+  
+  if (normName.includes('cochera') || normName.includes('parking') || normName.includes('prive')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#1D4ED8" stroke="black" strokeWidth="4.5" />
+        <path d="M38 32H54C61 32 64 36 64 42C64 48 61 52 54 52H38V32Z" fill="white" stroke="black" strokeWidth="4.5" strokeLinejoin="round" />
+        <path d="M38 52V70" stroke="white" strokeWidth="7" strokeLinecap="round" />
+        <path d="M44 40H52C53.5 40 55 41 55 42.5C55 44 53.5 45 52 45H44V40Z" fill="black" />
+      </svg>
+    );
+  }
+  
+  if (normName.includes('aire') || normName.includes('acondicionado') || normName.includes('frio') || normName.includes('clima')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="30" fill="#E0F2FE" />
+        <path d="M50 15V85M15 50H85" stroke="#06B6D4" strokeWidth="5" strokeLinecap="round" />
+        <path d="M25 25L75 75M25 75L75 25" stroke="#06B6D4" strokeWidth="5" strokeLinecap="round" />
+        <path d="M50 25L42 33M50 25L58 33M50 75L42 67M50 75L58 67" stroke="black" strokeWidth="4.5" strokeLinecap="round" />
+        <path d="M25 50L33 42M25 50L33 58M75 50L67 42M75 50L67 58" stroke="black" strokeWidth="4.5" strokeLinecap="round" />
+        <circle cx="50" cy="50" r="10" fill="white" stroke="black" strokeWidth="4.5" />
+      </svg>
+    );
+  }
+  
+  if (normName.includes('mascota') || normName.includes('pet') || normName.includes('perro') || normName.includes('animal')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
+          <path d="M35 55C35 48 42 45 47 48C52 45 59 48 59 55C59 65 35 65 35 55Z" fill="#EA580C" />
+          <circle cx="33" cy="40" r="6" fill="#EA580C" />
+          <circle cx="43" cy="34" r="6" fill="#EA580C" />
+          <circle cx="54" cy="36" r="6" fill="#EA580C" />
+          <circle cx="61" cy="44" r="6" fill="#EA580C" />
+          
+          <path d="M62 70C62 65 67 63 70 65C73 63 78 65 78 70C78 77 62 77 62 70Z" fill="#EA580C" />
+          <circle cx="61" cy="60" r="4.5" fill="#EA580C" />
+          <circle cx="68" cy="56" r="4.5" fill="#EA580C" />
+          <circle cx="76" cy="57" r="4.5" fill="#EA580C" />
+          <circle cx="81" cy="63" r="4.5" fill="#EA580C" />
+        </g>
+      </svg>
+    );
+  }
+  
+  if (normName.includes('estacionamiento') || normName.includes('auto') || normName.includes('carro')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
+          <circle cx="35" cy="68" r="8" fill="black" />
+          <circle cx="35" cy="68" r="3" fill="white" />
+          <circle cx="65" cy="68" r="8" fill="black" />
+          <circle cx="65" cy="68" r="3" fill="white" />
+          <path d="M20 52C20 48 24 46 28 46H72C76 46 80 48 80 52V62H20V52Z" fill="#DC2626" />
+          <path d="M30 46L36 32H64L70 46H30Z" fill="#F8FAFC" />
+          <line x1="50" y1="32" x2="50" y2="46" stroke="black" strokeWidth="4.5" />
+          <rect x="16" y="58" width="8" height="4" rx="1" fill="#94A3B8" />
+          <rect x="76" y="58" width="8" height="4" rx="1" fill="#94A3B8" />
+        </g>
+      </svg>
+    );
+  }
+  
+  if (normName.includes('terraza') || normName.includes('sol') || normName.includes('aire libre') || normName.includes('exterior')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
+          <circle cx="50" cy="50" r="18" fill="#FACC15" />
+          <path d="M50 18L50 26M50 74L50 82M18 50L26 50M74 50L82 50M27 27L33 33M67 67L73 73M27 77L33 73M67 33L73 27" stroke="black" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M42 42C44 43 46 43 48 42" stroke="black" strokeWidth="3" strokeLinecap="round" />
+          <path d="M52 42C54 43 56 43 58 42" stroke="black" strokeWidth="3" strokeLinecap="round" />
+          <path d="M45 58C48 61 52 61 55 58" stroke="black" strokeWidth="3.5" strokeLinecap="round" />
+        </g>
+      </svg>
+    );
+  }
+  
+  if (normName.includes('musica') || normName.includes('vivo') || normName.includes('show') || normName.includes('banda')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
+          <ellipse cx="32" cy="65" rx="10" ry="7" fill="#8B5CF6" />
+          <ellipse cx="68" cy="57" rx="10" ry="7" fill="#8B5CF6" />
+          <path d="M40 65V25M76 57V18" stroke="black" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M40 27L76 20" stroke="black" strokeWidth="8" strokeLinecap="round" />
+        </g>
+      </svg>
+    );
+  }
+  
+  if (normName.includes('juego') || normName.includes('mesa') || normName.includes('dado') || normName.includes('carta')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
+          <path d="M22 42L50 28L78 42V70L50 84L22 70V42Z" fill="white" />
+          <path d="M50 28V84M50 56L22 42M50 56L78 42" stroke="black" strokeWidth="4.5" />
+          <circle cx="50" cy="42" r="5" fill="#DC2626" />
+          <circle cx="32" cy="52" r="3" fill="black" />
+          <circle cx="38" cy="58" r="3" fill="black" />
+          <circle cx="44" cy="64" r="3" fill="black" />
+          <circle cx="56" cy="51" r="3" fill="black" />
+          <circle cx="72" cy="51" r="3" fill="black" />
+          <circle cx="64" cy="61" r="3" fill="black" />
+          <circle cx="56" cy="71" r="3" fill="black" />
+          <circle cx="72" cy="71" r="3" fill="black" />
+        </g>
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="60" height="60" rx="30" fill="#EE5924" stroke="black" strokeWidth="4.5" />
+      <path d="M50 35V65M35 50H65" stroke="white" strokeWidth="6.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MapSelector({
+  locationName,
+  direccion,
+  onLocationSelect,
+  onUbigeoFound
+}: {
+  locationName: string;
+  direccion?: string;
+  onLocationSelect: (lat: number, lng: number) => void;
+  onUbigeoFound?: (dept: string, prov: string, dist: string, ubigeoCode: string, ubigeoId: string) => void;
+}) {
+  const mapRef = React.useRef<HTMLDivElement>(null);
+  const markerRef = React.useRef<any>(null);
+  const [map, setMap] = React.useState<any>(null);
+  const [coords, setCoords] = React.useState({ lat: -12.0464, lng: -77.0428 });
+  const [geocoder, setGeocoder] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (!mapRef.current || map) return;
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || 'AIzaSyAkA-6XcMbhvEALdP-KFSv36CwVTk-sAKI'}&v=3.51`;
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+      const googleMap = new (window as any).google.maps.Map(mapRef.current, {
+        zoom: 15,
+        center: { lat: coords.lat, lng: coords.lng },
+        mapTypeId: 'roadmap',
+      });
+
+      const googleMarker = new (window as any).google.maps.Marker({
+        position: { lat: coords.lat, lng: coords.lng },
+        map: googleMap,
+        title: locationName,
+        icon: '📍',
+      });
+
+      const newGeocoder = new (window as any).google.maps.Geocoder();
+      setGeocoder(newGeocoder);
+
+      googleMap.addListener('click', (e: any) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        googleMarker.setPosition({ lat, lng });
+        setCoords({ lat, lng });
+        onLocationSelect(lat, lng);
+        searchUbigeo(lat, lng);
+      });
+
+      markerRef.current = googleMarker;
+      setMap(googleMap);
+    };
+
+    document.head.appendChild(script);
+  }, [mapRef, coords, locationName, onLocationSelect]);
+
+  const searchUbigeo = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/ubigeo/nearest?lat=${lat}&lng=${lng}`);
+      const ubigeo = await res.json();
+      if (ubigeo && onUbigeoFound) {
+        onUbigeoFound(ubigeo.department, ubigeo.province, ubigeo.district, ubigeo.ubigeoCode, ubigeo.id);
+      }
+    } catch (error) {
+      console.error('Error searching ubigeo:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!geocoder || !map) return;
+
+    if (!direccion || !direccion.trim()) {
+      const defaultLat = -12.0464;
+      const defaultLng = -77.0428;
+      setCoords({ lat: defaultLat, lng: defaultLng });
+      map.setCenter({ lat: defaultLat, lng: defaultLng });
+      if (markerRef.current) {
+        markerRef.current.setPosition({ lat: defaultLat, lng: defaultLng });
+      }
+      return;
+    }
+
+    geocoder.geocode({ address: direccion }, async (results: any[], status: string) => {
+      if (status === 'OK' && results[0]) {
+        const lat = results[0].geometry.location.lat();
+        const lng = results[0].geometry.location.lng();
+        setCoords({ lat, lng });
+        onLocationSelect(lat, lng);
+        map.setCenter({ lat, lng });
+        map.setZoom(16);
+        if (markerRef.current) {
+          markerRef.current.setPosition({ lat, lng });
+        }
+        searchUbigeo(lat, lng);
+      } else {
+        console.error('Geocode error:', status);
+      }
+    });
+  }, [direccion, geocoder, map, onLocationSelect]);
+
+  return (
+    <div className="space-y-4">
+      <div
+        ref={mapRef}
+        className="relative w-full h-56 rounded-[2rem] border-2 border-border shadow-sm overflow-hidden"
+        style={{ minHeight: '224px' }}
+      />
+      <div className="flex items-center justify-between bg-background p-4 rounded-xl border border-border">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📍</span>
+          <div className="text-sm">
+            <p className="font-black text-text-muted uppercase tracking-wider text-[10px]">Ubicación Seleccionada</p>
+            <p className="font-bold text-text">{coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

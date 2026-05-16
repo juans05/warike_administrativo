@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
@@ -37,6 +38,13 @@ export default function ReputacionPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [placeIdCandidates, setPlaceIdCandidates] = useState<any[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+
+  // Devices
+  const [devices, setDevices] = useState<any[]>([]);
+  const [isAddingDevice, setIsAddingDevice] = useState(false);
+  const [newDeviceName, setNewDeviceName] = useState('');
+  const [newDeviceType, setNewDeviceType] = useState('NFC');
+  const [isDeletingDevice, setIsDeletingDevice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -122,6 +130,60 @@ export default function ReputacionPage() {
       ]);
     }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
+
+  // Cargar dispositivos
+  useEffect(() => {
+    if (!activePlaceId) return;
+    businessApi.getDevices(activePlaceId)
+      .then(setDevices)
+      .catch(() => setDevices([]));
+  }, [activePlaceId]);
+
+  // Manejar agregar dispositivo
+  const handleAddDevice = async () => {
+    if (!activePlaceId || !newDeviceName.trim()) return;
+    try {
+      await businessApi.createDevice(activePlaceId, {
+        name: newDeviceName,
+        deviceType: newDeviceType,
+      });
+      setNewDeviceName('');
+      setNewDeviceType('NFC');
+      setIsAddingDevice(false);
+      // Recargar lista
+      const updated = await businessApi.getDevices(activePlaceId);
+      setDevices(updated);
+    } catch (err) {
+      alert('Error al agregar dispositivo');
+    }
+  };
+
+  // Manejar cambio de acción
+  const handleActionChange = async (deviceId: string, newAction: string) => {
+    if (!activePlaceId) return;
+    try {
+      await businessApi.updateDevice(activePlaceId, deviceId, { action: newAction });
+      const updated = await businessApi.getDevices(activePlaceId);
+      setDevices(updated);
+    } catch (err) {
+      alert('Error al actualizar dispositivo');
+    }
+  };
+
+  // Manejar eliminar dispositivo
+  const handleDeleteDevice = async (deviceId: string) => {
+    if (!activePlaceId) return;
+    setIsDeletingDevice(deviceId);
+    try {
+      await businessApi.deleteDevice(activePlaceId, deviceId);
+      const updated = await businessApi.getDevices(activePlaceId);
+      setDevices(updated);
+    } catch (err) {
+      alert('Error al eliminar dispositivo');
+    } finally {
+      setIsDeletingDevice(null);
+    }
+  };
 
   const publicLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${activePlaceId}`;
 
@@ -251,8 +313,22 @@ export default function ReputacionPage() {
           </div>
 
           <div className="space-y-4">
-            <DeviceCard name='Stand Premium "Mesa 1"' action="reputation" />
-            <DeviceCard name='Stand Premium "Barra"' action="raffle" />
+            {devices.length === 0 ? (
+              <div className="text-center py-8 text-text-muted">
+                <p className="font-bold text-sm">Sin dispositivos aún</p>
+                <p className="text-xs">Agrega tu primer stand físico abajo</p>
+              </div>
+            ) : (
+              devices.map(device => (
+                <DeviceCard
+                  key={device.id}
+                  device={device}
+                  onActionChange={(action) => handleActionChange(device.id, action)}
+                  onDelete={() => handleDeleteDevice(device.id)}
+                  isDeleting={isDeletingDevice === device.id}
+                />
+              ))
+            )}
           </div>
 
           <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 space-y-4 relative overflow-hidden">
@@ -267,9 +343,48 @@ export default function ReputacionPage() {
             </div>
           </div>
 
-          <button className="w-full py-5 rounded-2xl border-2 border-dashed border-primary text-primary font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
-            + Solicitar Nuevo Stand Físico
-          </button>
+          {!isAddingDevice ? (
+            <button
+              onClick={() => setIsAddingDevice(true)}
+              className="w-full py-5 rounded-2xl border-2 border-dashed border-primary text-primary font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+            >
+              + Solicitar Nuevo Stand Físico
+            </button>
+          ) : (
+            <div className="space-y-4 p-6 bg-primary/5 rounded-2xl border border-primary/20">
+              <input
+                type="text"
+                value={newDeviceName}
+                onChange={(e) => setNewDeviceName(e.target.value)}
+                placeholder="Ej: Stand Premium Mesa 1"
+                className="w-full input-premium text-sm"
+              />
+              <select
+                value={newDeviceType}
+                onChange={(e) => setNewDeviceType(e.target.value)}
+                className="w-full input-premium text-sm"
+              >
+                <option value="NFC">NFC Reader</option>
+                <option value="TABLET">Tablet</option>
+                <option value="QR">QR Solo</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddDevice}
+                  disabled={!newDeviceName.trim()}
+                  className="flex-1 py-3 bg-primary text-white font-black text-xs uppercase rounded-xl hover:bg-opacity-90 disabled:opacity-50 transition-all"
+                >
+                  Crear Stand
+                </button>
+                <button
+                  onClick={() => setIsAddingDevice(false)}
+                  className="flex-1 py-3 bg-background text-text font-black text-xs uppercase rounded-xl border border-border hover:bg-gray-50 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Logic Configuration */}
@@ -432,25 +547,166 @@ function KpiCard({ label, value, icon, color }: { label: string; value: any; ico
   );
 }
 
-function DeviceCard({ name, action }: { name: string; action: string }) {
+function DeviceCard({
+  device,
+  onActionChange,
+  onDelete,
+  isDeleting,
+}: {
+  device: any;
+  onActionChange: (action: string) => void;
+  onDelete: () => void;
+  isDeleting?: boolean;
+}) {
+  const [showDelete, setShowDelete] = React.useState(false);
+  const [showQR, setShowQR] = React.useState(false);
+  const qrCanvasRef = React.useRef<HTMLDivElement>(null);
+  const deviceQRUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${device.placeId}/device/${device.id}`;
+
+  const handleDownloadQR = async () => {
+    if (!qrCanvasRef.current) return;
+    const svg = qrCanvasRef.current.querySelector('svg') as SVGElement;
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const link = document.createElement('a');
+    link.href = 'data:image/svg+xml;base64,' + btoa(svgData);
+    link.download = `qr-${device.name.replace(/\s+/g, '-')}.svg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintQR = () => {
+    if (!qrCanvasRef.current) return;
+    const printWindow = window.open('', '', 'width=600,height=700');
+    if (!printWindow) return;
+
+    const svg = qrCanvasRef.current.querySelector('svg') as SVGElement;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const qrImage = 'data:image/svg+xml;base64,' + btoa(svgData);
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Imprimir QR - ${device.name}</title>
+          <style>
+            body { margin: 0; padding: 20px; text-align: center; font-family: Arial, sans-serif; }
+            .qr-container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+            img { border: 2px solid #000; padding: 10px; background: white; }
+            h2 { margin: 0; font-size: 24px; }
+            p { margin: 5px 0; color: #666; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <div class="qr-container">
+            <h2>${device.name}</h2>
+            <p>${device.deviceType} - ${device.action}</p>
+            <img src="${qrImage}" alt="QR Code" width="300" height="300" />
+            <p style="font-size: 12px; color: #999;">Escanea este QR para dejar feedback</p>
+          </div>
+          <script>
+            window.print();
+            window.addEventListener('afterprint', () => window.close());
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
-    <div className="p-6 bg-background rounded-3xl border border-border group hover:border-primary transition-colors space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
+    <div className={`p-6 bg-background rounded-3xl border transition-all space-y-4 ${isDeleting ? 'opacity-50 pointer-events-none' : 'border-border group hover:border-primary'}`}>
+      <div className="flex justify-between items-start">
+        <div className="flex items-start gap-4 flex-1">
           <div className="text-3xl">🪧</div>
-          <div>
-            <p className="font-black text-text text-sm">{name}</p>
+          <div className="flex-1">
+            <p className="font-black text-text text-sm">{device.name}</p>
             <div className="flex gap-2 items-center mt-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Activo</p>
+              <span className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+                {device.status === 'active' ? 'Activo' : 'Inactivo'}
+              </p>
             </div>
+            <p className="text-[9px] text-gray-400 mt-2 font-mono">{device.deviceType}</p>
           </div>
         </div>
-        <button className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity">Opciones</button>
+        <div className="relative">
+          <button
+            onClick={() => setShowDelete(!showDelete)}
+            className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            ⋮
+          </button>
+          {showDelete && (
+            <button
+              onClick={() => {
+                setShowDelete(false);
+                onDelete();
+              }}
+              className="absolute right-0 top-8 bg-red-500 text-white text-[9px] font-black px-3 py-2 rounded-lg whitespace-nowrap hover:bg-red-600 transition-all z-10"
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* QR Code Section */}
       <div className="pt-4 border-t border-gray-100">
+        {!showQR ? (
+          <button
+            onClick={() => setShowQR(true)}
+            className="w-full py-3 text-center text-[10px] font-black text-primary uppercase tracking-widest border border-dashed border-primary rounded-lg hover:bg-primary/5 transition-all"
+          >
+            📲 Ver QR Code (Zona: {device.name})
+          </button>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-center p-6 bg-white rounded-lg border border-gray-200">
+              <div ref={qrCanvasRef}>
+                <QRCodeSVG
+                  value={deviceQRUrl}
+                  size={256}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+            </div>
+            <p className="text-[9px] text-center text-gray-500 font-mono break-all">{deviceQRUrl}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownloadQR}
+                className="flex-1 py-2 text-[10px] font-black bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all uppercase"
+              >
+                ⬇️ Descargar QR
+              </button>
+              <button
+                onClick={handlePrintQR}
+                className="flex-1 py-2 text-[10px] font-black bg-accent text-white rounded-lg hover:bg-opacity-90 transition-all uppercase"
+              >
+                🖨️ Imprimir
+              </button>
+            </div>
+            <button
+              onClick={() => setShowQR(false)}
+              className="w-full py-2 text-[9px] font-bold text-text-muted uppercase border border-border rounded-lg hover:bg-background transition-all"
+            >
+              Cerrar QR
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2 border-t border-gray-100">
         <label className="text-[9px] font-black text-text-muted uppercase tracking-widest block mb-2">Acción al escanear:</label>
-        <select className="input-premium py-2 text-xs font-bold text-text w-full cursor-pointer" defaultValue={action}>
+        <select
+          value={device.action}
+          onChange={(e) => onActionChange(e.target.value)}
+          className="input-premium py-2 text-xs font-bold text-text w-full cursor-pointer"
+        >
           <option value="reputation">⭐ Captar Reseñas (Filtrado Inteligente)</option>
           <option value="raffle">🎁 Formulario de Sorteo / Promoción</option>
           <option value="menu">🍽️ Ver Menú Digital</option>
