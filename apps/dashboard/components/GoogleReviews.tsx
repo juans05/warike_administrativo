@@ -7,7 +7,11 @@ import { businessApi } from '../lib/api-client';
 
 type Step = 'loading' | 'not_connected' | 'pick_location' | 'connected';
 
-export default function GoogleReviews() {
+function numberToStarRating(n: number) {
+  return ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][Math.min(Math.max(Math.round(n), 1), 5) - 1];
+}
+
+export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
   const { activePlaceId } = useRestaurant();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,13 +28,12 @@ export default function GoogleReviews() {
     if (!activePlaceId) return;
     const connected = searchParams.get('connected');
     if (connected === 'true') {
-      // Remove query param without full reload
       router.replace('/reputacion');
       loadLocations();
     } else {
       checkConnectionAndLoad();
     }
-  }, [activePlaceId]);
+  }, [activePlaceId, refreshKey]);
 
   const checkConnectionAndLoad = async () => {
     setStep('loading');
@@ -40,9 +43,34 @@ export default function GoogleReviews() {
         await fetchAllReviews();
       } else if (profile.googleConnected) {
         await loadLocations();
+      } else if (profile.googlePlaceId) {
+        await fetchPersistedReviews(profile);
       } else {
         setStep('not_connected');
       }
+    } catch {
+      setStep('not_connected');
+    }
+  };
+
+  const fetchPersistedReviews = async (profile?: any) => {
+    try {
+      const rows = await businessApi.getPersistedGoogleReviews(activePlaceId!);
+      if (!rows || rows.length === 0) { setStep('not_connected'); return; }
+
+      const normalized = rows.map((r: any) => ({
+        reviewer: { displayName: r.authorName, profilePhotoUrl: r.authorPhotoUrl },
+        starRating: numberToStarRating(r.rating),
+        comment: r.text,
+        relativeTimeDescription: r.relativeTimeDescription,
+      }));
+
+      setReviews(normalized);
+
+      if (!profile) profile = await businessApi.getProfile(activePlaceId!);
+      setRating(profile.googleRating ? parseFloat(profile.googleRating) : 0);
+      setTotal(profile.googleTotalReviews || rows.length);
+      setStep('connected');
     } catch {
       setStep('not_connected');
     }

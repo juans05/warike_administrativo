@@ -3,8 +3,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const url = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint}`;
+
+  const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -24,7 +25,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
 // Carta Methods
 export const cartaApi = {
   getMenu: (restaurantId: string) => fetchWithAuth(`/carta/${restaurantId}`),
-  updateItemAvailability: (itemId: string, available: boolean) => 
+  updateItemAvailability: (itemId: string, available: boolean) =>
     fetchWithAuth(`/carta/item/${itemId}/availability`, {
       method: 'PATCH',
       body: JSON.stringify({ available }),
@@ -34,7 +35,7 @@ export const cartaApi = {
 // Bot Methods
 export const botApi = {
   getSettings: (restaurantId: string) => fetchWithAuth(`/bot/${restaurantId}`),
-  updateSettings: (restaurantId: string, data: any) => 
+  updateSettings: (restaurantId: string, data: any) =>
     fetchWithAuth(`/bot/${restaurantId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -43,10 +44,22 @@ export const botApi = {
 
 // Business Methods (Unified fachada for owners)
 export const businessApi = {
+  // Onboarding (registration)
+  searchOnboarding: (q: string) => fetchWithAuth(`/business/onboarding/search?q=${encodeURIComponent(q)}`),
+  claimPlace: (id: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, { method: 'POST' }),
+  importPlace: (googlePlaceId: string) => fetchWithAuth('/business/onboarding/import', {
+    method: 'POST',
+    body: JSON.stringify({ googlePlaceId }),
+  }),
+  createPlace: (data: { name: string; address?: string }) => fetchWithAuth('/business/onboarding/create', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
   // Places & Profile
   getMyPlaces: () => fetchWithAuth('/business/my-places'),
   getProfile: (id: string) => fetchWithAuth(`/business/places/${id}/profile`),
-  updateProfile: (id: string, data: any) => 
+  updateProfile: (id: string, data: any) =>
     fetchWithAuth(`/business/places/${id}/profile`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -54,7 +67,7 @@ export const businessApi = {
 
   // Menu Management
   getMenu: (id: string) => fetchWithAuth(`/business/places/${id}/menu`),
-  
+
   createCategory: (id: string, data: any) =>
     fetchWithAuth(`/business/places/${id}/menu/categories`, {
       method: 'POST',
@@ -86,7 +99,7 @@ export const businessApi = {
     }),
 
   // Analytics & Feedback
-  getAnalytics: (id: string, range: string = 'month') => 
+  getAnalytics: (id: string, range: string = 'month') =>
     fetchWithAuth(`/business/places/${id}/analytics?range=${range}`),
 
   // Bot Management
@@ -104,7 +117,7 @@ export const businessApi = {
   // Reviews (reseñas positivas — rating >= 4)
   getReviews: (id: string, page = 1) =>
     fetchWithAuth(`/business/places/${id}/complaints?page=${page}&type=review`),
-  
+
   markComplaintResolved: (id: string, complaintId: string) =>
     fetchWithAuth(`/business/places/${id}/complaints/${complaintId}/resolve`, {
       method: 'PATCH',
@@ -150,7 +163,8 @@ export const businessApi = {
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)
 export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const url = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint}`;
+  const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -211,11 +225,11 @@ export const adminApi = {
   getStats: () => fetchWithAuth('/admin/stats'),
   getPendingSubmissions: () => fetchWithAuth('/admin/submissions'),
   approveSubmission: (id: string) => fetchWithAuth(`/admin/submissions/${id}/approve`, { method: 'POST' }),
-  rejectSubmission: (id: string, reason: string) => fetchWithAuth(`/admin/submissions/${id}/reject`, { 
-    method: 'POST', 
-    body: JSON.stringify({ reason }) 
+  rejectSubmission: (id: string, reason: string) => fetchWithAuth(`/admin/submissions/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
   }),
-  
+
   getPendingClaims: () => fetchWithAuth('/admin/claims'),
   verifyClaim: (id: string) => fetchWithAuth(`/admin/claims/${id}/verify`, { method: 'POST' }),
 
@@ -232,5 +246,12 @@ export const adminApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+};
+
+// Ubigeo API (Departamentos, Provincias, Distritos)
+export const ubigeoApi = {
+  getDepartments: () => fetchPublic('/ubigeo/departments'),
+  getProvinces: (department: string) => fetchPublic(`/ubigeo/provinces?department=${department}`),
+  getDistricts: (department: string, province: string) => fetchPublic(`/ubigeo/districts?department=${department}&province=${province}`),
 };
 

@@ -164,9 +164,112 @@ export default function CustomerCardPage() {
           </div>
         )}
 
+        {/* Wallet */}
+        <WalletButtons placeId={placeId} phone={phone} />
+
         <a href={`/l/${placeId}`} className="block w-full text-center py-5 rounded-2xl bg-white text-orange-500 border border-orange-100 font-black text-xs uppercase tracking-widest shadow-sm">
           Volver al Restaurante →
         </a>
+      </div>
+    </div>
+  );
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
+  const [loadingGoogle, setLoadingGoogle] = React.useState(false);
+  const [loadingApple, setLoadingApple] = React.useState(false);
+  const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isAndroid = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
+
+  const handleGoogle = async () => {
+    setLoadingGoogle(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/google/${phone}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Google Wallet no disponible aún');
+        return;
+      }
+      const { saveUrl } = await res.json();
+      window.open(saveUrl, '_blank');
+    } catch {
+      alert('Error al conectar con Google Wallet');
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  const handleApple = async () => {
+    setLoadingApple(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/apple/${phone}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Apple Wallet no disponible aún');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tarjeta-fidelizacion.pkpass`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Error al descargar el pase');
+    } finally {
+      setLoadingApple(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-[2.5rem] p-6 shadow-xl space-y-4">
+      <h2 className="font-black text-gray-800 text-sm uppercase tracking-widest text-center">Agregar a Wallet</h2>
+      <div className="space-y-3">
+        {/* Apple Wallet — solo en iOS o siempre si no es Android */}
+        {!isAndroid && (
+          <button
+            onClick={handleApple}
+            disabled={loadingApple}
+            className="flex items-center justify-center gap-3 w-full py-4 bg-black text-white rounded-2xl font-black text-sm disabled:opacity-60 active:scale-[0.98] transition-all"
+          >
+            {loadingApple ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+            )}
+            {loadingApple ? 'Descargando...' : 'Agregar a Apple Wallet'}
+          </button>
+        )}
+
+        {/* Google Wallet — solo en Android o siempre si no es iOS */}
+        {!isIOS && (
+          <button
+            onClick={handleGoogle}
+            disabled={loadingGoogle}
+            className="flex items-center justify-center gap-3 w-full py-4 bg-[#1a73e8] text-white rounded-2xl font-black text-sm disabled:opacity-60 active:scale-[0.98] transition-all"
+          >
+            {loadingGoogle ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="5" width="20" height="14" rx="3" fill="white" fillOpacity="0.25" stroke="white" strokeWidth="1.5"/>
+                <path d="M2 9h20" stroke="white" strokeWidth="1.5"/>
+                <circle cx="17" cy="14" r="2.5" fill="white" fillOpacity="0.8"/>
+              </svg>
+            )}
+            {loadingGoogle ? 'Conectando...' : 'Guardar en Google Wallet'}
+          </button>
+        )}
+
+        {/* En desktop mostramos ambos */}
+        {!isIOS && !isAndroid && (
+          <p className="text-center text-[10px] font-bold text-gray-400">Escanea desde tu móvil para usar los wallets</p>
+        )}
       </div>
     </div>
   );

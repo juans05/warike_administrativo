@@ -19,22 +19,27 @@ interface RestaurantContextValue {
 
 const RestaurantContext = createContext<RestaurantContextValue | undefined>(undefined);
 
+function getInitialActivePlaceId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('activePlaceId');
+}
+
 export function RestaurantProvider({ children }: { children: React.ReactNode }) {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [activePlaceId, setActivePlaceIdState] = useState<string | null>(null);
+  const [activePlaceId, setActivePlaceIdState] = useState<string | null>(getInitialActivePlaceId);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshPlaces = async () => {
     try {
       const data = await businessApi.getMyPlaces();
       setPlaces(data);
-      
-      // Select active place from localStorage or first one
+
       const stored = localStorage.getItem('activePlaceId');
       if (stored && data.find((p: Place) => p.id === stored)) {
         setActivePlaceIdState(stored);
       } else if (data.length > 0) {
         setActivePlaceIdState(data[0].id);
+        localStorage.setItem('activePlaceId', data[0].id);
       }
     } catch (error) {
       console.error('Error fetching restaurants:', error);

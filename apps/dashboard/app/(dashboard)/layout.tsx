@@ -49,9 +49,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: any; handleLogout: () => void }) {
   const pathname = usePathname();
-  const { places, isLoading: contextLoading } = useRestaurant();
+  const { places, isLoading: contextLoading, refreshPlaces } = useRestaurant();
 
-  const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business';
+  const hasSavedPlace = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
+  const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business' && !hasSavedPlace;
 
   return (
     <div className="flex min-h-screen bg-background texture-paper">
@@ -111,7 +112,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
       </aside>
 
       <main className="flex-1 p-6 md:p-10 lg:p-16">
-        {noPlaces ? <NoPlacesScreen userName={user?.fullName} /> : children}
+        {noPlaces ? <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} /> : children}
       </main>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-border flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
@@ -140,7 +141,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   );
 }
 
-function NoPlacesScreen({ userName }: { userName?: string }) {
+function NoPlacesScreen({ userName, onComplete }: { userName?: string; onComplete: () => void }) {
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center space-y-12">
@@ -154,7 +155,7 @@ function NoPlacesScreen({ userName }: { userName?: string }) {
           </p>
         </div>
 
-        <OnboardingSearch onComplete={() => {}} />
+        <OnboardingSearch onComplete={onComplete} />
 
         <div className="pt-10 border-t border-border">
           <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.4em] mb-6">¿Necesitas ayuda personalizada?</p>

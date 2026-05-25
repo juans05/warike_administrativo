@@ -38,6 +38,7 @@ export default function ReputacionPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [placeIdCandidates, setPlaceIdCandidates] = useState<any[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
 
   // Devices
   const [devices, setDevices] = useState<any[]>([]);
@@ -478,47 +479,29 @@ export default function ReputacionPage() {
             </p>
 
             {/* Botón Google - sincronizar reseñas */}
-            {isGoogleConnected ? (
+            {isGoogleConnected && (
               <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-200">
-                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-black">✓</div>
-                <div>
+                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm font-black flex-shrink-0">✓</div>
+                <div className="flex-1 min-w-0">
                   <p className="text-xs font-black text-green-700">Google Business conectado</p>
-                  <p className="text-[10px] font-bold text-green-500">Las reseñas se sincronizan con el botón de abajo</p>
+                  <p className="text-[10px] font-bold text-green-500">Tus reseñas se importan automáticamente</p>
                 </div>
               </div>
-            ) : (
-              <button
-                onClick={async () => {
-                  if (!activePlaceId || !googlePlaceId) {
-                    alert('Primero guarda tu Google Place ID arriba.');
-                    return;
-                  }
-                  try {
-                    const result = await businessApi.syncGoogleReviews(activePlaceId);
-                    if (result?.rating || result?.totalReviews) {
-                      setIsGoogleConnected(true);
-                      alert(`¡Sincronizado! Rating: ${result.rating} ⭐ · ${result.totalReviews} reseñas`);
-                    } else {
-                      alert('Sincronizado, pero no se encontraron reseñas para ese Place ID. Verifica que sea correcto.');
-                    }
-                  } catch (err: any) {
-                    alert(err?.message || 'Error al sincronizar. Verifica que el Place ID sea correcto.');
-                  }
-                }}
-                className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] group cursor-pointer"
-              >
-                <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                  <path fill="none" d="M0 0h48v48H0z"/>
-                </svg>
-                <span className="text-sm font-black text-[#3c4043] group-hover:text-[#1a1a1a] transition-colors">
-                  Conectar con Google Business
-                </span>
-              </button>
             )}
+            <GoogleSyncButton
+              isConnected={isGoogleConnected}
+              activePlaceId={activePlaceId}
+              googlePlaceId={googlePlaceId}
+              onSuccess={(result) => {
+                setIsGoogleConnected(true);
+                setStats(prev => ({
+                  ...prev,
+                  ratingAverage: result.rating ? parseFloat(result.rating) : prev.ratingAverage,
+                  reviewsSentToGoogle: result.totalReviews || prev.reviewsSentToGoogle,
+                }));
+                setReviewsRefreshKey(k => k + 1);
+              }}
+            />
           </div>
         </section>
       </div>
@@ -526,12 +509,93 @@ export default function ReputacionPage() {
       <hr className="border-border" />
 
       {/* Google Reviews */}
-      <GoogleReviews />
+      <GoogleReviews refreshKey={reviewsRefreshKey} />
     </div>
   );
 }
 
 // ── COMPONENTES ──────────────────────────────────────
+
+function GoogleSyncButton({
+  isConnected,
+  activePlaceId,
+  googlePlaceId,
+  onSuccess,
+}: {
+  isConnected: boolean;
+  activePlaceId: string | null;
+  googlePlaceId: string;
+  onSuccess: (result: any) => void;
+}) {
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  const handleSync = async () => {
+    if (!activePlaceId || !googlePlaceId) {
+      alert('Primero guarda tu Google Place ID arriba.');
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const result = await businessApi.syncGoogleReviews(activePlaceId);
+      if (result?.rating || result?.totalReviews) {
+        onSuccess(result);
+        alert(`¡Sincronizado! Rating: ${result.rating} ⭐ · ${result.totalReviews} reseñas`);
+      } else {
+        alert('Sincronizado, pero no se encontraron reseñas. Verifica que el Place ID sea correcto.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Error al sincronizar. Verifica que el Place ID sea correcto.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const GoogleLogo = () => (
+    <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+  );
+
+  if (isConnected) {
+    return (
+      <button
+        onClick={handleSync}
+        disabled={isSyncing}
+        className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] group disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {isSyncing ? (
+          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <GoogleLogo />
+        )}
+        <span className="text-sm font-black text-[#3c4043] group-hover:text-[#1a1a1a] transition-colors">
+          {isSyncing ? 'Sincronizando...' : 'Sincronizar Reseñas de Google'}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleSync}
+      disabled={isSyncing}
+      className="flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] group disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {isSyncing ? (
+        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <GoogleLogo />
+      )}
+      <span className="text-sm font-black text-[#3c4043] group-hover:text-[#1a1a1a] transition-colors">
+        {isSyncing ? 'Conectando...' : 'Conectar con Google Business'}
+      </span>
+    </button>
+  );
+}
 
 function KpiCard({ label, value, icon, color }: { label: string; value: any; icon: string; color: string }) {
   return (

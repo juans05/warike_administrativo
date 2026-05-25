@@ -16,7 +16,7 @@ export default function LoginPage() {
     setError('');
     console.log('[LOGIN] Instando login para:', email);
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/login`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`;
       console.log('[LOGIN] Enviando petición a:', apiUrl);
       
       const response = await fetch(apiUrl, {

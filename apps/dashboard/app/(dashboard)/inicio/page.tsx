@@ -6,6 +6,23 @@ import { businessApi } from '../../../lib/api-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+interface DaySchedule {
+  day: string;
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
+}
+
+const DEFAULT_SCHEDULES: DaySchedule[] = [
+  { day: 'Lunes', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Martes', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Miércoles', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Jueves', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Viernes', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Sábado', isOpen: true, openTime: '12:00', closeTime: '23:00' },
+  { day: 'Domingo', isOpen: false, openTime: '12:00', closeTime: '23:00' },
+];
+
 export default function RestaurantePage() {
   const { activePlaceId } = useRestaurant();
   const [formData, setFormData] = useState({
@@ -17,7 +34,7 @@ export default function RestaurantePage() {
     distrito: '',
     ubigeoCode: '',
     ubigeoId: '',
-    horarios: '',
+    horarios: DEFAULT_SCHEDULES,
     precio: '',
     foto: '',
     amenityIds: [] as string[]
@@ -30,8 +47,10 @@ export default function RestaurantePage() {
   const [dbAmenities, setDbAmenities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState<'PE' | 'ES'>('PE');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch Core Data
   useEffect(() => {
@@ -44,7 +63,7 @@ export default function RestaurantePage() {
       .then(data => setDbDepartments(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
 
-    fetch(`${API_BASE}/places/categories`, { headers })
+    fetch(`${API_BASE}/api/places/categories`, { headers })
       .then(res => res.json())
       .then(data => {
         const cats = Array.isArray(data) ? data : [];
@@ -53,7 +72,7 @@ export default function RestaurantePage() {
       })
       .catch(err => console.error(err));
 
-    fetch(`${API_BASE}/places/amenities`, { headers })
+    fetch(`${API_BASE}/api/places/amenities`, { headers })
       .then(res => res.json())
       .then(data => {
         const amenities = Array.isArray(data) && data.length > 0 ? data : [
@@ -88,6 +107,7 @@ export default function RestaurantePage() {
   useEffect(() => {
     if (!formData.departamento || country !== 'PE') return;
     setIsLoadingLocation(true);
+    setFormData(prev => ({ ...prev, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' }));
     fetch(`${API_BASE}/api/ubigeo/provinces?department=${formData.departamento}`)
       .then(res => res.json())
       .then(data => setDbProvinces(Array.isArray(data) ? data : []))
@@ -121,29 +141,82 @@ export default function RestaurantePage() {
     setIsLoading(true);
     businessApi.getProfile(activePlaceId)
       .then((profile) => {
+        let schedules = DEFAULT_SCHEDULES;
+        if (profile.openHoursText && profile.openHoursText.startsWith('[')) {
+          try {
+            schedules = JSON.parse(profile.openHoursText);
+          } catch (e) {
+            schedules = DEFAULT_SCHEDULES;
+          }
+        }
         setFormData(prev => ({
           ...prev,
           nombre: profile.name || '',
           direccion: profile.address || '',
           categoriaId: profile.categoryId || '',
-          ubigeoCode: profile.ubigeoCode || '',
-          horarios: profile.openHoursText || '',
+          departamento: profile.district?.department || '',
+          provincia: profile.district?.province || '',
+          distrito: profile.district?.district || '',
+          ubigeoCode: profile.district?.ubigeoCode || '',
+          ubigeoId: profile.district?.id || '',
+          horarios: schedules,
           precio: profile.priceMin ? String(profile.priceMin) : '',
           foto: profile.coverImageUrl || '',
           amenityIds: profile.amenityIds || []
         }));
+
+        if (profile.district?.department) {
+          setFormData(prev => ({ ...prev, departamento: profile.district.department }));
+          fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(profile.district.department)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+            .then(res => res.json())
+            .then(data => setDbProvinces(Array.isArray(data) ? data : []))
+            .catch(err => console.error(err));
+        }
+
+        if (profile.district?.department && profile.district?.province) {
+          const dept = profile.district.department;
+          const prov = profile.district.province;
+          fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(dept)}&province=${encodeURIComponent(prov)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+            .then(res => res.json())
+            .then(data => setDbDistricts(Array.isArray(data) ? data : []))
+            .catch(err => console.error(err));
+        }
       }).catch(err => {
         console.warn("Using mock data for profile demo");
         setFormData(prev => ({
           ...prev,
           nombre: "La Picantería del Sur",
           direccion: "Calle San Martín 456, Miraflores",
-          horarios: "Lunes a Sábado: 12:00 PM - 11:00 PM",
+          horarios: DEFAULT_SCHEDULES,
           precio: "S/. 45 - 90",
           foto: "/images/interior.png"
         }));
       }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const token = localStorage.getItem('token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API_BASE}/api/upload/image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Error al subir imagen');
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, foto: data.url }));
+    } catch (err) {
+      alert('No se pudo subir la imagen.');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!activePlaceId) return;
@@ -153,9 +226,9 @@ export default function RestaurantePage() {
         name: formData.nombre,
         address: formData.direccion,
         categoryId: formData.categoriaId || undefined,
-        ubigeoCode: formData.ubigeoCode || undefined,
+        districtId: formData.ubigeoId || undefined,
         amenityIds: formData.amenityIds,
-        openHoursText: formData.horarios,
+        openHoursText: JSON.stringify(formData.horarios),
         priceMin: formData.precio ? parseFloat(formData.precio.replace(/[^0-9.]/g, '')) : undefined,
         coverImageUrl: formData.foto
       });
@@ -195,64 +268,84 @@ export default function RestaurantePage() {
         <div className="lg:col-span-4 space-y-12">
           <div className="space-y-6">
             <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.3em] ml-2">Imagen de Portada</label>
-            <div className="aspect-[4/5] bg-white rounded-[3.5rem] overflow-hidden border-8 border-white shadow-2xl relative group cursor-pointer transition-all hover:scale-[1.02] duration-500 ring-1 ring-border">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
+            <div
+              onClick={() => !isUploadingImage && fileInputRef.current?.click()}
+              className="aspect-[4/5] bg-white rounded-[3.5rem] overflow-hidden border-8 border-white shadow-2xl relative group cursor-pointer transition-all hover:scale-[1.02] duration-500 ring-1 ring-border"
+            >
               <img
                 src={formData.foto || '/images/interior.png'}
                 alt="Preview"
                 className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-1000"
               />
-              <div className="absolute inset-0 bg-text/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
-                <span className="text-5xl mb-4">📸</span>
-                <span className="text-white font-black text-sm uppercase tracking-widest">Cambiar Imagen</span>
+              <div className={`absolute inset-0 transition-opacity flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm ${
+                isUploadingImage
+                  ? 'bg-text/70 opacity-100'
+                  : 'bg-text/60 opacity-0 group-hover:opacity-100'
+              }`}>
+                {isUploadingImage ? (
+                  <>
+                    <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4" />
+                    <span className="text-white font-black text-sm uppercase tracking-widest">Subiendo...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-5xl mb-4">📸</span>
+                    <span className="text-white font-black text-sm uppercase tracking-widest">Cambiar Imagen</span>
+                    <span className="text-white/70 text-xs mt-2 font-medium">PNG, JPG, WEBP · Máx 5MB</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-border space-y-5">
-             <h3 className="font-black text-text text-base flex justify-between items-center font-warike">
-                Servicios
-                <span className={`text-[9px] px-2.5 py-1 rounded-full font-black tracking-wider transition-all duration-300 ${
-                  formData.amenityIds.length > 0
-                    ? 'bg-orange-50 text-primary'
-                    : 'bg-red-50 text-red-500'
+            <h3 className="font-black text-text text-base flex justify-between items-center font-warike">
+              Servicios
+              <span className={`text-[9px] px-2.5 py-1 rounded-full font-black tracking-wider transition-all duration-300 ${formData.amenityIds.length > 0
+                ? 'bg-orange-50 text-primary'
+                : 'bg-red-50 text-red-500'
                 }`}>
-                  {formData.amenityIds.length} ACTIVOS
-                </span>
-             </h3>
-             <div className="grid grid-cols-2 gap-3">
-                {dbAmenities.map(amenity => (
-                  <button
-                    key={amenity.id}
-                    type="button"
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      amenityIds: prev.amenityIds.includes(amenity.id)
-                        ? prev.amenityIds.filter(s => s !== amenity.id)
-                        : [...prev.amenityIds, amenity.id]
-                    }))}
-                    className={`group p-4 rounded-[1.5rem] transition-all duration-300 border-2 flex flex-col items-center justify-center text-center space-y-2 min-h-[110px] ${
-                      formData.amenityIds.includes(amenity.id)
-                      ? 'bg-primary/5 border-primary shadow-lg shadow-primary/10 -translate-y-0.5'
-                      : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5'
+                {formData.amenityIds.length} ACTIVOS
+              </span>
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {dbAmenities.map(amenity => (
+                <button
+                  key={amenity.id}
+                  type="button"
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    amenityIds: prev.amenityIds.includes(amenity.id)
+                      ? prev.amenityIds.filter(s => s !== amenity.id)
+                      : [...prev.amenityIds, amenity.id]
+                  }))}
+                  className={`group p-4 rounded-[1.5rem] transition-all duration-300 border-2 flex flex-col items-center justify-center text-center space-y-2 min-h-[110px] ${formData.amenityIds.includes(amenity.id)
+                    ? 'bg-primary/5 border-primary shadow-lg shadow-primary/10 -translate-y-0.5'
+                    : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm hover:-translate-y-0.5'
                     }`}
-                  >
-                    <div className={`transition-all duration-300 ${
-                      formData.amenityIds.includes(amenity.id)
-                      ? 'scale-105 drop-shadow-sm'
-                      : 'opacity-70 group-hover:opacity-100 group-hover:scale-105'
+                >
+                  <div className={`transition-all duration-300 ${formData.amenityIds.includes(amenity.id)
+                    ? 'scale-105 drop-shadow-sm'
+                    : 'opacity-70 group-hover:opacity-100 group-hover:scale-105'
                     }`}>
-                      <AmenityIcon name={amenity.name} className="w-11 h-11" />
-                    </div>
-                    <p className={`font-black text-[10px] uppercase tracking-wider transition-all duration-300 leading-tight ${
-                      formData.amenityIds.includes(amenity.id)
-                      ? 'text-primary'
-                      : 'text-text-muted group-hover:text-text'
+                    <AmenityIcon name={amenity.name} className="w-11 h-11" />
+                  </div>
+                  <p className={`font-black text-[10px] uppercase tracking-wider transition-all duration-300 leading-tight ${formData.amenityIds.includes(amenity.id)
+                    ? 'text-primary'
+                    : 'text-text-muted group-hover:text-text'
                     }`}>
-                      {amenity.name}
-                    </p>
-                  </button>
-                ))}
-             </div>
+                    {amenity.name}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -270,7 +363,7 @@ export default function RestaurantePage() {
               <InputGroup
                 label="Nombre del Huarique"
                 value={formData.nombre}
-                onChange={(v) => setFormData({...formData, nombre: v})}
+                onChange={(v) => setFormData({ ...formData, nombre: v })}
                 placeholder="Ej. La Picantería del Sur"
               />
 
@@ -280,7 +373,7 @@ export default function RestaurantePage() {
                   <div className="relative">
                     <select
                       value={formData.categoriaId}
-                      onChange={(e) => setFormData({...formData, categoriaId: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, categoriaId: e.target.value })}
                       className="input-premium appearance-none cursor-pointer text-sm"
                     >
                       {dbCategories.map(cat => (
@@ -294,23 +387,17 @@ export default function RestaurantePage() {
                 <InputGroup
                   label="Precio Promedio Inmenso"
                   value={formData.precio}
-                  onChange={(v) => setFormData({...formData, precio: v})}
+                  onChange={(v) => setFormData({ ...formData, precio: v })}
                   placeholder="S/. 45 - 90"
                 />
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-6">
                 <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">Horarios de Atención</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">🕐</span>
-                  <input
-                    type="text"
-                    value={formData.horarios}
-                    onChange={(e) => setFormData({...formData, horarios: e.target.value})}
-                    className="input-premium !pl-14 text-sm"
-                    placeholder="Lunes a Sábado: 12:00 PM - 11:00 PM"
-                  />
-                </div>
+                <ScheduleEditor
+                  schedules={formData.horarios}
+                  onChange={(schedules) => setFormData({ ...formData, horarios: schedules })}
+                />
               </div>
             </div>
           </section>
@@ -327,7 +414,7 @@ export default function RestaurantePage() {
               <button
                 onClick={() => {
                   setCountry('PE');
-                  setFormData({...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setFormData({ ...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbProvinces([]);
                   setDbDistricts([]);
                 }}
@@ -338,7 +425,7 @@ export default function RestaurantePage() {
               <button
                 onClick={() => {
                   setCountry('ES');
-                  setFormData({...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setFormData({ ...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbProvinces([]);
                   setDbDistricts([]);
                 }}
@@ -353,7 +440,7 @@ export default function RestaurantePage() {
                 label={country === 'PE' ? "Departamento" : "C. Autónoma"}
                 value={formData.departamento}
                 onChange={(v) => {
-                  setFormData({...formData, departamento: v, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setFormData({ ...formData, departamento: v, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbProvinces([]);
                   setDbDistricts([]);
                 }}
@@ -364,7 +451,7 @@ export default function RestaurantePage() {
                 label="Provincia"
                 value={formData.provincia}
                 onChange={(v) => {
-                  setFormData({...formData, provincia: v, distrito: '', ubigeoCode: '', ubigeoId: ''});
+                  setFormData({ ...formData, provincia: v, distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbDistricts([]);
                 }}
                 options={country === 'PE' ? dbProvinces : ['Madrid', 'Barcelona', 'Sevilla', 'Valencia']}
@@ -373,8 +460,8 @@ export default function RestaurantePage() {
               <SelectGroup
                 label={country === 'PE' ? "Distrito" : "Municipio"}
                 value={formData.distrito}
-                onChange={(v) => setFormData({...formData, distrito: v})}
-                options={country === 'PE' ? dbDistricts.map(d => d.district) : ['Centro', 'Salamanca', 'Chamberí', 'Retiro']}
+                onChange={(v) => setFormData({ ...formData, distrito: v })}
+                options={country === 'PE' ? (Array.isArray(dbDistricts) ? dbDistricts.map(d => d?.district).filter(Boolean) : []) : ['Centro', 'Salamanca', 'Chamberí', 'Retiro']}
                 isLoading={isLoadingLocation}
               />
             </div>
@@ -401,7 +488,7 @@ export default function RestaurantePage() {
             <InputGroup
               label="Dirección Exacta"
               value={formData.direccion}
-              onChange={(v) => setFormData({...formData, direccion: v})}
+              onChange={(v) => setFormData({ ...formData, direccion: v })}
               placeholder="Av. Principal 123, Miraflores..."
               icon="📍"
             />
@@ -418,11 +505,10 @@ function InputGroup({ label, value, onChange, icon, placeholder }: { label: stri
   return (
     <div className="space-y-3">
       <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">{label}</label>
-      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${
-        isFocused || value
-          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-          : 'border-border bg-white hover:border-primary/30'
-      }`}>
+      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${isFocused || value
+        ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+        : 'border-border bg-white hover:border-primary/30'
+        }`}>
         {icon && <span className={`absolute left-5 top-1/2 -translate-y-1/2 text-xl transition-all duration-300 ${isFocused ? 'scale-110' : ''}`}>{icon}</span>}
         <input
           type="text"
@@ -452,11 +538,10 @@ function SelectGroup({ label, value, onChange, options, isLoading }: { label: st
   return (
     <div className="space-y-3">
       <label className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] ml-2">{label}</label>
-      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${
-        isFocused || value
-          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-          : 'border-border bg-white hover:border-primary/30'
-      }`}>
+      <div className={`relative transition-all duration-300 rounded-2xl border-2 ${isFocused || value
+        ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
+        : 'border-border bg-white hover:border-primary/30'
+        }`}>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -465,7 +550,7 @@ function SelectGroup({ label, value, onChange, options, isLoading }: { label: st
           disabled={isLoading}
           className="w-full bg-transparent appearance-none outline-none text-text font-bold py-4 px-5 cursor-pointer disabled:opacity-50 transition-all duration-300 rounded-xl"
         >
-          {!isLoading && options.length === 0 && <option value="">Seleccione...</option>}
+          <option value="">Seleccione...</option>
           {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
         <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted text-sm transition-transform duration-300">
@@ -478,7 +563,7 @@ function SelectGroup({ label, value, onChange, options, isLoading }: { label: st
 
 function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; className?: string }) {
   const normName = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  
+
   if (normName.includes('wifi')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -490,7 +575,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('cochera') || normName.includes('parking') || normName.includes('prive')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -501,7 +586,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('aire') || normName.includes('acondicionado') || normName.includes('frio') || normName.includes('clima')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -514,7 +599,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('mascota') || normName.includes('pet') || normName.includes('perro') || normName.includes('animal')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -524,7 +609,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
           <circle cx="43" cy="34" r="6" fill="#EA580C" />
           <circle cx="54" cy="36" r="6" fill="#EA580C" />
           <circle cx="61" cy="44" r="6" fill="#EA580C" />
-          
+
           <path d="M62 70C62 65 67 63 70 65C73 63 78 65 78 70C78 77 62 77 62 70Z" fill="#EA580C" />
           <circle cx="61" cy="60" r="4.5" fill="#EA580C" />
           <circle cx="68" cy="56" r="4.5" fill="#EA580C" />
@@ -534,7 +619,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('estacionamiento') || normName.includes('auto') || normName.includes('carro')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -552,7 +637,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('terraza') || normName.includes('sol') || normName.includes('aire libre') || normName.includes('exterior')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -566,7 +651,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('musica') || normName.includes('vivo') || normName.includes('show') || normName.includes('banda')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -579,7 +664,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
       </svg>
     );
   }
-  
+
   if (normName.includes('juego') || normName.includes('mesa') || normName.includes('dado') || normName.includes('carta')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -726,6 +811,77 @@ function MapSelector({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ScheduleEditor({ schedules, onChange }: { schedules: DaySchedule[], onChange: (schedules: DaySchedule[]) => void }) {
+  const handleToggle = (index: number) => {
+    const updated = [...schedules];
+    updated[index].isOpen = !updated[index].isOpen;
+    onChange(updated);
+  };
+
+  const handleTimeChange = (index: number, field: 'openTime' | 'closeTime', value: string) => {
+    const updated = [...schedules];
+    updated[index][field] = value;
+    onChange(updated);
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {schedules.map((schedule, idx) => (
+        <div
+          key={idx}
+          className="bg-white p-5 rounded-2xl border-2 border-border hover:border-primary/30 transition-all shadow-sm space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h4 className="font-black text-text text-sm">{schedule.day}</h4>
+            <button
+              type="button"
+              onClick={() => handleToggle(idx)}
+              className={`w-10 h-6 rounded-full transition-all ${
+                schedule.isOpen
+                  ? 'bg-primary shadow-sm shadow-primary/30'
+                  : 'bg-gray-300'
+              } relative`}
+            >
+              <div
+                className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  schedule.isOpen ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {schedule.isOpen ? (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase">Apertura</label>
+                <input
+                  type="time"
+                  value={schedule.openTime}
+                  onChange={(e) => handleTimeChange(idx, 'openTime', e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-text-muted uppercase">Cierre</label>
+                <input
+                  type="time"
+                  value={schedule.closeTime}
+                  onChange={(e) => handleTimeChange(idx, 'closeTime', e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center">
+              <p className="text-sm font-black text-text-muted">Cerrado</p>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
