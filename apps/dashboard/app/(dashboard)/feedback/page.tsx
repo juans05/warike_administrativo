@@ -79,49 +79,47 @@ export default function FeedbackPage() {
   const resolvedCount = complaints.filter(c => c.status !== 'pending').length;
 
   return (
-    <div className="space-y-10 pb-32 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-2 border-border pb-10">
-        <div className="space-y-2">
-          <h1 className="text-5xl font-black text-text tracking-tight font-warike">Buzón de Feedback</h1>
-          <p className="text-text-muted font-bold text-lg max-w-xl leading-snug">
-            Quejas interceptadas por el filtro inteligente y métricas de satisfacción.
-          </p>
+    <div className="space-y-6 pb-32 max-w-7xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-text tracking-tight mb-1">Feedback</h1>
+          <p className="text-sm text-gray-500">Reseñas y quejas de clientes</p>
         </div>
-        
+
         {/* Tab Selector */}
-        <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1 ring-1 ring-black/5">
+        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
               activeTab === 'reviews'
                 ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:bg-gray-200'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            ⭐ Reseñas ({reviews.length})
+            ⭐ {reviews.length}
           </button>
           <button
             onClick={() => setActiveTab('complaints')}
-            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
               activeTab === 'complaints'
                 ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:bg-gray-200'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            🛡️ Quejas ({pendingCount})
+            🛡️ {pendingCount}
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
               activeTab === 'analytics'
                 ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-500 hover:bg-gray-200'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            📊 Analíticas
+            📊
           </button>
         </div>
-      </header>
+      </div>
 
       {isLoading && (
         <div className="py-20 text-center">
@@ -134,36 +132,34 @@ export default function FeedbackPage() {
       {/* TAB: RESEÑAS POSITIVAS                          */}
       {/* ═══════════════════════════════════════════════ */}
       {!isLoading && activeTab === 'reviews' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {reviews.length === 0 ? (
-            <div className="bg-white p-16 rounded-[3rem] border border-border text-center space-y-4">
-              <div className="text-6xl">⭐</div>
-              <h3 className="text-2xl font-black text-text font-warike">Sin reseñas aún</h3>
-              <p className="text-text-muted font-bold">Cuando tus clientes dejen 4 o 5 estrellas, aparecerán aquí.</p>
+            <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center space-y-4">
+              <div className="text-5xl">⭐</div>
+              <div>
+                <h3 className="text-lg font-semibold text-text mb-1">Sin reseñas aún</h3>
+                <p className="text-sm text-gray-500">Cuando tus clientes dejen 4 o 5 estrellas, aparecerán aquí.</p>
+              </div>
             </div>
           ) : (
             reviews.map((review) => (
-              <div key={review.id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5 hover:shadow-lg transition-all">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-yellow-50 flex items-center justify-center text-2xl shrink-0">
-                      {review.rating === 5 ? '🤩' : '😊'}
-                    </div>
+              <div key={review.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{review.rating === 5 ? '⭐' : '🌟'}</div>
                     <div>
-                      <p className="font-black text-text">{review.customerName || 'Cliente Anónimo'}</p>
-                      <div className="flex gap-0.5 text-yellow-400 text-sm mt-0.5">
-                        {[1,2,3,4,5].map(s => <span key={s}>{s <= review.rating ? '★' : '☆'}</span>)}
+                      <p className="font-semibold text-text">{review.customerName || 'Cliente Anónimo'}</p>
+                      <div className="flex gap-0.5 mt-1">
+                        {[1,2,3,4,5].map(s => <span key={s} className="text-sm text-yellow-400">{s <= review.rating ? '★' : '☆'}</span>)}
                       </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-gray-400">
-                    {new Date(review.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    {new Date(review.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: '2-digit' })}
                   </span>
                 </div>
                 {review.comment && (
-                  <div className="bg-yellow-50 p-6 rounded-2xl border-l-4 border-yellow-300">
-                    <p className="text-sm font-bold text-gray-700 italic leading-relaxed">"{review.comment}"</p>
-                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed italic">"{review.comment}"</p>
                 )}
               </div>
             ))
@@ -176,97 +172,107 @@ export default function FeedbackPage() {
       {/* ═══════════════════════════════════════════════ */}
       {!isLoading && activeTab === 'complaints' && (
         <div className="space-y-8">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
-            <div className="bg-red-50 p-8 rounded-[2.5rem] border border-red-100 space-y-2">
-              <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Quejas Pendientes</p>
-              <p className="text-4xl font-black text-red-600">{pendingCount}</p>
-              <p className="text-xs font-bold text-red-400">Requieren tu atención</p>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Pendientes</p>
+                <p className="text-3xl font-bold text-red-600">{pendingCount}</p>
+              </div>
+              <p className="text-xs text-gray-500">requieren acción</p>
             </div>
-            <div className="bg-green-50 p-8 rounded-[2.5rem] border border-green-100 space-y-2">
-              <p className="text-[10px] font-black text-green-400 uppercase tracking-widest">Resueltas</p>
-              <p className="text-4xl font-black text-green-600">{resolvedCount}</p>
-              <p className="text-xs font-bold text-green-400">Clientes atendidos</p>
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Resueltas</p>
+                <p className="text-3xl font-bold text-green-600">{resolvedCount}</p>
+              </div>
+              <p className="text-xs text-gray-500">clientes atendidos</p>
             </div>
-            <div className="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-100 space-y-2">
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Desastres Evitados</p>
-              <p className="text-4xl font-black text-blue-600">{complaints.length}</p>
-              <p className="text-xs font-bold text-blue-400">Reseñas negativas que NO llegaron a Google</p>
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Evitadas</p>
+                <p className="text-3xl font-bold text-blue-600">{complaints.length}</p>
+              </div>
+              <p className="text-xs text-gray-500">reseñas negativas</p>
             </div>
           </div>
 
           {/* Complaints List */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {complaints.length === 0 ? (
-              <div className="bg-white p-16 rounded-[3rem] border border-border text-center space-y-4">
-                <div className="text-6xl">🎉</div>
-                <h3 className="text-2xl font-black text-text font-warike">¡Sin quejas!</h3>
-                <p className="text-text-muted font-bold">Tu filtro inteligente no ha interceptado ninguna queja todavía. ¡Excelente sazón!</p>
+              <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center space-y-4">
+                <div className="text-5xl">🎉</div>
+                <div>
+                  <h3 className="text-lg font-semibold text-text mb-1">¡Sin quejas!</h3>
+                  <p className="text-sm text-gray-500">Tu filtro no ha interceptado ninguna queja todavía.</p>
+                </div>
               </div>
             ) : (
               complaints.map(complaint => (
-                <div key={complaint.id} className={`bg-white p-8 rounded-[2.5rem] border-2 shadow-sm space-y-6 transition-all hover:shadow-lg ${
-                  complaint.status === 'pending' ? 'border-red-200' : 'border-green-200 opacity-70'
-                }`}>
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${
-                        complaint.rating <= 1 ? 'bg-red-100' : complaint.rating <= 2 ? 'bg-orange-100' : 'bg-yellow-100'
-                      }`}>
+                <div
+                  key={complaint.id}
+                  className={`p-6 rounded-xl border shadow-sm transition-all duration-300 ${
+                    complaint.status === 'pending'
+                      ? 'bg-white border-red-200 hover:shadow-md hover:border-red-300'
+                      : 'bg-white border-gray-200 opacity-80 hover:shadow-md'
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="text-3xl">
                         {complaint.rating <= 1 ? '😡' : complaint.rating <= 2 ? '😞' : '😐'}
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <span className="font-black text-text">{complaint.customerName || 'Cliente Anónimo'}</span>
-                          {complaint.status === 'pending' && (
-                            <span className="bg-red-100 text-red-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Pendiente</span>
-                          )}
-                          {complaint.status === 'resolved' && (
-                            <span className="bg-green-100 text-green-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Resuelta</span>
-                          )}
-                          {complaint.status === 'contacted' && (
-                            <span className="bg-blue-100 text-blue-600 text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest">Contactado</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-0.5 text-yellow-400 text-sm">
-                            {[1,2,3,4,5].map(s => <span key={s}>{s <= complaint.rating ? '★' : '☆'}</span>)}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-text">{complaint.customerName || 'Cliente Anónimo'}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map(s => <span key={s} className="text-sm text-yellow-400">{s <= complaint.rating ? '★' : '☆'}</span>)}
                           </div>
-                          <span className="text-[10px] font-bold text-gray-400">
-                            {new Date(complaint.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          <span className="text-xs text-gray-500">
+                            {new Date(complaint.createdAt).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: '2-digit' })}
                           </span>
                         </div>
                       </div>
                     </div>
+                    {complaint.status === 'pending' && (
+                      <span className="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full shrink-0 ml-2">Pendiente</span>
+                    )}
+                    {complaint.status === 'resolved' && (
+                      <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full shrink-0 ml-2">Resuelta</span>
+                    )}
+                    {complaint.status === 'contacted' && (
+                      <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full shrink-0 ml-2">Contactado</span>
+                    )}
                   </div>
 
                   {/* Comment */}
-                  <div className="bg-background p-6 rounded-2xl border-l-4 border-red-300">
-                    <p className="text-sm font-bold text-gray-700 italic leading-relaxed">"{complaint.comment || 'Sin comentario'}"</p>
-                  </div>
-
-                  {/* Contact info + Actions */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div className="flex items-center gap-4">
-                      {complaint.customerContact && (
-                        <a
-                          href={complaint.customerContact.includes('@') 
-                            ? `mailto:${complaint.customerContact}` 
-                            : `https://wa.me/${complaint.customerContact.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 bg-green-50 text-green-700 px-5 py-3 rounded-xl border border-green-200 font-black text-[10px] uppercase tracking-widest hover:bg-green-100 transition-colors"
-                        >
-                          {complaint.customerContact.includes('@') ? '📧' : '💬'} Contactar
-                        </a>
-                      )}
+                  {complaint.comment && (
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-150">
+                      <p className="text-sm text-gray-700 leading-relaxed">"{complaint.comment}"</p>
                     </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    {complaint.customerContact && (
+                      <a
+                        href={complaint.customerContact.includes('@')
+                          ? `mailto:${complaint.customerContact}`
+                          : `https://wa.me/${complaint.customerContact.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-xs hover:bg-green-700 transition-colors"
+                      >
+                        {complaint.customerContact.includes('@') ? '📧' : '💬'} Contactar
+                      </a>
+                    )}
                     {complaint.status === 'pending' && (
                       <button
                         onClick={() => handleResolve(complaint.id)}
-                        className="bg-text text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-colors"
+                        className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2 rounded-lg font-semibold text-xs hover:bg-slate-800 transition-colors"
                       >
-                        ✓ Marcar como Resuelta
+                        ✓ Resolver
                       </button>
                     )}
                   </div>

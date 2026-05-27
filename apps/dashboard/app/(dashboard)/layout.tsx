@@ -56,57 +56,85 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
   return (
     <div className="flex min-h-screen bg-background texture-paper">
-      <aside className="w-80 bg-white/70 backdrop-blur-2xl border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-2xl shadow-gray-200/50 z-10">
-        <div className="p-10">
-          <div className="flex flex-col gap-1 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-            <h1 className="text-3xl font-black text-primary tracking-tighter font-warike">WARIKE</h1>
-            <p className="text-[10px] uppercase tracking-[0.3em] font-black text-text-muted">Global Reputación</p>
+      <aside className="w-80 bg-white border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-sm z-10">
+        <div className="p-8">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-primary tracking-tight">WARIKE</h1>
+            <p className="text-xs uppercase tracking-widest font-semibold text-gray-400">Global Reputación</p>
           </div>
           {user?.role === 'business' && !noPlaces && (
-            <div className="mt-10"><RestaurantSelector /></div>
+            <div className="mt-8"><RestaurantSelector /></div>
           )}
         </div>
 
-        <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 overflow-y-auto">
           {user?.role === 'business' && !noPlaces && (
             <>
-              <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
-              <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
-              <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NUEVO" active={pathname === '/fidelizacion'} />
-              <SidebarItem href="/clientes" icon="👥" label="Clientes CRM" active={pathname === '/clientes'} />
-              <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
-              <SidebarItem href="/carta" icon="🍽️" label="La Carta Digital" active={pathname === '/carta'} />
-              <SidebarItem href="/feedback" icon="💬" label="Buzón Privado" active={pathname === '/feedback'} />
-              <SidebarItem href="/suscripcion" icon="💳" label="Mi Suscripción" active={pathname === '/suscripcion'} />
+              {/* PRINCIPALES */}
+              <div className="pt-2">
+                <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
+              </div>
+
+              {/* REPUTACIÓN & MARKETING */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <SidebarLabel>Reputación & Marketing</SidebarLabel>
+                <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
+                <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
+                <SidebarItem href="/carta" icon="🍽️" label="Carta Digital" active={pathname === '/carta'} />
+                <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />
+              </div>
+
+              {/* CLIENTES & COMUNICACIÓN */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <SidebarLabel>Clientes & Comunicación</SidebarLabel>
+                <SidebarItem href="/clientes" icon="👥" label="Clientes CRM" active={pathname === '/clientes'} />
+                <SidebarItem href="/feedback" icon="💭" label="Buzón Privado" active={pathname === '/feedback'} />
+              </div>
+
+              {/* WHATSAPP & IA */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <SidebarLabel>WhatsApp & IA</SidebarLabel>
+                <SidebarItem href="/whatsapp" icon="📱" label="Config WhatsApp" badge="NEW" active={pathname === '/whatsapp'} />
+                <SidebarItem href="/chat" icon="💬" label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
+                <SidebarItem href="/broadcasts" icon="📢" label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
+                <SidebarItem href="/ia" icon="🧠" label="Base de IA" badge="NEW" active={pathname === '/ia'} />
+              </div>
+
+              {/* CUENTA */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <SidebarLabel>Cuenta</SidebarLabel>
+                <SidebarItem href="/suscripcion" icon="💳" label="Suscripción" active={pathname === '/suscripcion'} />
+              </div>
             </>
           )}
+
           {user?.role === 'admin' && (
             <>
-              <div className="pt-8 pb-4 px-6">
-                <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Platform Admin</p>
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <SidebarLabel>Administración</SidebarLabel>
+                <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
+                <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
+                <SidebarItem href="/suscripciones" icon="💳" label="Suscripciones" active={pathname === '/suscripciones'} />
               </div>
-              <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
-              <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
-              <SidebarItem href="/suscripciones" icon="💳" label="Suscripciones" active={pathname === '/suscripciones'} />
             </>
           )}
         </nav>
 
-        <div className="p-8 border-t border-border flex flex-col gap-6">
-          <div className="flex items-center gap-4 hover:-translate-y-0.5 transition-transform duration-300 cursor-pointer group">
-            <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/30 border-2 border-white ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
+        <div className="p-6 border-t border-gray-200 flex flex-col gap-4">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
               {user?.fullName?.charAt(0) || 'A'}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-black text-text truncate group-hover:text-primary transition-colors">{user?.fullName || 'Administrador'}</p>
-              <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{user?.role || 'Pro Partner'}</p>
+            <div className="overflow-hidden min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'Administrador'}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-medium">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-border text-xs font-black text-text-muted hover:text-primary hover:border-primary transition-all active:scale-95 bg-white shadow-sm hover:shadow-md duration-300"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 duration-200"
           >
-            <span className="text-lg">🚪</span> CERRAR SESIÓN
+            <span className="text-sm">🚪</span> Cerrar Sesión
           </button>
         </div>
       </aside>
@@ -119,11 +147,10 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
         {user?.role === 'business' && !noPlaces && (
           <>
             <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
-            <MobileNavItem href="/reputacion" icon="⭐" label="Rep" active={pathname === '/reputacion'} />
-            <MobileNavItem href="/fidelizacion" icon="🎁" label="Fideliz" badge="NEW" active={pathname === '/fidelizacion'} />
-            <MobileNavItem href="/clientes" icon="👥" label="CRM" active={pathname === '/clientes'} />
-            <MobileNavItem href="/carta" icon="🍽️" label="Carta" active={pathname === '/carta'} />
-            <MobileNavItem href="/feedback" icon="💬" label="Privado" active={pathname === '/feedback'} />
+            <MobileNavItem href="/chat" icon="💬" label="Chat" badge="NEW" active={pathname === '/chat'} />
+            <MobileNavItem href="/broadcasts" icon="📢" label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
+            <MobileNavItem href="/ia" icon="🧠" label="IA" badge="NEW" active={pathname === '/ia'} />
+            <MobileNavItem href="/whatsapp" icon="📱" label="WA" badge="NEW" active={pathname === '/whatsapp'} />
           </>
         )}
         {user?.role === 'admin' && (
@@ -174,15 +201,29 @@ function NoPlacesScreen({ userName, onComplete }: { userName?: string; onComplet
 }
 
 
+const SidebarLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-4 py-3 mb-2">
+    {children}
+  </p>
+);
+
 function SidebarItem({ href, icon, label, active, badge }: { href: string, icon: string, label: string, active?: boolean, badge?: string }) {
   return (
-    <Link 
-      href={href} 
-      className={`sidebar-item ${active ? 'active' : ''}`}
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-all duration-200 group ${
+        active
+          ? 'bg-primary/10 text-primary font-semibold'
+          : 'text-gray-700 hover:bg-gray-50 font-medium'
+      }`}
     >
-      <span className="text-xl">{icon}</span>
-      <span className="flex-1">{label}</span>
-      {badge && <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">{badge}</span>}
+      <span className="text-base flex-shrink-0">{icon}</span>
+      <span className="flex-1 text-sm truncate">{label}</span>
+      {badge && (
+        <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-md flex-shrink-0 group-hover:bg-gray-200 transition-colors">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

@@ -39,15 +39,16 @@ h1, h2, h3, .font-warike {
 }
 
 .btn-primary {
-  @apply bg-primary text-white py-4 px-8 rounded-2xl font-bold transition-all hover:bg-primary-light hover:shadow-lg hover:-translate-y-0.5 active:scale-95 duration-200;
+  @apply bg-primary text-white py-4 px-8 rounded-2xl font-bold transition-all hover:bg-primary-light hover:shadow-lg active:scale-95 duration-150;
 }
 
 .sidebar-item {
-  @apply flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 font-bold text-text-muted hover:bg-gray-50 hover:text-primary hover:-translate-y-0.5;
+  @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 font-medium text-gray-700 hover:bg-gray-50 hover:text-primary;
 }
 
 .sidebar-item.active {
-  @apply bg-primary text-white shadow-lg;
+  @apply text-primary font-semibold;
+  background-color: rgba(200, 75, 49, 0.1);
 }
 
 .input-premium {

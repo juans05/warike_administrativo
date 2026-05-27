@@ -26,9 +26,12 @@ export default function CartaPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
+  const [categoryName, setCategoryName] = useState('');
   const [modalData, setModalData] = useState({ name: '', description: '', price: '', imageUrl: '', categoryId: '' });
-  
+
   const [menuType, setMenuType] = useState<'digital' | 'photo'>('digital');
   const [menuPhoto, setMenuPhoto] = useState('');
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
@@ -74,10 +77,10 @@ export default function CartaPage() {
   const openModal = (item: MenuItem | null = null, catId: string = '') => {
     if (item) {
       setEditingItem(item);
-      setModalData({ 
-        name: item.name, 
-        description: item.description || '', 
-        price: String(item.price), 
+      setModalData({
+        name: item.name,
+        description: item.description || '',
+        price: String(item.price),
         imageUrl: item.imageUrl || '',
         categoryId: item.categoryId
       });
@@ -86,6 +89,34 @@ export default function CartaPage() {
       setModalData({ name: '', description: '', price: '', imageUrl: '', categoryId: catId || (categories[0]?.id || '') });
     }
     setShowModal(true);
+  };
+
+  const openCategoryModal = (category: MenuCategory | null = null) => {
+    if (category) {
+      setEditingCategory(category);
+      setCategoryName(category.name);
+    } else {
+      setEditingCategory(null);
+      setCategoryName('');
+    }
+    setShowCategoryModal(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!activePlaceId || !categoryName.trim()) return;
+    try {
+      if (editingCategory) {
+        // Editar categoría (si la API lo soporta)
+        await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, order: editingCategory.order });
+      } else {
+        // Crear categoría
+        await businessApi.createCategory(activePlaceId, { name: categoryName, order: categories.length });
+      }
+      setShowCategoryModal(false);
+      loadMenu();
+    } catch (err) {
+      alert('Error al guardar la categoría');
+    }
   };
 
   const handleSave = async () => {
@@ -202,15 +233,9 @@ export default function CartaPage() {
           {categories.length === 0 ? (
             <div className="bg-white border-2 border-dashed border-gray-100 rounded-[3rem] p-20 text-center">
               <p className="text-gray-400 font-bold mb-4">No tienes categorías en tu menú digital</p>
-              <button 
-                onClick={async () => {
-                  const name = prompt('Nombre de la categoría:');
-                  if (name && activePlaceId) {
-                    await businessApi.createCategory(activePlaceId, { name, order: 0 });
-                    loadMenu();
-                  }
-                }}
-                className="text-[#F26122] font-black underline"
+              <button
+                onClick={() => openCategoryModal()}
+                className="text-[#F26122] font-black underline hover:text-orange-600 transition-colors"
               >
                 Crear mi primera categoría
               </button>
@@ -220,10 +245,19 @@ export default function CartaPage() {
               {categories.map((category) => (
                 <section key={category.id} className="space-y-8">
                   <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                    <h2 className="text-2xl font-black text-[#1A1A1A] uppercase tracking-tight">{category.name}</h2>
-                    <button 
+                    <div className="flex items-center gap-4">
+                      <h2 className="text-2xl font-black text-[#1A1A1A] uppercase tracking-tight">{category.name}</h2>
+                      <button
+                        onClick={() => openCategoryModal(category)}
+                        className="text-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                        title="Editar categoría"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                    <button
                       onClick={() => openModal(null, category.id)}
-                      className="text-xs font-bold text-[#F26122] bg-orange-50 px-4 py-2 rounded-xl"
+                      className="text-xs font-bold text-[#F26122] bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition-colors"
                     >
                       + Agregar a {category.name}
                     </button>
@@ -264,23 +298,23 @@ export default function CartaPage() {
             <div className="p-10 space-y-8">
               <h3 className="text-3xl font-black text-[#1A1A1A] tracking-tighter">{editingItem ? 'EDITAR PLATO' : 'NUEVO PLATO'}</h3>
               <div className="space-y-4">
-                <input 
+                <input
                   type="text" placeholder="Nombre del plato" value={modalData.name}
                   onChange={(e) => setModalData({...modalData, name: e.target.value})}
                   className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
                 />
-                <textarea 
+                <textarea
                   placeholder="Descripción" value={modalData.description}
                   onChange={(e) => setModalData({...modalData, description: e.target.value})}
                   className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm min-h-[100px]"
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <input 
+                  <input
                     type="number" placeholder="Precio (S/.)" value={modalData.price}
                     onChange={(e) => setModalData({...modalData, price: e.target.value})}
                     className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
                   />
-                   <select 
+                  <select
                     value={modalData.categoryId}
                     onChange={(e) => setModalData({...modalData, categoryId: e.target.value})}
                     className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
@@ -288,7 +322,7 @@ export default function CartaPage() {
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-                <input 
+                <input
                   type="text" placeholder="URL de la imagen" value={modalData.imageUrl}
                   onChange={(e) => setModalData({...modalData, imageUrl: e.target.value})}
                   className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
@@ -297,6 +331,51 @@ export default function CartaPage() {
               <div className="flex gap-4">
                 <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-black">CANCELAR</button>
                 <button onClick={handleSave} className="flex-[2] bg-[#F26122] text-white py-4 rounded-2xl font-black">GUARDAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-[#1A1A1A]/60 backdrop-blur-md" onClick={() => setShowCategoryModal(false)}></div>
+          <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative overflow-hidden">
+            <div className="p-10 space-y-8">
+              <div>
+                <h3 className="text-3xl font-black text-[#1A1A1A] tracking-tighter">
+                  {editingCategory ? 'EDITAR CATEGORÍA' : 'NUEVA CATEGORÍA'}
+                </h3>
+                <p className="text-gray-400 text-sm font-medium mt-2">
+                  {editingCategory ? 'Modifica el nombre de tu categoría' : 'Crea una nueva sección para tu menú'}
+                </p>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Nombre de la categoría"
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveCategory()}
+                autoFocus
+                className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm focus:ring-4 focus:ring-orange-100"
+              />
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowCategoryModal(false)}
+                  className="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-gray-700 hover:bg-gray-200 transition-colors"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  onClick={handleSaveCategory}
+                  disabled={!categoryName.trim()}
+                  className="flex-1 bg-[#F26122] text-white py-4 rounded-2xl font-black hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editingCategory ? 'ACTUALIZAR' : 'CREAR'}
+                </button>
               </div>
             </div>
           </div>

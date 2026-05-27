@@ -159,6 +159,72 @@ export const businessApi = {
     fetchWithAuth(`/business/places/${placeId}/devices/${deviceId}/sync`, {
       method: 'PATCH',
     }),
+
+  // WhatsApp Configuration
+  getWhatsappNumbers: (placeId: string) =>
+    fetchWithAuth(`/business/whatsapp-numbers/${placeId}`),
+  createWhatsappNumber: (data: any) =>
+    fetchWithAuth('/business/whatsapp-numbers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteWhatsappNumber: (numberId: string) =>
+    fetchWithAuth(`/business/whatsapp-numbers/${numberId}`, {
+      method: 'DELETE',
+    }),
+
+  // Knowledge Base / AI
+  getKnowledgeBases: (placeId: string) =>
+    fetchWithAuth(`/business/knowledge-bases/${placeId}`),
+  uploadKnowledgeBase: (placeId: string, file: File, fileName: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileName', fileName);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return fetch(`${API_BASE_URL}/api/business/knowledge-bases/${placeId}/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }).then(res => {
+      if (!res.ok) throw new Error('Error uploading knowledge base');
+      return res.json();
+    });
+  },
+  deleteKnowledgeBase: (kbId: string) =>
+    fetchWithAuth(`/business/knowledge-bases/${kbId}`, {
+      method: 'DELETE',
+    }),
+
+  // Conversations & Messages
+  getConversations: (placeId: string, page: number = 1) =>
+    fetchWithAuth(`/business/conversations/${placeId}?page=${page}&limit=20`),
+  getConversationMessages: (conversationId: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/messages?limit=100`),
+  setConversationMode: (conversationId: string, mode: 'bot' | 'human') =>
+    fetchWithAuth(`/business/conversations/${conversationId}/mode`, {
+      method: 'PATCH',
+      body: JSON.stringify({ mode }),
+    }),
+  sendManualMessage: (conversationId: string, text: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  // Broadcasts
+  getBroadcasts: (placeId: string) =>
+    fetchWithAuth(`/business/broadcasts/place/${placeId}`),
+  createBroadcast: (data: any) =>
+    fetchWithAuth('/business/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  sendBroadcast: (broadcastId: string) =>
+    fetchWithAuth(`/business/broadcasts/${broadcastId}/send`, {
+      method: 'POST',
+    }),
 };
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)
