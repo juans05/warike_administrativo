@@ -656,20 +656,147 @@ function DeviceCard({
         <head>
           <title>Imprimir QR - ${device.name}</title>
           <style>
-            body { margin: 0; padding: 20px; text-align: center; font-family: Arial, sans-serif; }
-            .qr-container { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-            img { border: 2px solid #000; padding: 10px; background: white; }
-            h2 { margin: 0; font-size: 24px; }
-            p { margin: 5px 0; color: #666; }
-            @media print { body { padding: 10px; } }
+            body { 
+              margin: 0; 
+              padding: 0; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+              background-color: #f9fafb;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+            }
+            .card-wrapper {
+              background-color: #ffffff;
+              width: 420px;
+              border: 3px solid #111827;
+              border-radius: 32px;
+              padding: 35px;
+              box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+              text-align: center;
+              position: relative;
+              overflow: hidden;
+            }
+            .card-header-accent {
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 12px;
+              background: linear-gradient(90deg, #ff4d4d, #ff9966);
+            }
+            .badge {
+              display: inline-block;
+              background: linear-gradient(135deg, #ff4d4d, #ff9966);
+              color: #ffffff;
+              font-size: 10px;
+              font-weight: 800;
+              text-transform: uppercase;
+              padding: 6px 16px;
+              border-radius: 50px;
+              letter-spacing: 1.5px;
+              margin-bottom: 20px;
+            }
+            h2 { 
+              margin: 0 0 8px 0; 
+              font-size: 26px; 
+              font-weight: 900; 
+              color: #111827;
+              letter-spacing: -0.5px;
+            }
+            .zone-label {
+              font-size: 12px;
+              font-weight: 700;
+              color: #6b7280;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin-bottom: 25px;
+            }
+            .qr-frame {
+              display: inline-block;
+              padding: 16px;
+              background-color: #ffffff;
+              border: 2px solid #e5e7eb;
+              border-radius: 24px;
+              box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+              margin-bottom: 25px;
+            }
+            .qr-frame img { 
+              display: block;
+              border: none;
+            }
+            .instructions { 
+              font-size: 13px; 
+              color: #374151; 
+              line-height: 1.6;
+              margin: 0 0 25px 0;
+              padding: 0 10px;
+              font-weight: 500;
+            }
+            .steps {
+              display: flex;
+              justify-content: space-between;
+              background-color: #f3f4f6;
+              border-radius: 16px;
+              padding: 12px;
+              margin-bottom: 30px;
+            }
+            .step-item {
+              flex: 1;
+              font-size: 10px;
+              font-weight: 700;
+              color: #4b5563;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .step-item span {
+              display: block;
+              font-size: 14px;
+              margin-bottom: 4px;
+            }
+            .footer-brand { 
+              font-size: 10px; 
+              font-weight: 800; 
+              color: #9ca3af; 
+              text-transform: uppercase;
+              letter-spacing: 1.5px;
+            }
+            @media print { 
+              body { background-color: #ffffff; }
+              .card-wrapper { 
+                border: 3px solid #111827; 
+                box-shadow: none; 
+                margin: 0 auto;
+                page-break-inside: avoid;
+              } 
+            }
           </style>
         </head>
         <body>
-          <div class="qr-container">
-            <h2>${device.name}</h2>
-            <p>${device.deviceType} - ${device.action}</p>
-            <img src="${qrImage}" alt="QR Code" width="300" height="300" />
-            <p style="font-size: 12px; color: #999;">Escanea este QR para dejar feedback</p>
+          <div class="card-wrapper">
+            <div class="card-header-accent"></div>
+            
+            <div class="badge">¿Nos dejas tu opinión?</div>
+            <h2>¡Tu experiencia cuenta!</h2>
+            <div class="zone-label">Zona: ${device.name}</div>
+            
+            <div class="qr-frame">
+              <img src="${qrImage}" alt="QR Code" width="240" height="240" />
+            </div>
+            
+            <p class="instructions">
+              Escanea el código QR con la cámara de tu celular para ver nuestra carta digital, dejarnos una sugerencia o valorarnos directamente. ¡Nos ayuda un montón!
+            </p>
+            
+            <div class="steps">
+              <div class="step-item"><span>📷</span>1. Abre Cámara</div>
+              <div style="width: 1px; background-color: #d1d5db; margin: 0 8px;"></div>
+              <div class="step-item"><span>🔍</span>2. Escanea QR</div>
+              <div style="width: 1px; background-color: #d1d5db; margin: 0 8px;"></div>
+              <div class="step-item"><span>⭐</span>3. Valóranos</div>
+            </div>
+            
+            <div class="footer-brand">Powered by Wuarike</div>
           </div>
           <script>
             window.print();

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
+import { maskPhone } from '../../../lib/mask';
 
 const LEVEL_COLORS: Record<string, string> = {
   BRONCE: 'bg-amber-100 text-amber-700',
@@ -80,11 +81,11 @@ export default function ClientesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-xl font-black text-primary">
-                      {(client.customerName || client.customerPhone)[0]}
+                      {(client.customerName || maskPhone(client.customerPhone))[0]}
                     </div>
                     <div>
-                      <p className="font-black text-text">{client.customerName || `+${client.customerPhone}`}</p>
-                      <p className="text-xs font-bold text-text-muted">{client.customerPhone}</p>
+                      <p className="font-black text-text">{client.customerName || maskPhone(client.customerPhone)}</p>
+                      <p className="text-xs font-bold text-text-muted">{maskPhone(client.customerPhone)}</p>
                     </div>
                   </div>
                   <div className="text-right space-y-1">
@@ -114,11 +115,11 @@ export default function ClientesPage() {
             <div className="bg-white p-8 rounded-[2.5rem] border border-border shadow-sm space-y-6 sticky top-6">
               <div className="text-center space-y-3">
                 <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-2xl font-black text-primary mx-auto">
-                  {(selected.customerName || selected.customerPhone)[0]}
+                  {(selected.customerName || maskPhone(selected.customerPhone))[0]}
                 </div>
                 <div>
                   <p className="font-black text-text">{selected.customerName || 'Sin nombre'}</p>
-                  <p className="text-xs font-bold text-text-muted">{selected.customerPhone}</p>
+                  <p className="text-xs font-bold text-text-muted">{maskPhone(selected.customerPhone)}</p>
                 </div>
                 <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${LEVEL_COLORS[selected.level]}`}>
                   {LEVEL_EMOJI[selected.level]} {selected.level}

@@ -15,6 +15,7 @@ export default function PublicScanPage() {
   const [feedback, setFeedback] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerContact, setCustomerContact] = useState('');
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [googleLink, setGoogleLink] = useState<string | null>(null);
 
@@ -51,6 +52,7 @@ export default function PublicScanPage() {
         comment: feedback,
         customerName: customerName || undefined,
         customerContact: customerContact || undefined,
+        marketingConsent,
       });
     } catch (err) {
       console.error('Error submitting feedback:', err);
@@ -150,6 +152,18 @@ export default function PublicScanPage() {
                   <input type="text" value={customerContact} onChange={(e) => setCustomerContact(e.target.value)} placeholder="WhatsApp o Correo Electrónico" className="input-premium py-4 text-xs w-full" />
                 </div>
               )}
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={marketingConsent}
+                  onChange={(e) => setMarketingConsent(e.target.checked)}
+                  className="mt-0.5 w-5 h-5 rounded-lg border-2 border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)] accent-[var(--primary)]"
+                />
+                <span className="text-[11px] font-bold text-[var(--text-muted)] leading-relaxed">
+                  Autorizo a {profile.name} y Wuarike a enviarme ofertas y a personalizar anuncios en redes sociales.
+                </span>
+              </label>
 
               <button onClick={handleRating} disabled={isSending} className="btn-primary w-full text-sm uppercase tracking-widest py-6 shadow-xl shadow-[var(--primary)]/20 disabled:opacity-50">
                 {isSending ? 'Enviando...' : rating >= 4 ? 'Publicar Reseña en Google Maps' : 'Enviar Reseña Privada al Administrador'}

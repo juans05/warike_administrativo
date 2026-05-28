@@ -213,7 +213,7 @@ export const businessApi = {
       body: JSON.stringify({ text }),
     }),
 
-  // Broadcasts
+  // Broadcasts (WhatsApp)
   getBroadcasts: (placeId: string) =>
     fetchWithAuth(`/business/broadcasts/place/${placeId}`),
   createBroadcast: (data: any) =>
@@ -223,6 +223,19 @@ export const businessApi = {
     }),
   sendBroadcast: (broadcastId: string) =>
     fetchWithAuth(`/business/broadcasts/${broadcastId}/send`, {
+      method: 'POST',
+    }),
+
+  // Email Campaigns
+  getEmailCampaigns: (placeId: string) =>
+    fetchWithAuth(`/business/email-campaigns/place/${placeId}`),
+  createEmailCampaign: (data: any) =>
+    fetchWithAuth('/business/email-campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  sendEmailCampaign: (campaignId: string) =>
+    fetchWithAuth(`/business/email-campaigns/${campaignId}/send`, {
       method: 'POST',
     }),
 };
@@ -256,6 +269,7 @@ export const publicApi = {
     customerName?: string;
     customerContact?: string;
     deviceId?: string;
+    marketingConsent?: boolean;
   }) => fetchPublic('/public/feedback', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -320,4 +334,28 @@ export const ubigeoApi = {
   getProvinces: (department: string) => fetchPublic(`/ubigeo/provinces?department=${department}`),
   getDistricts: (department: string, province: string) => fetchPublic(`/ubigeo/districts?department=${department}&province=${province}`),
 };
+
+// Meta Ads API Integration
+export const metaAdsApi = {
+  getStatus: (placeId: string) => fetchWithAuth(`/business/meta-ads/place/${placeId}/status`),
+  connect: (placeId: string, data: { accessToken: string; adAccountId: string }) =>
+    fetchWithAuth(`/business/meta-ads/place/${placeId}/connect`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  disconnect: (placeId: string) =>
+    fetchWithAuth(`/business/meta-ads/place/${placeId}/disconnect`, {
+      method: 'POST',
+    }),
+  getAdAccounts: (accessToken: string) =>
+    fetchWithAuth('/business/meta-ads/accounts', {
+      method: 'POST',
+      body: JSON.stringify({ accessToken }),
+    }),
+  syncAudience: (placeId: string) =>
+    fetchWithAuth(`/business/meta-ads/place/${placeId}/sync`, {
+      method: 'POST',
+    }),
+};
+
 

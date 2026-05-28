@@ -82,6 +82,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                 <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
                 <SidebarItem href="/carta" icon="🍽️" label="Carta Digital" active={pathname === '/carta'} />
                 <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />
+                <SidebarItem href="/meta-ads" icon="👥" label="Facebook/Meta Ads" badge="NEW" active={pathname === '/meta-ads'} />
               </div>
 
               {/* CLIENTES & COMUNICACIÓN */}
