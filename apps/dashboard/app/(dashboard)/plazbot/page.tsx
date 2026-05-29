@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { plazbotApi } from '../../../lib/api-client';
+import { useRestaurant } from '../../../context/RestaurantContext';
 
 export default function PlazbotSetupPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export default function PlazbotSetupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+  const { activePlaceId } = useRestaurant();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -40,7 +42,7 @@ export default function PlazbotSetupPage() {
 
     try {
       log('📍 Enviando configuración...');
-      const data = await plazbotApi.connect(formData);
+      const data = await plazbotApi.connect({ ...formData, placeId: activePlaceId ?? undefined });
       log('✅ Configuración guardada');
       setSuccess('✅ Plazbot conectado exitosamente');
       setFormData({

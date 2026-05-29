@@ -94,7 +94,6 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
               {/* WHATSAPP & IA */}
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <SidebarLabel>WhatsApp & IA</SidebarLabel>
-                <SidebarItem href="/whatsapp" icon="📱" label="Config WhatsApp" badge="NEW" active={pathname === '/whatsapp'} />
                 <SidebarItem href="/plazbot" icon="🤖" label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
                 <SidebarItem href="/chat" icon="💬" label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
                 <SidebarItem href="/broadcasts" icon="📢" label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
@@ -151,7 +150,6 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             <MobileNavItem href="/chat" icon="💬" label="Chat" badge="NEW" active={pathname === '/chat'} />
             <MobileNavItem href="/broadcasts" icon="📢" label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
             <MobileNavItem href="/ia" icon="🧠" label="IA" badge="NEW" active={pathname === '/ia'} />
-            <MobileNavItem href="/whatsapp" icon="📱" label="WA" badge="NEW" active={pathname === '/whatsapp'} />
           </>
         )}
         {user?.role === 'admin' && (

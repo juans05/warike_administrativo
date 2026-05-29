@@ -62,8 +62,7 @@ export default function WhatsAppConfigPage() {
     return (
       <div className="max-w-5xl space-y-10 pb-32">
         <SkeletonHeader />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <SkeletonCard className="lg:col-span-2 h-80" />
+        <div className="grid grid-cols-1 gap-8">
           <SkeletonCard className="h-80" />
         </div>
         <div className="space-y-2">
@@ -81,9 +80,9 @@ export default function WhatsAppConfigPage() {
         <p className="text-text-muted font-bold text-lg">Gestiona tus números de WhatsApp Business — {numbers.length} números registrados.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* Form */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
+        <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
           <h2 className="font-black text-text">Registrar Número</h2>
 
           <div>
@@ -148,34 +147,6 @@ export default function WhatsAppConfigPage() {
           </button>
         </div>
 
-        {/* Help */}
-        <div className="lg:col-span-1 bg-blue-50 border border-blue-200 p-6 rounded-[2.5rem] h-fit space-y-4">
-          <h3 className="font-black text-blue-700">📖 Cómo obtener credenciales</h3>
-          <div className="space-y-3 text-sm text-blue-700">
-            <div>
-              <p className="font-bold mb-1">1. Phone Number ID</p>
-              <p className="text-xs">En Meta Developer Portal → Apps → Tu App → WhatsApp → Configuration</p>
-            </div>
-            <div>
-              <p className="font-bold mb-1">2. API Token</p>
-              <p className="text-xs">En Meta Developer Portal → Apps → Tu App → Settings → System User Tokens</p>
-            </div>
-            <div>
-              <p className="font-bold mb-1">3. Webhook URL</p>
-              <p className="text-xs text-blue-600 font-mono bg-white px-2 py-1 rounded">
-                https://tu-dominio.com/business/webhooks/whatsapp
-              </p>
-            </div>
-          </div>
-          <a
-            href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block text-xs font-bold text-blue-700 hover:underline mt-2"
-          >
-            Documentación oficial →
-          </a>
-        </div>
       </div>
 
       {/* List */}
