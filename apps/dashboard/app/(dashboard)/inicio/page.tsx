@@ -714,7 +714,12 @@ function MapSelector({
     if (!mapRef.current || map) return;
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || 'AIzaSyAkA-6XcMbhvEALdP-KFSv36CwVTk-sAKI'}&v=3.51`;
+    const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    if (!mapsKey) {
+        console.error('NEXT_PUBLIC_GOOGLE_MAPS_KEY is not configured');
+        return;
+    }
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&v=3.51`;
     script.async = true;
     script.defer = true;
 
