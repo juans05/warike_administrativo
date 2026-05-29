@@ -358,4 +358,13 @@ export const metaAdsApi = {
     }),
 };
 
+// PlazBot API Integration
+export const plazbotApi = {
+  connect: (data: { apiKey: string; workspaceId: string; agentId: string; systemPrompt?: string; tone?: string }) =>
+    fetchWithAuth('/plazbot-setup/connect', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 

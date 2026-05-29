@@ -82,7 +82,6 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                 <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
                 <SidebarItem href="/carta" icon="🍽️" label="Carta Digital" active={pathname === '/carta'} />
                 <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />
-                <SidebarItem href="/meta-ads" icon="👥" label="Facebook/Meta Ads" badge="NEW" active={pathname === '/meta-ads'} />
               </div>
 
               {/* CLIENTES & COMUNICACIÓN */}
@@ -96,6 +95,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <SidebarLabel>WhatsApp & IA</SidebarLabel>
                 <SidebarItem href="/whatsapp" icon="📱" label="Config WhatsApp" badge="NEW" active={pathname === '/whatsapp'} />
+                <SidebarItem href="/plazbot" icon="🤖" label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
                 <SidebarItem href="/chat" icon="💬" label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
                 <SidebarItem href="/broadcasts" icon="📢" label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
                 <SidebarItem href="/ia" icon="🧠" label="Base de IA" badge="NEW" active={pathname === '/ia'} />

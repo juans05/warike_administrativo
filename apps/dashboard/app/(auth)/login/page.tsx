@@ -14,45 +14,73 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    console.log('[LOGIN] Instando login para:', email);
+
+    const startTime = Date.now();
+    const log = (step: string) => {
+      const elapsed = Date.now() - startTime;
+      console.log(`[LOGIN ${elapsed}ms] ${step}`);
+    };
+
+    log('📍 Iniciando login para: ' + email);
+
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`;
-      console.log('[LOGIN] Enviando petición a:', apiUrl);
-      
+      log('📍 URL destino: ' + apiUrl);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      log('📍 Timeout configurado: 10s');
+
+      log('📍 Enviando petición POST...');
+      const fetchStart = Date.now();
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
       });
+      log(`📍 Respuesta recibida en ${Date.now() - fetchStart}ms, status: ${response.status}`);
 
-      console.log('[LOGIN] Status de respuesta:', response.status);
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
+        log('❌ Status no OK, parseando error...');
         const errorData = await response.json().catch(() => ({}));
         console.error('[LOGIN] Error de respuesta:', errorData);
         throw new Error(errorData.message || 'Credenciales inválidas');
       }
 
+      log('📍 Parseando JSON...');
+      const parseStart = Date.now();
       const data = await response.json();
-      console.log('[LOGIN] Login exitoso, usuario:', data.user.email, 'Rol:', data.user.role);
-      
-      // Check if user is admin or business
+      log(`📍 JSON parseado en ${Date.now() - parseStart}ms`);
+
+      log(`✅ Login exitoso | Usuario: ${data.user.email} | Rol: ${data.user.role}`);
+
       if (data.user.role !== 'admin' && data.user.role !== 'business') {
-        console.warn('[LOGIN] Acceso denegado: rol insuficiente');
+        log('❌ Acceso denegado: rol insuficiente');
         throw new Error('Acceso restringido a administradores y dueños');
       }
 
+      log('📍 Guardando en localStorage...');
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      
+      log('📍 Datos guardados, redirigiendo a /inicio...');
+
       router.push('/inicio');
     } catch (err: any) {
-      console.error('[LOGIN] Error en proceso de login:', err.message);
-      setError(err.message);
+      const totalTime = Date.now() - startTime;
+      console.error(`[LOGIN ${totalTime}ms] ❌ Error:`, err.message);
+      if (err.name === 'AbortError') {
+        setError('La solicitud tardó demasiado. Verifica que el servidor está disponible.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
+      console.log(`[LOGIN] Total: ${Date.now() - startTime}ms`);
     }
   };
 
