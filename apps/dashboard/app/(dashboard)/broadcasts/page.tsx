@@ -30,6 +30,30 @@ interface Template {
 interface WaNumber { id: string; phoneNumber: string; isActive: boolean }
 interface QuickReply { text: string }
 interface CtaButton { text: string; type: 'URL' | 'PHONE'; value: string }
+interface VariableSample { value: string; type: string }
+
+const VARIABLE_TYPES = [
+  'Nombre del contacto', 'Teléfono del contacto', 'Celular del contacto',
+  'Email del contacto', 'País del contacto', 'Nombre del agente',
+];
+
+const CATEGORY_INFO: Record<TemplateCategory, { icon: string; color: string; desc: string; example: string }> = {
+  MARKETING: {
+    icon: '📣', color: 'amber',
+    desc: 'Para promociones, ofertas, descuentos y anuncios comerciales.',
+    example: '¡Hola {{1}}! Esta semana 2x1 en ceviche. Ven a El Huarique y disfruta.',
+  },
+  UTILITY: {
+    icon: '🔧', color: 'blue',
+    desc: 'Para confirmaciones, recordatorios y actualizaciones de pedidos/reservas.',
+    example: '{{1}}, tu reserva para {{2}} personas el {{3}} está confirmada. ¡Te esperamos!',
+  },
+  AUTHENTICATION: {
+    icon: '🔒', color: 'purple',
+    desc: 'Para códigos de verificación de un solo uso (OTP). Raramente necesario en restaurantes.',
+    example: 'Tu código de verificación de El Huarique es: {{1}}. Caduca en 10 minutos.',
+  },
+};
 
 const TEMPLATE_STEPS: TemplateStep[] = ['info', 'message', 'buttons'];
 const STEP_LABELS: Record<TemplateStep, string> = { info: 'Plantilla', message: 'Mensaje', buttons: 'Botones' };
@@ -50,6 +74,7 @@ const EMPTY_TEMPLATE = {
   elementName: '', category: 'MARKETING' as TemplateCategory, language: 'es',
   headerText: '', body: '', footer: '',
   quickReplies: [] as QuickReply[], ctaButtons: [] as CtaButton[],
+  variableSamples: {} as Record<number, VariableSample>,
 };
 
 export default function BroadcastsPage() {
@@ -145,6 +170,7 @@ export default function BroadcastsPage() {
         footer: templateForm.footer || undefined,
         quickReplies: templateForm.quickReplies.filter(q => q.text.trim()),
         ctaButtons: templateForm.ctaButtons.filter(c => c.text.trim()),
+        variableSamples: templateForm.variableSamples,
       });
       toast.success('Plantilla enviada para aprobación de Meta');
       setShowTemplateModal(false);
@@ -153,6 +179,27 @@ export default function BroadcastsPage() {
       await syncTemplates();
     } catch (e: any) { toast.error(e?.message || 'Error al crear plantilla'); }
     finally { setCreatingTemplate(false); }
+  };
+
+  // Detect {{N}} variables in body text
+  const bodyVariables = (body: string): number[] => {
+    const matches = [...body.matchAll(/\{\{(\d+)\}\}/g)];
+    return [...new Set(matches.map(m => parseInt(m[1])))].sort((a, b) => a - b);
+  };
+
+  const addVariable = () => {
+    const existing = bodyVariables(templateForm.body);
+    const next = existing.length > 0 ? Math.max(...existing) + 1 : 1;
+    setTemplateForm(p => ({ ...p, body: p.body + `{{${next}}}` }));
+  };
+
+  const removeVariable = (n: number) => {
+    setTemplateForm(p => {
+      const newBody = p.body.replace(new RegExp(`\\{\\{${n}\\}\\}`, 'g'), '');
+      const newSamples = { ...p.variableSamples };
+      delete newSamples[n];
+      return { ...p, body: newBody, variableSamples: newSamples };
+    });
   };
 
   const filteredTemplates = templates.filter(t =>
@@ -448,18 +495,45 @@ export default function BroadcastsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['MARKETING', 'UTILITY', 'AUTHENTICATION'] as TemplateCategory[]).map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setTemplateForm(p => ({ ...p, category: cat }))}
-                          className={`py-3 px-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${templateForm.category === cat ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
-                        >
-                          {cat === 'MARKETING' ? '📣 Marketing' : cat === 'UTILITY' ? '🔧 Utilidad' : '🔒 Auth'}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {(['MARKETING', 'UTILITY', 'AUTHENTICATION'] as TemplateCategory[]).map(cat => {
+                        const info = CATEGORY_INFO[cat];
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setTemplateForm(p => ({ ...p, category: cat }))}
+                            className={`py-3 px-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${templateForm.category === cat ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                          >
+                            {info.icon} {cat === 'AUTHENTICATION' ? 'Auth' : cat === 'UTILITY' ? 'Utilidad' : 'Marketing'}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {/* Info alert for selected category */}
+                    {(() => {
+                      const info = CATEGORY_INFO[templateForm.category];
+                      const colorMap: Record<string, string> = {
+                        amber: 'bg-amber-50 border-amber-200 text-amber-800',
+                        blue: 'bg-blue-50 border-blue-200 text-blue-800',
+                        purple: 'bg-purple-50 border-purple-200 text-purple-800',
+                      };
+                      const exColorMap: Record<string, string> = {
+                        amber: 'bg-amber-100/60 text-amber-700',
+                        blue: 'bg-blue-100/60 text-blue-700',
+                        purple: 'bg-purple-100/60 text-purple-700',
+                      };
+                      return (
+                        <div className={`rounded-xl border px-4 py-3 space-y-1.5 ${colorMap[info.color]}`}>
+                          <p className="text-xs font-black">{info.icon} {templateForm.category === 'AUTHENTICATION' ? 'Autenticación' : templateForm.category === 'UTILITY' ? 'Utilidad' : 'Marketing'}</p>
+                          <p className="text-xs font-medium leading-relaxed">{info.desc}</p>
+                          <div className={`rounded-lg px-3 py-2 mt-1 ${exColorMap[info.color]}`}>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-0.5">Ejemplo:</p>
+                            <p className="text-xs italic leading-relaxed">"{info.example}"</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Idioma</label>
@@ -486,31 +560,96 @@ export default function BroadcastsPage() {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
                     />
                   </div>
+
+                  {/* Body with variable system */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Cuerpo del Mensaje</label>
-                      <div className="flex gap-1">
-                        {['{{1}}', '{{2}}', '{{3}}'].map(v => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setTemplateForm(p => ({ ...p, body: p.body + v }))}
-                            className="px-2 py-1 bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-mono font-black transition-colors"
-                          >
-                            {v}
-                          </button>
-                        ))}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-sm font-black text-gray-700">Cuerpo del Mensaje</label>
+                    </div>
+                    <p className="text-xs text-gray-400 mb-2">Ingresa el texto para tu mensaje. Recuerda respetar el idioma seleccionado.</p>
+                    <div className="relative border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-400">
+                      <textarea
+                        value={templateForm.body}
+                        onChange={e => setTemplateForm(p => ({ ...p, body: e.target.value }))}
+                        placeholder="Hola {{1}}, tenemos una oferta especial para ti hoy..."
+                        rows={5}
+                        maxLength={1024}
+                        className="w-full px-4 pt-3 pb-8 text-sm outline-none resize-none rounded-xl"
+                      />
+                      <div className="absolute bottom-2 right-3 text-[10px] text-gray-400 font-mono">
+                        {templateForm.body.length} / 1024
                       </div>
                     </div>
-                    <textarea
-                      value={templateForm.body}
-                      onChange={e => setTemplateForm(p => ({ ...p, body: e.target.value }))}
-                      placeholder="Hola {{1}}, tenemos una oferta especial para ti hoy..."
-                      rows={5}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none resize-none"
-                    />
-                    <p className="text-[10px] text-gray-400 mt-1">Usa {'{{1}}'}, {'{{2}}'} etc. para insertar variables dinámicas</p>
+
+                    {/* Add variable button */}
+                    <button
+                      type="button"
+                      onClick={addVariable}
+                      className="mt-2 flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-black text-gray-600 hover:bg-gray-50 transition-all"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      Agregar variable
+                    </button>
+
+                    {/* Variable chips */}
+                    {bodyVariables(templateForm.body).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {bodyVariables(templateForm.body).map(n => (
+                          <span key={n} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-blue-50 border border-blue-200 rounded-lg text-xs font-black text-blue-700">
+                            {`{{${n}}}`}
+                            <button
+                              type="button"
+                              onClick={() => removeVariable(n)}
+                              className="text-blue-400 hover:text-red-500 transition-colors"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Sample values */}
+                    {bodyVariables(templateForm.body).length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <p className="text-xs font-black text-gray-700">Definir valor de muestra para las variables</p>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                          <span className="text-amber-500 mt-0.5">💡</span>
+                          <p className="text-xs text-amber-700 leading-relaxed">Los valores de muestra son ejemplos que ayudan a WhatsApp a poder evaluar tu plantilla y aprobarla rápidamente.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Variables del Cuerpo</p>
+                          {bodyVariables(templateForm.body).map(n => (
+                            <div key={n} className="flex items-center gap-2">
+                              <span className="shrink-0 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-black text-blue-700 font-mono">{`{{${n}}}`}</span>
+                              <input
+                                type="text"
+                                placeholder="Ingresa el valor de muestra"
+                                value={templateForm.variableSamples[n]?.value || ''}
+                                onChange={e => setTemplateForm(p => ({
+                                  ...p,
+                                  variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], value: e.target.value, type: p.variableSamples[n]?.type || '' } },
+                                }))}
+                                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none"
+                              />
+                              <select
+                                value={templateForm.variableSamples[n]?.type || ''}
+                                onChange={e => setTemplateForm(p => ({
+                                  ...p,
+                                  variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], type: e.target.value, value: p.variableSamples[n]?.value || '' } },
+                                }))}
+                                className="shrink-0 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+                              >
+                                <option value="">Seleccionar tipo</option>
+                                {VARIABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <div>
                     <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Mensaje Inferior <span className="normal-case font-normal text-gray-400">(opcional)</span></label>
                     <input
