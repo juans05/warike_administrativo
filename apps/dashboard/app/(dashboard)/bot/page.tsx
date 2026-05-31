@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 export default function BotSettingsPage() {
   const { activePlaceId } = useRestaurant();
@@ -32,9 +33,9 @@ export default function BotSettingsPage() {
     setIsSaving(true);
     try {
       await businessApi.updateBotSettings(activePlaceId, settings);
-      alert('Configuración del bot actualizada correctamente');
+      toast.success('Configuración del bot actualizada correctamente');
     } catch (err) {
-      alert('Error al guardar la configuración');
+      toast.error('Error al guardar la configuración');
     } finally {
       setIsSaving(false);
     }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard, SkeletonGrid } from '../../../components/SkeletonLoader';
+import { toast } from 'sonner';
 
 export default function WhatsAppConfigPage() {
   const { activePlaceId } = useRestaurant();
@@ -28,7 +29,7 @@ export default function WhatsAppConfigPage() {
 
   const handleRegister = async () => {
     if (!formData.phoneNumber || !formData.phoneNumberId || !formData.whatsappApiToken) {
-      alert('Completa todos los campos');
+      toast.warning('Completa todos los campos');
       return;
     }
     setIsSaving(true);
@@ -39,9 +40,9 @@ export default function WhatsAppConfigPage() {
       });
       setNumbers([res, ...numbers]);
       setFormData({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-      alert('Número registrado');
+      toast.success('Número registrado');
     } catch (err) {
-      alert('Error al registrar número');
+      toast.error('Error al registrar número');
     } finally {
       setIsSaving(false);
     }
@@ -52,9 +53,9 @@ export default function WhatsAppConfigPage() {
     try {
       await businessApi.deleteWhatsappNumber(numberId);
       setNumbers(numbers.filter(n => n.id !== numberId));
-      alert('Número eliminado');
+      toast.success('Número eliminado');
     } catch (err) {
-      alert('Error al eliminar número');
+      toast.error('Error al eliminar número');
     }
   };
 

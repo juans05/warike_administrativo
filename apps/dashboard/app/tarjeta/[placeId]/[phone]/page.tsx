@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { publicApi } from '../../../../lib/api-client';
+import { toast } from 'sonner';
 
 const LEVEL_COLORS: Record<string, string> = {
   BRONCE: 'from-amber-600 to-amber-400',
@@ -189,13 +190,13 @@ function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
       const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/google/${phone}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Google Wallet no disponible aún');
+        toast.error(err.message || 'Google Wallet no disponible aún');
         return;
       }
       const { saveUrl } = await res.json();
       window.open(saveUrl, '_blank');
     } catch {
-      alert('Error al conectar con Google Wallet');
+      toast.error('Error al conectar con Google Wallet');
     } finally {
       setLoadingGoogle(false);
     }
@@ -207,7 +208,7 @@ function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
       const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/apple/${phone}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Apple Wallet no disponible aún');
+        toast.error(err.message || 'Apple Wallet no disponible aún');
         return;
       }
       const blob = await res.blob();
@@ -218,7 +219,7 @@ function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert('Error al descargar el pase');
+      toast.error('Error al descargar el pase');
     } finally {
       setLoadingApple(false);
     }

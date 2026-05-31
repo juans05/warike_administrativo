@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonListItem, SkeletonTable } from '../../../components/SkeletonLoader';
+import { toast } from 'sonner';
 
 const LOYALTY_COLORS: Record<string, string> = {
   BRONCE: 'bg-amber-100 text-amber-700',
@@ -114,7 +115,7 @@ export default function ChatPage() {
       setSelectedConv({ ...selectedConv, mode: newMode });
     } catch (err) {
       console.error('Error toggling conversation mode:', err);
-      alert('Error al cambiar el modo de conversación');
+      toast.error('Error al cambiar el modo de conversación');
     }
   };
 
@@ -129,7 +130,7 @@ export default function ChatPage() {
       setMessages(res.data || []);
     } catch (err) {
       console.error('Error sending message:', err);
-      alert('Error al enviar el mensaje');
+      toast.error('Error al enviar el mensaje');
     } finally {
       setIsSending(false);
     }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard, SkeletonGrid } from '../../../components/SkeletonLoader';
+import { toast } from 'sonner';
 
 export default function AIKnowledgeBasePage() {
   const { activePlaceId } = useRestaurant();
@@ -33,14 +34,14 @@ export default function AIKnowledgeBasePage() {
         setSelectedFile(file);
         setFileName(file.name.replace(/\.[^/.]+$/, ''));
       } else {
-        alert('Solo se aceptan archivos TXT y PDF');
+        toast.warning('Solo se aceptan archivos TXT y PDF');
       }
     }
   };
 
   const handleUpload = async () => {
     if (!selectedFile || !fileName) {
-      alert('Selecciona un archivo y escribe el nombre');
+      toast.warning('Selecciona un archivo y escribe el nombre');
       return;
     }
     setIsUploading(true);
@@ -49,9 +50,9 @@ export default function AIKnowledgeBasePage() {
       setKnowledgeBases([{ ...res, chunkCount: 0 }, ...knowledgeBases]);
       setSelectedFile(null);
       setFileName('');
-      alert('Documento indexado correctamente');
+      toast.success('Documento indexado correctamente');
     } catch (err) {
-      alert('Error al subir documento');
+      toast.error('Error al subir documento');
     } finally {
       setIsUploading(false);
     }
@@ -62,9 +63,9 @@ export default function AIKnowledgeBasePage() {
     try {
       await businessApi.deleteKnowledgeBase(kbId);
       setKnowledgeBases(knowledgeBases.filter(kb => kb.id !== kbId));
-      alert('Documento eliminado');
+      toast.success('Documento eliminado');
     } catch (err) {
-      alert('Error al eliminar documento');
+      toast.error('Error al eliminar documento');
     }
   };
 

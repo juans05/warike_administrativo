@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRestaurant } from '../context/RestaurantContext';
 import { businessApi } from '../lib/api-client';
+import { toast } from 'sonner';
 
 type Step = 'loading' | 'not_connected' | 'pick_location' | 'connected';
 
@@ -111,7 +112,7 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
       const res = await businessApi.getGoogleAuthUrl(activePlaceId!);
       window.location.href = res.url;
     } catch (e: any) {
-      alert(e?.message || 'Error al generar el enlace de Google');
+      toast.error(e?.message || 'Error al generar el enlace de Google');
       setIsBusy(false);
     }
   };
@@ -122,7 +123,7 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
       await businessApi.setGoogleLocation(activePlaceId!, locationName);
       await fetchAllReviews();
     } catch {
-      alert('Error al guardar la ubicación');
+      toast.error('Error al guardar la ubicación');
     }
     setIsBusy(false);
   };

@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
+import { toast } from 'sonner';
 
 export default function ReputacionPage() {
   const { activePlaceId } = useRestaurant();
@@ -155,7 +156,7 @@ export default function ReputacionPage() {
       const updated = await businessApi.getDevices(activePlaceId);
       setDevices(updated);
     } catch (err) {
-      alert('Error al agregar dispositivo');
+      toast.error('Error al agregar dispositivo');
     }
   };
 
@@ -167,7 +168,7 @@ export default function ReputacionPage() {
       const updated = await businessApi.getDevices(activePlaceId);
       setDevices(updated);
     } catch (err) {
-      alert('Error al actualizar dispositivo');
+      toast.error('Error al actualizar dispositivo');
     }
   };
 
@@ -180,7 +181,7 @@ export default function ReputacionPage() {
       const updated = await businessApi.getDevices(activePlaceId);
       setDevices(updated);
     } catch (err) {
-      alert('Error al eliminar dispositivo');
+      toast.error('Error al eliminar dispositivo');
     } finally {
       setIsDeletingDevice(null);
     }
@@ -339,7 +340,7 @@ export default function ReputacionPage() {
               <p className="text-sm font-black text-text break-all">{publicLink}</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => { navigator.clipboard.writeText(publicLink); alert('Copiado'); }} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
+              <button onClick={() => { navigator.clipboard.writeText(publicLink); toast.success('Copiado'); }} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
               <button className="flex-1 py-3 rounded-xl bg-white text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition-all">Imprimir QR</button>
             </div>
           </div>
@@ -420,8 +421,8 @@ export default function ReputacionPage() {
                     try {
                       const res = await businessApi.findGooglePlaceId(activePlaceId);
                       setPlaceIdCandidates(res.candidates || []);
-                      if (!res.candidates?.length) alert('No se encontraron resultados. Intenta ingresar el ID manualmente.');
-                    } catch { alert('Error al buscar en Google'); }
+                      if (!res.candidates?.length) toast.warning('No se encontraron resultados. Intenta ingresar el ID manualmente.');
+                    } catch { toast.error('Error al buscar en Google'); }
                     finally { setIsSearching(false); }
                   }}
                   disabled={isSearching}
@@ -445,8 +446,8 @@ export default function ReputacionPage() {
                     try {
                       await businessApi.updateProfile(activePlaceId, { googlePlaceId });
                       setPlaceIdCandidates([]);
-                      alert('ID de Google guardado. Ahora puedes sincronizar las reseñas.');
-                    } catch (e) { alert('Error al guardar'); }
+                      toast.success('ID de Google guardado. Ahora puedes sincronizar las reseñas.');
+                    } catch (e) { toast.error('Error al guardar'); }
                     setIsSaving(false);
                   }}
                   disabled={isSaving}
@@ -531,7 +532,7 @@ function GoogleSyncButton({
 
   const handleSync = async () => {
     if (!activePlaceId || !googlePlaceId) {
-      alert('Primero guarda tu Google Place ID arriba.');
+      toast.warning('Primero guarda tu Google Place ID arriba.');
       return;
     }
     setIsSyncing(true);
@@ -539,12 +540,12 @@ function GoogleSyncButton({
       const result = await businessApi.syncGoogleReviews(activePlaceId);
       if (result?.rating || result?.totalReviews) {
         onSuccess(result);
-        alert(`¡Sincronizado! Rating: ${result.rating} ⭐ · ${result.totalReviews} reseñas`);
+        toast.success(`¡Sincronizado! Rating: ${result.rating} ⭐ · ${result.totalReviews} reseñas`);
       } else {
-        alert('Sincronizado, pero no se encontraron reseñas. Verifica que el Place ID sea correcto.');
+        toast.warning('Sincronizado, pero no se encontraron reseñas. Verifica que el Place ID sea correcto.');
       }
     } catch (err: any) {
-      alert(err?.message || 'Error al sincronizar. Verifica que el Place ID sea correcto.');
+      toast.error(err?.message || 'Error al sincronizar. Verifica que el Place ID sea correcto.');
     } finally {
       setIsSyncing(false);
     }

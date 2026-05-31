@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { adminApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 interface Place {
   id: string;
@@ -44,7 +45,7 @@ export default function ModeracionPage() {
       await adminApi.updatePlace(id, { isVerified: !current });
       loadData();
     } catch (err) {
-      alert('Error actualizando verificación');
+      toast.error('Error actualizando verificación');
     }
   };
 
@@ -53,7 +54,7 @@ export default function ModeracionPage() {
       await adminApi.updatePlace(id, { status });
       loadData();
     } catch (err) {
-      alert('Error actualizando estado');
+      toast.error('Error actualizando estado');
     }
   };
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 interface MenuItem {
   id: string;
@@ -62,9 +63,9 @@ export default function CartaPage() {
     setIsSavingPhoto(true);
     try {
       await businessApi.updateProfile(activePlaceId, { menuImageUrl: menuPhoto });
-      alert('Imagen de la carta guardada con éxito.');
+      toast.success('Imagen de la carta guardada con éxito.');
     } catch (err) {
-      alert('Error al guardar la imagen');
+      toast.error('Error al guardar la imagen');
     } finally {
       setIsSavingPhoto(false);
     }
@@ -115,7 +116,7 @@ export default function CartaPage() {
       setShowCategoryModal(false);
       loadMenu();
     } catch (err) {
-      alert('Error al guardar la categoría');
+      toast.error('Error al guardar la categoría');
     }
   };
 
@@ -138,7 +139,7 @@ export default function CartaPage() {
       setShowModal(false);
       loadMenu();
     } catch (err) {
-      alert('Error al guardar el plato');
+      toast.error('Error al guardar el plato');
     }
   };
 
@@ -148,7 +149,7 @@ export default function CartaPage() {
       await businessApi.deleteMenuItem(activePlaceId, itemId);
       loadMenu();
     } catch (err) {
-      alert('Error al eliminar');
+      toast.error('Error al eliminar');
     }
   };
 

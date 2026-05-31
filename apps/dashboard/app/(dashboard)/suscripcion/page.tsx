@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Script from 'next/script';
 import { subscriptionApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 declare global {
   interface Window {
@@ -89,7 +90,7 @@ export default function SuscripcionPage() {
           window.Culqi.close();
           await load();
         } catch (err: any) {
-          alert(err.message || 'Error al procesar el pago');
+          toast.error(err.message || 'Error al procesar el pago');
         } finally {
           setPaying(false);
         }
@@ -104,7 +105,7 @@ export default function SuscripcionPage() {
   }, [plan, culqiReady, initCulqi]);
 
   const handleSubscribe = () => {
-    if (!window.Culqi) return alert('Cargando procesador de pagos...');
+    if (!window.Culqi) { toast.warning('Cargando procesador de pagos...'); return; }
     window.Culqi.open();
   };
 
@@ -115,7 +116,7 @@ export default function SuscripcionPage() {
       await subscriptionApi.cancel();
       await load();
     } catch (err: any) {
-      alert(err.message || 'Error al cancelar');
+      toast.error(err.message || 'Error al cancelar');
     } finally {
       setCanceling(false);
     }

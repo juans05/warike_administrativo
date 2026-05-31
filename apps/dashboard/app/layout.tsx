@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter, Lora, Caveat } from 'next/font/google';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora' });
@@ -62,6 +63,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${lora.variable} ${caveat.variable}`}>
       <body className="antialiased bg-[var(--background)] text-[var(--text)]">
+        <Toaster position="top-right" richColors closeButton />
         {children}
         <script
           type="application/ld+json"

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { publicApi } from '../../../../../lib/api-client';
+import { toast } from 'sonner';
 
 type Step = 'rating' | 'loyalty' | 'thanks' | 'card';
 
@@ -87,7 +88,7 @@ export default function PublicDeviceScanPage() {
       setLoyaltyResult(result);
       setStep('card');
     } catch (err: any) {
-      alert(err?.message || 'Error al registrar tu visita');
+      toast.error(err?.message || 'Error al registrar tu visita');
     } finally {
       setIsScanning(false);
     }

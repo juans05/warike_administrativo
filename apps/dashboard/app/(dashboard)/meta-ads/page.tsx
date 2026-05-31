@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { metaAdsApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
+import { toast } from 'sonner';
 
 export default function MetaAdsPage() {
   const { activePlaceId } = useRestaurant();
@@ -43,7 +44,7 @@ export default function MetaAdsPage() {
 
   const handleLoadAccounts = async () => {
     if (!accessToken.trim()) {
-      alert('Por favor ingresa un Access Token válido primero.');
+      toast.warning('Por favor ingresa un Access Token válido primero.');
       return;
     }
     setIsLoadingAccounts(true);
@@ -53,10 +54,10 @@ export default function MetaAdsPage() {
       if (accounts.length > 0) {
         setAdAccountId(accounts[0].id);
       } else {
-        alert('No se encontraron cuentas publicitarias vinculadas a este token.');
+        toast.warning('No se encontraron cuentas publicitarias vinculadas a este token.');
       }
     } catch (err: any) {
-      alert(err.message || 'Error al cargar las cuentas publicitarias.');
+      toast.error(err.message || 'Error al cargar las cuentas publicitarias.');
     } finally {
       setIsLoadingAccounts(false);
     }
@@ -64,7 +65,7 @@ export default function MetaAdsPage() {
 
   const handleConnect = async () => {
     if (!accessToken.trim() || !adAccountId.trim()) {
-      alert('Completa el Access Token y selecciona una cuenta publicitaria.');
+      toast.warning('Completa el Access Token y selecciona una cuenta publicitaria.');
       return;
     }
     setIsConnecting(true);
@@ -73,10 +74,10 @@ export default function MetaAdsPage() {
         accessToken: accessToken.trim(),
         adAccountId: adAccountId.trim(),
       });
-      alert('¡Cuenta publicitaria de Facebook conectada exitosamente!');
+      toast.success('¡Cuenta publicitaria de Facebook conectada exitosamente!');
       await fetchStatus();
     } catch (err: any) {
-      alert(err.message || 'Error al conectar.');
+      toast.error(err.message || 'Error al conectar.');
     } finally {
       setIsConnecting(false);
     }
@@ -91,10 +92,10 @@ export default function MetaAdsPage() {
       setAccessToken('');
       setAdAccountId('');
       setAdAccountsList([]);
-      alert('Integración desconectada.');
+      toast.success('Integración desconectada.');
       await fetchStatus();
     } catch (err: any) {
-      alert(err.message || 'Error al desconectar.');
+      toast.error(err.message || 'Error al desconectar.');
     } finally {
       setIsLoading(false);
     }
@@ -104,10 +105,10 @@ export default function MetaAdsPage() {
     setIsSyncing(true);
     try {
       const res = await metaAdsApi.syncAudience(activePlaceId);
-      alert(res.message || 'Sincronización exitosa.');
+      toast.success(res.message || 'Sincronización exitosa.');
       await fetchStatus();
     } catch (err: any) {
-      alert(err.message || 'Error al sincronizar.');
+      toast.error(err.message || 'Error al sincronizar.');
     } finally {
       setIsSyncing(false);
     }

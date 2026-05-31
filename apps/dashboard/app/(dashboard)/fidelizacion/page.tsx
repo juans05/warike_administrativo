@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 export default function FidelizacionPage() {
   const { activePlaceId } = useRestaurant();
@@ -50,8 +51,8 @@ export default function FidelizacionPage() {
         body: JSON.stringify({ type, stampsToReward, pointsPerVisit, rewardTitle, rewardDescription, isActive }),
       });
       setProgram(saved);
-      alert('Programa guardado ✅');
-    } catch { alert('Error al guardar'); }
+      toast.success('Programa guardado');
+    } catch { toast.error('Error al guardar'); }
     setIsSaving(false);
   };
 
@@ -66,7 +67,7 @@ export default function FidelizacionPage() {
       setRewards(prev => [...prev, reward]);
       setNewRewardTitle('');
       setNewRewardStamps(10);
-    } catch { alert('Error al crear premio'); }
+    } catch { toast.error('Error al crear premio'); }
     setIsAddingReward(false);
   };
 
@@ -333,7 +334,7 @@ export default function FidelizacionPage() {
 
             <div className="flex gap-2">
               <button
-                onClick={() => { navigator.clipboard.writeText(publicCardLink); alert('Copiado'); }}
+                onClick={() => { navigator.clipboard.writeText(publicCardLink); toast.success('Copiado'); }}
                 className="flex-1 bg-orange-500 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-orange-600 transition-all"
               >
                 Copiar Enlace
@@ -346,7 +347,7 @@ export default function FidelizacionPage() {
                       navigator.share({ title: 'Programa de Fidelización', url: publicCardLink, text });
                     } else {
                       navigator.clipboard.writeText(text);
-                      alert('Mensaje copiado');
+                      toast.success('Mensaje copiado');
                     }
                   }
                 }}

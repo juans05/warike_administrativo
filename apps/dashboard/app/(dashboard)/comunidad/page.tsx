@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 interface User {
   id: string;
@@ -48,7 +49,7 @@ export default function ComunidadPage() {
       setNewUser({ fullName: '', email: '', password: '', role: 'business' });
       loadUsers();
     } catch (err: any) {
-      alert(err?.message || 'Error al crear usuario');
+      toast.error(err?.message || 'Error al crear usuario');
     } finally {
       setCreating(false);
     }
@@ -61,7 +62,7 @@ export default function ComunidadPage() {
       else await adminApi.banUser(user.id);
       loadUsers();
     } catch {
-      alert('Error actualizando estado del usuario');
+      toast.error('Error actualizando estado del usuario');
     }
   };
 

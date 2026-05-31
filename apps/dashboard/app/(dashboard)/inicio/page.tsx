@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
+import { toast } from 'sonner';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -211,7 +212,7 @@ export default function RestaurantePage() {
       const data = await res.json();
       setFormData(prev => ({ ...prev, foto: data.url }));
     } catch (err) {
-      alert('No se pudo subir la imagen.');
+      toast.error('No se pudo subir la imagen.');
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -232,9 +233,9 @@ export default function RestaurantePage() {
         priceMin: formData.precio ? parseFloat(formData.precio.replace(/[^0-9.]/g, '')) : undefined,
         coverImageUrl: formData.foto
       });
-      alert('Configuración actualizada con éxito.');
+      toast.success('Configuración actualizada con éxito.');
     } catch (err) {
-      alert('Error al guardar los cambios.');
+      toast.error('Error al guardar los cambios.');
     } finally {
       setIsLoading(false);
     }
