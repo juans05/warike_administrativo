@@ -200,6 +200,8 @@ export const businessApi = {
   // Conversations & Messages
   getConversations: (placeId: string, page: number = 1) =>
     fetchWithAuth(`/business/conversations/${placeId}?page=${page}&limit=20`),
+  syncPlazbotConversations: (placeId: string) =>
+    fetchWithAuth(`/business/conversations/sync-plazbot/${placeId}`, { method: 'POST' }),
   getConversationMessages: (conversationId: string) =>
     fetchWithAuth(`/business/conversations/${conversationId}/messages?limit=100`),
   setConversationMode: (conversationId: string, mode: 'bot' | 'human') =>
