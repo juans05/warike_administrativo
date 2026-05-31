@@ -184,7 +184,7 @@ export default function BroadcastsPage() {
   // Detect {{N}} variables in body text
   const bodyVariables = (body: string): number[] => {
     const matches = Array.from(body.matchAll(/\{\{(\d+)\}\}/g));
-    return [...new Set(matches.map(m => parseInt(m[1])))].sort((a, b) => a - b);
+    return Array.from(new Set(matches.map(m => parseInt(m[1])))).sort((a, b) => a - b);
   };
 
   const addVariable = () => {
