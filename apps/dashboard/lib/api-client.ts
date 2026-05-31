@@ -380,6 +380,13 @@ export const plazbotApi = {
   getMetrics: () => fetchWithAuth('/plazbot-setup/metrics'),
   getTemplates: () => fetchWithAuth('/plazbot-setup/templates'),
 
+  // Crear plantilla en PlazBot (va a aprobación Meta)
+  createTemplate: (data: any) =>
+    fetchWithAuth('/plazbot-setup/template', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // Campañas masivas y envío de templates
   createCampaign: (data: { name: string; templateId: string; contacts: string[] }) =>
     fetchWithAuth('/plazbot-setup/campaign', {
