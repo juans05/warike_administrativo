@@ -69,7 +69,7 @@ const STATUS_LABEL: Record<BroadcastStatus, string> = {
   DRAFT: 'Borrador', SCHEDULED: 'Programado', SENDING: 'Enviando', COMPLETED: 'Completado', FAILED: 'Fallido',
 };
 
-const EMPTY_CAMPAIGN = { campaignName: '', whatsappNumberId: '', templateBody: '', segment: 'all' };
+const EMPTY_CAMPAIGN = { campaignName: '', whatsappNumberId: '', templateId: '', templateName: '', segment: 'all' };
 const EMPTY_TEMPLATE = {
   elementName: '', category: 'MARKETING' as TemplateCategory, language: 'es',
   headerText: '', body: '', footer: '',
@@ -130,19 +130,19 @@ export default function BroadcastsPage() {
   const handleCreateCampaign = async () => {
     if (!campaignForm.campaignName.trim()) { toast.warning('Escribe un nombre para la campaña'); return; }
     if (!campaignForm.whatsappNumberId) { toast.warning('Selecciona un número de WhatsApp'); return; }
-    if (!campaignForm.templateBody.trim()) { toast.warning('Escribe el mensaje de la campaña'); return; }
+    if (!campaignForm.templateName) { toast.warning('Selecciona una plantilla'); return; }
     setCreatingCampaign(true);
     try {
       const created = await businessApi.createBroadcast({
         placeId: activePlaceId!,
         whatsappNumberId: campaignForm.whatsappNumberId,
         campaignName: campaignForm.campaignName,
-        templateBody: campaignForm.templateBody,
-        segmentFilter: { type: campaignForm.segment },
+        templateBody: campaignForm.templateName,
+        segmentFilter: { type: campaignForm.segment, templateId: campaignForm.templateId },
       });
       setBroadcasts(prev => [created, ...prev]);
       setShowCampaignModal(false);
-      setCampaignForm(EMPTY_CAMPAIGN);
+      setCampaignForm({ ...EMPTY_CAMPAIGN });
       toast.success('Campaña creada como borrador');
     } catch (e: any) { toast.error(e?.message || 'Error al crear campaña'); }
     finally { setCreatingCampaign(false); }
@@ -407,16 +407,42 @@ export default function BroadcastsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                  Mensaje <span className="normal-case font-normal text-gray-400">— usa {'{nombre}'} para personalizar</span>
-                </label>
-                <textarea
-                  value={campaignForm.templateBody}
-                  onChange={e => setCampaignForm(p => ({ ...p, templateBody: e.target.value }))}
-                  placeholder="Hola {nombre}, ¡tenemos una promoción especial para ti hoy! 🎉"
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none resize-none"
-                />
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Plantilla a enviar</label>
+                {templates.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700 font-medium">
+                    No hay plantillas aprobadas. Primero crea una plantilla en la pestaña Plantilla y espera la aprobación de Meta.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {templates.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setCampaignForm(p => ({ ...p, templateId: t.id, templateName: t.elementName }))}
+                        className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                          campaignForm.templateId === t.id
+                            ? 'bg-orange-50 border-orange-400'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-black text-gray-900">{t.elementName}</span>
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
+                            t.category === 'MARKETING' ? 'bg-orange-100 text-orange-700' :
+                            t.category === 'UTILITY' ? 'bg-blue-100 text-blue-700' :
+                            'bg-purple-100 text-purple-700'
+                          }`}>
+                            {t.category}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">{t.languageCode?.toUpperCase()}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {campaignForm.templateName && (
+                  <p className="text-[10px] text-orange-600 font-black mt-1.5">✓ Seleccionada: {campaignForm.templateName}</p>
+                )}
               </div>
 
               <div>
