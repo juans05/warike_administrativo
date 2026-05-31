@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { plazbotApi, businessApi } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
+import { toast } from 'sonner';
 
 type Tone = 'professional' | 'casual' | 'friendly';
 
@@ -53,6 +54,7 @@ export default function PlazbotSetupPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
 
   // Metrics & templates
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -106,6 +108,20 @@ export default function PlazbotSetupPage() {
     load();
     loadWaNumbers();
   }, [activePlaceId, loadMetricsAndTemplates, loadWaNumbers]);
+
+  const handleSuggestPrompt = async () => {
+    if (!activePlaceId) return;
+    setGeneratingPrompt(true);
+    try {
+      const res = await businessApi.suggestBotPrompt(activePlaceId);
+      setFormData(p => ({ ...p, systemPrompt: res.systemPrompt }));
+      toast.success('Instrucciones generadas con IA');
+    } catch {
+      toast.error('Error al generar las instrucciones');
+    } finally {
+      setGeneratingPrompt(false);
+    }
+  };
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,10 +323,31 @@ export default function PlazbotSetupPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                Instrucciones para el Bot{' '}
-                <span className="text-gray-400 normal-case font-normal">(opcional)</span>
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-black text-gray-500 uppercase tracking-widest">
+                  Instrucciones para el Bot{' '}
+                  <span className="text-gray-400 normal-case font-normal">(opcional)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSuggestPrompt}
+                  disabled={generatingPrompt}
+                  title="Generar con IA"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 text-[11px] font-black hover:bg-violet-100 transition-all disabled:opacity-50"
+                >
+                  {generatingPrompt ? (
+                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+                    </svg>
+                  )}
+                  {generatingPrompt ? 'Generando...' : 'Proponer con IA'}
+                </button>
+              </div>
               <textarea
                 value={formData.systemPrompt}
                 onChange={e => setFormData(p => ({ ...p, systemPrompt: e.target.value }))}

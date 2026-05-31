@@ -128,6 +128,9 @@ export const businessApi = {
   getPersistedGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-reviews`),
   findGooglePlaceId: (id: string) => fetchWithAuth(`/business/places/${id}/find-google-place-id`),
 
+  // AI Bot Prompt Suggestion
+  suggestBotPrompt: (id: string) => fetchWithAuth(`/business/places/${id}/suggest-bot-prompt`, { method: 'POST' }),
+
   // Google Business Profile OAuth (todas las reseñas)
   getGoogleAuthUrl: (placeId: string) => fetchWithAuth(`/business/google/auth-url?placeId=${placeId}`),
   getGoogleLocations: (id: string) => fetchWithAuth(`/business/places/${id}/google-locations`),
