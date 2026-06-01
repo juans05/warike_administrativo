@@ -15,6 +15,12 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?expired=1';
+      return;
+    }
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || 'Error en la petición');
   }
@@ -198,6 +204,11 @@ export const businessApi = {
   deleteKnowledgeBase: (kbId: string) =>
     fetchWithAuth(`/business/knowledge-bases/${kbId}`, {
       method: 'DELETE',
+    }),
+  indexKnowledgeBaseUrl: (placeId: string, url: string, fileName: string) =>
+    fetchWithAuth(`/business/knowledge-bases/${placeId}/url`, {
+      method: 'POST',
+      body: JSON.stringify({ url, fileName }),
     }),
 
   // Conversations & Messages

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +94,12 @@ export default function LoginPage() {
             <h1 className="text-4xl font-black text-[#F26122] tracking-tighter mb-2">WUARIKE</h1>
             <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Admin Control Center</p>
           </div>
+
+          {sessionExpired && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-sm font-bold text-center">
+              ⚠️ Tu sesión expiró. Inicia sesión nuevamente.
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>

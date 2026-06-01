@@ -14,6 +14,8 @@ export default function AIKnowledgeBasePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [inputMode, setInputMode] = useState<'file' | 'url'>('file');
+  const [urlInput, setUrlInput] = useState('');
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -30,11 +32,14 @@ export default function AIKnowledgeBasePage() {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      if (['text/plain', 'application/pdf'].includes(file.type)) {
+      const allowed = ['text/plain', 'application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (allowed.includes(file.type)) {
         setSelectedFile(file);
         setFileName(file.name.replace(/\.[^/.]+$/, ''));
       } else {
-        toast.warning('Solo se aceptan archivos TXT y PDF');
+        toast.warning('Formatos aceptados: PDF, TXT, DOC, DOCX, JPG, PNG, WEBP');
       }
     }
   };
@@ -53,6 +58,25 @@ export default function AIKnowledgeBasePage() {
       toast.success('Documento indexado correctamente');
     } catch (err) {
       toast.error('Error al subir documento');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleIndexUrl = async () => {
+    if (!urlInput || !fileName) {
+      toast.warning('Ingresa la URL y el nombre del documento');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const res = await businessApi.indexKnowledgeBaseUrl(activePlaceId, urlInput, fileName);
+      setKnowledgeBases([{ ...res, chunkCount: 0 }, ...knowledgeBases]);
+      setUrlInput('');
+      setFileName('');
+      toast.success('URL indexada correctamente');
+    } catch (err) {
+      toast.error('Error al indexar la URL');
     } finally {
       setIsUploading(false);
     }
@@ -93,6 +117,22 @@ export default function AIKnowledgeBasePage() {
       <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
         <h2 className="font-black text-text">Añadir Documento</h2>
 
+        {/* Tab selector */}
+        <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
+          <button
+            onClick={() => setInputMode('file')}
+            className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${inputMode === 'file' ? 'bg-white shadow text-text' : 'text-text-muted'}`}
+          >
+            📄 Archivo
+          </button>
+          <button
+            onClick={() => setInputMode('url')}
+            className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${inputMode === 'url' ? 'bg-white shadow text-text' : 'text-text-muted'}`}
+          >
+            🔗 URL
+          </button>
+        </div>
+
         <div>
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
             Nombre del Documento
@@ -106,50 +146,66 @@ export default function AIKnowledgeBasePage() {
           />
         </div>
 
-        <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">
-            Archivo TXT o PDF
-          </label>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleFileDrop}
-            className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
-              isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary'
-            }`}
-          >
-            <input
-              type="file"
-              accept=".txt,.pdf"
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  setSelectedFile(e.target.files[0]);
-                  setFileName(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
-                }
-              }}
-              className="hidden"
-              id="file-upload"
-            />
-            <label htmlFor="file-upload" className="cursor-pointer block">
-              <p className="text-3xl mb-2">📄</p>
-              {selectedFile ? (
-                <>
-                  <p className="font-black text-text">{selectedFile.name}</p>
-                  <p className="text-xs text-text-muted mt-1">Click para cambiar archivo</p>
-                </>
-              ) : (
-                <>
-                  <p className="font-black text-text">Arrastra un archivo aquí o haz click</p>
-                  <p className="text-xs text-text-muted mt-1">TXT o PDF hasta 50MB</p>
-                </>
-              )}
+        {inputMode === 'file' ? (
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">
+              Archivo
             </label>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleFileDrop}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
+                isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary'
+              }`}
+            >
+              <input
+                type="file"
+                accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setSelectedFile(e.target.files[0]);
+                    setFileName(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
+                  }
+                }}
+                className="hidden"
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer block">
+                <p className="text-3xl mb-2">📄</p>
+                {selectedFile ? (
+                  <>
+                    <p className="font-black text-text">{selectedFile.name}</p>
+                    <p className="text-xs text-text-muted mt-1">Click para cambiar archivo</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-black text-text">Arrastra un archivo aquí o haz click</p>
+                    <p className="text-xs text-text-muted mt-1">PDF, TXT, DOC, DOCX, JPG, PNG hasta 50MB</p>
+                  </>
+                )}
+              </label>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
+              URL del sitio web
+            </label>
+            <input
+              type="url"
+              placeholder="https://turestaurante.com/menu"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-xs text-text-muted mt-2">El sistema leerá el contenido de la página y lo convertirá a Markdown automáticamente.</p>
+          </div>
+        )}
 
         <button
-          onClick={handleUpload}
-          disabled={isUploading || !selectedFile || !fileName}
+          onClick={inputMode === 'file' ? handleUpload : handleIndexUrl}
+          disabled={isUploading || (inputMode === 'file' ? (!selectedFile || !fileName) : (!urlInput || !fileName))}
           className="w-full bg-primary text-white px-8 py-4 rounded-2xl font-black disabled:opacity-50 hover:scale-[1.02] transition-transform active:scale-95"
         >
           {isUploading ? '⏳ Procesando...' : '🧠 Indexar Documento'}
@@ -197,7 +253,7 @@ export default function AIKnowledgeBasePage() {
       <div className="bg-blue-50 border border-blue-200 p-6 rounded-[2.5rem] space-y-3">
         <p className="font-black text-blue-700">💡 Cómo funciona</p>
         <ul className="text-sm text-blue-700 space-y-2">
-          <li>• <span className="font-bold">Menú:</span> Sube tu menú en PDF o TXT con los platos y precios</li>
+          <li>• <span className="font-bold">Menú:</span> Sube tu menú en PDF, TXT, DOC o una foto (JPG/PNG) con los platos y precios</li>
           <li>• <span className="font-bold">FAQs:</span> Incluye preguntas frecuentes sobre horarios, reservas, etc.</li>
           <li>• <span className="font-bold">Procesamiento:</span> El documento se divide en fragmentos y se indexa automáticamente</li>
           <li>• <span className="font-bold">Respuestas:</span> El bot usará esto para responder preguntas de los clientes</li>
