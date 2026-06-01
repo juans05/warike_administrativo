@@ -18,6 +18,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     if (response.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('activePlaceId');
       window.location.href = '/login?expired=1';
       return;
     }
