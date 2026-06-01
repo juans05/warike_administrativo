@@ -44,6 +44,9 @@ export default function RestaurantePage() {
   const [dbDepartments, setDbDepartments] = useState<string[]>([]);
   const [dbProvinces, setDbProvinces] = useState<string[]>([]);
   const [dbDistricts, setDbDistricts] = useState<any[]>([]);
+  const [dbSpainCommunities, setDbSpainCommunities] = useState<string[]>([]);
+  const [dbSpainProvinces, setDbSpainProvinces] = useState<string[]>([]);
+  const [dbSpainMunicipalities, setDbSpainMunicipalities] = useState<string[]>([]);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [dbAmenities, setDbAmenities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,7 +112,7 @@ export default function RestaurantePage() {
     if (!formData.departamento || country !== 'PE') return;
     setIsLoadingLocation(true);
     setFormData(prev => ({ ...prev, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' }));
-    fetch(`${API_BASE}/api/ubigeo/provinces?department=${formData.departamento}`)
+    fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(formData.departamento)}`)
       .then(res => res.json())
       .then(data => setDbProvinces(Array.isArray(data) ? data : []))
       .catch(err => console.error(err))
@@ -119,7 +122,7 @@ export default function RestaurantePage() {
   useEffect(() => {
     if (!formData.departamento || !formData.provincia || country !== 'PE') return;
     setIsLoadingLocation(true);
-    fetch(`${API_BASE}/api/ubigeo/districts?department=${formData.departamento}&province=${formData.provincia}`)
+    fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(formData.departamento)}&province=${encodeURIComponent(formData.provincia)}`)
       .then(res => res.json())
       .then(data => {
         const fullDistricts = Array.isArray(data) ? data : [];
@@ -137,6 +140,41 @@ export default function RestaurantePage() {
     }
   }, [formData.distrito, dbDistricts, country]);
 
+  // Spain cascade: fetch communities when Spain is selected
+  useEffect(() => {
+    if (country !== 'ES') return;
+    if (dbSpainCommunities.length > 0) return;
+    fetch(`${API_BASE}/api/ubigeo/spain/communities`)
+      .then(res => res.json())
+      .then(data => setDbSpainCommunities(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err));
+  }, [country]);
+
+  // Spain cascade: fetch provinces when community changes
+  useEffect(() => {
+    if (!formData.departamento || country !== 'ES') return;
+    setIsLoadingLocation(true);
+    setDbSpainProvinces([]);
+    setDbSpainMunicipalities([]);
+    fetch(`${API_BASE}/api/ubigeo/spain/provinces?community=${encodeURIComponent(formData.departamento)}`)
+      .then(res => res.json())
+      .then(data => setDbSpainProvinces(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+      .finally(() => setIsLoadingLocation(false));
+  }, [formData.departamento, country]);
+
+  // Spain cascade: fetch municipalities when province changes
+  useEffect(() => {
+    if (!formData.departamento || !formData.provincia || country !== 'ES') return;
+    setIsLoadingLocation(true);
+    setDbSpainMunicipalities([]);
+    fetch(`${API_BASE}/api/ubigeo/spain/municipalities?community=${encodeURIComponent(formData.departamento)}&province=${encodeURIComponent(formData.provincia)}`)
+      .then(res => res.json())
+      .then(data => setDbSpainMunicipalities(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err))
+      .finally(() => setIsLoadingLocation(false));
+  }, [formData.provincia, formData.departamento, country]);
+
   useEffect(() => {
     if (!activePlaceId) return;
     setIsLoading(true);
@@ -150,14 +188,17 @@ export default function RestaurantePage() {
             schedules = DEFAULT_SCHEDULES;
           }
         }
+        const isSpain = profile.countryCode === 'ES';
+        if (isSpain) setCountry('ES');
+
         setFormData(prev => ({
           ...prev,
           nombre: profile.name || '',
           direccion: profile.address || '',
           categoriaId: profile.categoryId || '',
-          departamento: profile.district?.department || '',
-          provincia: profile.district?.province || '',
-          distrito: profile.district?.district || '',
+          departamento: isSpain ? (profile.spainCommunity || '') : (profile.district?.department || ''),
+          provincia: isSpain ? (profile.spainProvince || '') : (profile.district?.province || ''),
+          distrito: isSpain ? (profile.spainMunicipality || '') : (profile.district?.district || ''),
           ubigeoCode: profile.district?.ubigeoCode || '',
           ubigeoId: profile.district?.id || '',
           horarios: schedules,
@@ -166,21 +207,42 @@ export default function RestaurantePage() {
           amenityIds: profile.amenityIds || []
         }));
 
-        if (profile.district?.department) {
-          setFormData(prev => ({ ...prev, departamento: profile.district.department }));
-          fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(profile.district.department)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+        if (isSpain) {
+          fetch(`${API_BASE}/api/ubigeo/spain/communities`)
             .then(res => res.json())
-            .then(data => setDbProvinces(Array.isArray(data) ? data : []))
+            .then(data => setDbSpainCommunities(Array.isArray(data) ? data : []))
             .catch(err => console.error(err));
-        }
 
-        if (profile.district?.department && profile.district?.province) {
-          const dept = profile.district.department;
-          const prov = profile.district.province;
-          fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(dept)}&province=${encodeURIComponent(prov)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
-            .then(res => res.json())
-            .then(data => setDbDistricts(Array.isArray(data) ? data : []))
-            .catch(err => console.error(err));
+          if (profile.spainCommunity) {
+            fetch(`${API_BASE}/api/ubigeo/spain/provinces?community=${encodeURIComponent(profile.spainCommunity)}`)
+              .then(res => res.json())
+              .then(data => setDbSpainProvinces(Array.isArray(data) ? data : []))
+              .catch(err => console.error(err));
+          }
+
+          if (profile.spainCommunity && profile.spainProvince) {
+            fetch(`${API_BASE}/api/ubigeo/spain/municipalities?community=${encodeURIComponent(profile.spainCommunity)}&province=${encodeURIComponent(profile.spainProvince)}`)
+              .then(res => res.json())
+              .then(data => setDbSpainMunicipalities(Array.isArray(data) ? data : []))
+              .catch(err => console.error(err));
+          }
+        } else {
+          if (profile.district?.department) {
+            setFormData(prev => ({ ...prev, departamento: profile.district.department }));
+            fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(profile.district.department)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+              .then(res => res.json())
+              .then(data => setDbProvinces(Array.isArray(data) ? data : []))
+              .catch(err => console.error(err));
+          }
+
+          if (profile.district?.department && profile.district?.province) {
+            const dept = profile.district.department;
+            const prov = profile.district.province;
+            fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(dept)}&province=${encodeURIComponent(prov)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+              .then(res => res.json())
+              .then(data => setDbDistricts(Array.isArray(data) ? data : []))
+              .catch(err => console.error(err));
+          }
         }
       }).catch(err => {
         console.warn("Using mock data for profile demo");
@@ -227,11 +289,15 @@ export default function RestaurantePage() {
         name: formData.nombre,
         address: formData.direccion,
         categoryId: formData.categoriaId || undefined,
-        districtId: formData.ubigeoId || undefined,
+        districtId: country === 'PE' ? (formData.ubigeoId || undefined) : null,
         amenityIds: formData.amenityIds,
         openHoursText: JSON.stringify(formData.horarios),
         priceMin: formData.precio ? parseFloat(formData.precio.replace(/[^0-9.]/g, '')) : undefined,
-        coverImageUrl: formData.foto
+        coverImageUrl: formData.foto,
+        countryCode: country,
+        spainCommunity: country === 'ES' ? (formData.departamento || null) : null,
+        spainProvince: country === 'ES' ? (formData.provincia || null) : null,
+        spainMunicipality: country === 'ES' ? (formData.distrito || null) : null,
       });
       toast.success('Configuración actualizada con éxito.');
     } catch (err) {
@@ -418,6 +484,8 @@ export default function RestaurantePage() {
                   setFormData({ ...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbProvinces([]);
                   setDbDistricts([]);
+                  setDbSpainProvinces([]);
+                  setDbSpainMunicipalities([]);
                 }}
                 className={`flex-1 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'PE' ? 'bg-white text-primary shadow-md' : 'text-text-muted hover:text-text'}`}
               >
@@ -429,6 +497,8 @@ export default function RestaurantePage() {
                   setFormData({ ...formData, departamento: '', provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbProvinces([]);
                   setDbDistricts([]);
+                  setDbSpainProvinces([]);
+                  setDbSpainMunicipalities([]);
                 }}
                 className={`flex-1 px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${country === 'ES' ? 'bg-white text-primary shadow-md' : 'text-text-muted hover:text-text'}`}
               >
@@ -445,7 +515,7 @@ export default function RestaurantePage() {
                   setDbProvinces([]);
                   setDbDistricts([]);
                 }}
-                options={country === 'PE' ? dbDepartments : ['Madrid', 'Cataluña', 'Andalucía', 'Valencia']}
+                options={country === 'PE' ? dbDepartments : dbSpainCommunities}
                 isLoading={isLoadingLocation}
               />
               <SelectGroup
@@ -454,15 +524,16 @@ export default function RestaurantePage() {
                 onChange={(v) => {
                   setFormData({ ...formData, provincia: v, distrito: '', ubigeoCode: '', ubigeoId: '' });
                   setDbDistricts([]);
+                  setDbSpainMunicipalities([]);
                 }}
-                options={country === 'PE' ? dbProvinces : ['Madrid', 'Barcelona', 'Sevilla', 'Valencia']}
+                options={country === 'PE' ? dbProvinces : dbSpainProvinces}
                 isLoading={isLoadingLocation}
               />
               <SelectGroup
                 label={country === 'PE' ? "Distrito" : "Municipio"}
                 value={formData.distrito}
                 onChange={(v) => setFormData({ ...formData, distrito: v })}
-                options={country === 'PE' ? (Array.isArray(dbDistricts) ? dbDistricts.map(d => d?.district).filter(Boolean) : []) : ['Centro', 'Salamanca', 'Chamberí', 'Retiro']}
+                options={country === 'PE' ? (Array.isArray(dbDistricts) ? dbDistricts.map(d => d?.district).filter(Boolean) : []) : dbSpainMunicipalities}
                 isLoading={isLoadingLocation}
               />
             </div>
@@ -621,7 +692,7 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
     );
   }
 
-  if (normName.includes('estacionamiento') || normName.includes('auto') || normName.includes('carro')) {
+  if (normName.includes('estacionam') || normName.includes('auto') || normName.includes('carro')) {
     return (
       <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <g stroke="black" strokeWidth="4.5" strokeLinejoin="round">
@@ -682,6 +753,107 @@ function AmenityIcon({ name, className = "w-11 h-11" }: { name: string; classNam
           <circle cx="56" cy="71" r="3" fill="black" />
           <circle cx="72" cy="71" r="3" fill="black" />
         </g>
+      </svg>
+    );
+  }
+
+  if (normName.includes('bebida') || normName.includes('propia') || normName.includes('byob') || normName.includes('licor') || normName.includes('cerveza')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#15803D" stroke="black" strokeWidth="4.5" />
+        <path d="M44 26H56V36C56 36 63 41 63 54V70C63 72 61 74 59 74H41C39 74 37 72 37 70V54C37 41 44 36 44 36V26Z" fill="white" stroke="black" strokeWidth="4" strokeLinejoin="round" />
+        <rect x="43" y="24" width="14" height="5" rx="2.5" fill="#78350F" stroke="black" strokeWidth="3" />
+        <path d="M39 58C39 51 45 47 50 47C55 47 61 51 61 58V69C61 71 59 72 58 72H42C41 72 39 71 39 69V58Z" fill="#B91C1C" />
+        <path d="M43 38C41 43 39 49 39 54" stroke="rgba(255,255,255,0.5)" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (normName.includes('nino') || normName.includes('ninos') || normName.includes('infantil') || normName.includes('kids') || normName.includes('menor')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#F59E0B" stroke="black" strokeWidth="4.5" />
+        <circle cx="50" cy="40" r="16" fill="#FDE68A" stroke="black" strokeWidth="4" />
+        <circle cx="44" cy="38" r="2.5" fill="black" />
+        <circle cx="56" cy="38" r="2.5" fill="black" />
+        <path d="M44 46C46.5 49.5 53.5 49.5 56 46" stroke="black" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M34 35C34 27 41 24 50 24C59 24 66 27 66 35" fill="#78350F" stroke="black" strokeWidth="3.5" strokeLinejoin="round" />
+        <path d="M38 63V74M38 63C38 61 40 60 42 60H58C60 60 62 61 62 63V74" stroke="black" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M44 58V63" stroke="black" strokeWidth="4" strokeLinecap="round" />
+        <path d="M56 58V63" stroke="black" strokeWidth="4" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (normName.includes('tarjeta') || normName.includes('card') || normName.includes('visa') || normName.includes('credito') || normName.includes('debito')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#1D4ED8" stroke="black" strokeWidth="4.5" />
+        <rect x="20" y="34" width="60" height="38" rx="7" fill="white" stroke="black" strokeWidth="4" />
+        <rect x="20" y="43" width="60" height="11" fill="#374151" />
+        <rect x="28" y="58" width="14" height="10" rx="2" fill="#FBBF24" stroke="black" strokeWidth="2.5" />
+        <line x1="33" y1="60" x2="33" y2="68" stroke="black" strokeWidth="1.5" />
+        <line x1="37" y1="60" x2="37" y2="68" stroke="black" strokeWidth="1.5" />
+        <rect x="48" y="60" width="24" height="3.5" rx="1.75" fill="#9CA3AF" />
+        <rect x="48" y="65" width="16" height="3.5" rx="1.75" fill="#9CA3AF" />
+      </svg>
+    );
+  }
+
+  if (normName.includes('gluten') || normName.includes('celiaco') || normName.includes('sin trigo')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 82V22" stroke="#92400E" strokeWidth="5.5" strokeLinecap="round" />
+        <ellipse cx="43" cy="36" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(-25 43 36)" />
+        <ellipse cx="57" cy="36" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(25 57 36)" />
+        <ellipse cx="41" cy="50" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(-25 41 50)" />
+        <ellipse cx="59" cy="50" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(25 59 50)" />
+        <ellipse cx="43" cy="63" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(-25 43 63)" />
+        <ellipse cx="57" cy="63" rx="9" ry="5.5" fill="#D97706" stroke="black" strokeWidth="3" transform="rotate(25 57 63)" />
+        <circle cx="50" cy="50" r="36" stroke="#DC2626" strokeWidth="7" />
+        <path d="M24 24L76 76" stroke="#DC2626" strokeWidth="7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (normName === 'tv' || normName.includes('television') || normName.includes('pantalla') || normName.includes(' tv') || normName.startsWith('tv')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#1F2937" stroke="black" strokeWidth="4.5" />
+        <rect x="20" y="26" width="60" height="42" rx="6" fill="#0EA5E9" stroke="black" strokeWidth="4" />
+        <rect x="26" y="32" width="48" height="30" rx="3" fill="#E0F2FE" />
+        <path d="M43 38L43 56L62 47Z" fill="#0284C7" />
+        <path d="M42 70L38 78H62L58 70" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="34" y="76" width="32" height="6" rx="3" fill="white" stroke="black" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  if (normName.includes('vegano') || normName.includes('vegetariano') || normName.includes('vegetal') || normName.includes('plant') || /\bveg\b/.test(normName)) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#15803D" stroke="black" strokeWidth="4.5" />
+        <path d="M50 78C50 78 22 65 22 38C22 38 38 26 62 36C78 43 76 65 50 78Z" fill="#4ADE80" stroke="black" strokeWidth="4.5" strokeLinejoin="round" />
+        <path d="M50 78C50 60 50 36 50 36" stroke="#16A34A" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M50 62C50 62 38 54 32 46" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" />
+        <path d="M50 52C50 52 60 44 65 38" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (normName.includes('yape') || normName.includes('plin') || normName.includes('lukita') || normName.includes('pago movil') || normName.includes('pago digital')) {
+    return (
+      <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="15" width="70" height="70" rx="16" fill="#7C3AED" stroke="black" strokeWidth="4.5" />
+        <rect x="32" y="20" width="36" height="60" rx="7" fill="white" stroke="black" strokeWidth="4" />
+        <rect x="37" y="29" width="26" height="34" rx="3" fill="#DDD6FE" />
+        <rect x="40" y="32" width="8" height="8" rx="1.5" fill="#7C3AED" />
+        <rect x="52" y="32" width="8" height="8" rx="1.5" fill="#7C3AED" />
+        <rect x="40" y="44" width="8" height="8" rx="1.5" fill="#7C3AED" />
+        <rect x="52" y="44" width="3.5" height="3.5" rx="0.5" fill="#7C3AED" />
+        <rect x="56.5" y="44" width="3.5" height="3.5" rx="0.5" fill="#7C3AED" />
+        <rect x="52" y="48.5" width="8" height="3.5" rx="0.5" fill="#7C3AED" />
+        <circle cx="50" cy="72" r="3.5" stroke="black" strokeWidth="3" />
       </svg>
     );
   }
