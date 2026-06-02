@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
@@ -55,6 +55,7 @@ export default function RestaurantePage() {
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState<'PE' | 'ES'>('PE');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const isLoadingProfile = useRef(false);
 
   // Fetch Core Data
   useEffect(() => {
@@ -110,6 +111,7 @@ export default function RestaurantePage() {
   // Location logic - Cascada de ubicación
   useEffect(() => {
     if (!formData.departamento || country !== 'PE') return;
+    if (isLoadingProfile.current) return;
     setIsLoadingLocation(true);
     setFormData(prev => ({ ...prev, provincia: '', distrito: '', ubigeoCode: '', ubigeoId: '' }));
     fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(formData.departamento)}`)
@@ -121,6 +123,7 @@ export default function RestaurantePage() {
 
   useEffect(() => {
     if (!formData.departamento || !formData.provincia || country !== 'PE') return;
+    if (isLoadingProfile.current) return;
     setIsLoadingLocation(true);
     fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(formData.departamento)}&province=${encodeURIComponent(formData.provincia)}`)
       .then(res => res.json())
@@ -191,6 +194,8 @@ export default function RestaurantePage() {
         const isSpain = profile.countryCode === 'ES';
         if (isSpain) setCountry('ES');
 
+        isLoadingProfile.current = true;
+
         setFormData(prev => ({
           ...prev,
           nombre: profile.name || '',
@@ -206,6 +211,9 @@ export default function RestaurantePage() {
           foto: profile.coverImageUrl || '',
           amenityIds: profile.amenityIds || []
         }));
+
+        const token = localStorage.getItem('token') || '';
+        const headers = { 'Authorization': `Bearer ${token}` };
 
         if (isSpain) {
           fetch(`${API_BASE}/api/ubigeo/spain/communities`)
@@ -224,24 +232,32 @@ export default function RestaurantePage() {
             fetch(`${API_BASE}/api/ubigeo/spain/municipalities?community=${encodeURIComponent(profile.spainCommunity)}&province=${encodeURIComponent(profile.spainProvince)}`)
               .then(res => res.json())
               .then(data => setDbSpainMunicipalities(Array.isArray(data) ? data : []))
-              .catch(err => console.error(err));
+              .catch(err => console.error(err))
+              .finally(() => { isLoadingProfile.current = false; });
+          } else {
+            isLoadingProfile.current = false;
           }
         } else {
-          if (profile.district?.department) {
-            setFormData(prev => ({ ...prev, departamento: profile.district.department }));
-            fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(profile.district.department)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
+          const dept = profile.district?.department;
+          const prov = profile.district?.province;
+
+          if (dept && prov) {
+            Promise.all([
+              fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(dept)}`, { headers })
+                .then(res => res.json()).then(data => setDbProvinces(Array.isArray(data) ? data : [])),
+              fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(dept)}&province=${encodeURIComponent(prov)}`, { headers })
+                .then(res => res.json()).then(data => setDbDistricts(Array.isArray(data) ? data : [])),
+            ])
+              .catch(err => console.error(err))
+              .finally(() => { isLoadingProfile.current = false; });
+          } else if (dept) {
+            fetch(`${API_BASE}/api/ubigeo/provinces?department=${encodeURIComponent(dept)}`, { headers })
               .then(res => res.json())
               .then(data => setDbProvinces(Array.isArray(data) ? data : []))
-              .catch(err => console.error(err));
-          }
-
-          if (profile.district?.department && profile.district?.province) {
-            const dept = profile.district.department;
-            const prov = profile.district.province;
-            fetch(`${API_BASE}/api/ubigeo/districts?department=${encodeURIComponent(dept)}&province=${encodeURIComponent(prov)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
-              .then(res => res.json())
-              .then(data => setDbDistricts(Array.isArray(data) ? data : []))
-              .catch(err => console.error(err));
+              .catch(err => console.error(err))
+              .finally(() => { isLoadingProfile.current = false; });
+          } else {
+            isLoadingProfile.current = false;
           }
         }
       }).catch(err => {
