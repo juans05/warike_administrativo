@@ -21,6 +21,8 @@ interface MenuCategory {
   dishes: MenuItem[];
 }
 
+const DEFAULT_DISH_IMG = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80';
+
 export default function CartaPage() {
   const { activePlaceId } = useRestaurant();
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -30,21 +32,21 @@ export default function CartaPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [categoryName, setCategoryName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [modalData, setModalData] = useState({ name: '', description: '', price: '', imageUrl: '', categoryId: '' });
 
   const [menuType, setMenuType] = useState<'digital' | 'photo'>('digital');
   const [menuPhoto, setMenuPhoto] = useState('');
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
 
+  const totalDishes = categories.reduce((acc, c) => acc + (c.dishes?.length || 0), 0);
+
   const loadMenu = async () => {
     if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      // Load digital menu
       const data = await businessApi.getMenu(activePlaceId);
       setCategories(Array.isArray(data) ? data : []);
-
-      // Load profile for menu photo
       const profile = await businessApi.getProfile(activePlaceId);
       if (profile.menuImageUrl) {
         setMenuPhoto(profile.menuImageUrl);
@@ -52,6 +54,7 @@ export default function CartaPage() {
       }
     } catch (err) {
       console.error('Error loading menu:', err);
+      toast.error('Error al cargar la carta');
     } finally {
       setIsLoading(false);
     }
@@ -62,28 +65,20 @@ export default function CartaPage() {
     setIsSavingPhoto(true);
     try {
       await businessApi.updateProfile(activePlaceId, { menuImageUrl: menuPhoto });
-      toast.success('Imagen de la carta guardada con éxito.');
-    } catch (err) {
+      toast.success('Imagen de la carta guardada.');
+    } catch {
       toast.error('Error al guardar la imagen');
     } finally {
       setIsSavingPhoto(false);
     }
   };
 
-  useEffect(() => {
-    loadMenu();
-  }, [activePlaceId]);
+  useEffect(() => { loadMenu(); }, [activePlaceId]);
 
   const openModal = (item: MenuItem | null = null, catId: string = '') => {
     if (item) {
       setEditingItem(item);
-      setModalData({
-        name: item.name,
-        description: item.description || '',
-        price: String(item.price),
-        imageUrl: item.imageUrl || '',
-        categoryId: item.categoryId
-      });
+      setModalData({ name: item.name, description: item.description || '', price: String(item.price), imageUrl: item.imageUrl || '', categoryId: item.categoryId });
     } else {
       setEditingItem(null);
       setModalData({ name: '', description: '', price: '', imageUrl: '', categoryId: catId || (categories[0]?.id || '') });
@@ -92,18 +87,14 @@ export default function CartaPage() {
   };
 
   const openCategoryModal = (category: MenuCategory | null = null) => {
-    if (category) {
-      setEditingCategory(category);
-      setCategoryName(category.name);
-    } else {
-      setEditingCategory(null);
-      setCategoryName('');
-    }
+    setEditingCategory(category);
+    setCategoryName(category?.name || '');
     setShowCategoryModal(true);
   };
 
   const handleSaveCategory = async () => {
     if (!activePlaceId || !categoryName.trim()) return;
+    setIsSaving(true);
     try {
       if (editingCategory) {
         await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, displayOrder: editingCategory.displayOrder });
@@ -111,32 +102,43 @@ export default function CartaPage() {
         await businessApi.createCategory(activePlaceId, { name: categoryName, displayOrder: categories.length });
       }
       setShowCategoryModal(false);
+      toast.success(editingCategory ? 'Categoría actualizada' : 'Categoría creada');
       loadMenu();
-    } catch (err) {
+    } catch {
       toast.error('Error al guardar la categoría');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!activePlaceId || !confirm('¿Eliminar esta categoría y todos sus platos?')) return;
+    try {
+      await businessApi.deleteCategory(activePlaceId, categoryId);
+      toast.success('Categoría eliminada');
+      loadMenu();
+    } catch {
+      toast.error('Error al eliminar la categoría');
     }
   };
 
   const handleSave = async () => {
-    if (!activePlaceId) return;
+    if (!activePlaceId || !modalData.name.trim()) return;
+    setIsSaving(true);
     try {
-      const payload = {
-        name: modalData.name,
-        description: modalData.description,
-        price: parseFloat(modalData.price),
-        imageUrl: modalData.imageUrl,
-        categoryId: modalData.categoryId
-      };
-
+      const payload = { name: modalData.name, description: modalData.description, price: parseFloat(modalData.price) || 0, imageUrl: modalData.imageUrl, categoryId: modalData.categoryId };
       if (editingItem) {
         await businessApi.updateMenuItem(activePlaceId, editingItem.id, payload);
       } else {
         await businessApi.createMenuItem(activePlaceId, payload);
       }
       setShowModal(false);
+      toast.success(editingItem ? 'Plato actualizado' : 'Plato creado');
       loadMenu();
-    } catch (err) {
+    } catch {
       toast.error('Error al guardar el plato');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -144,237 +146,336 @@ export default function CartaPage() {
     if (!activePlaceId || !confirm('¿Eliminar este plato?')) return;
     try {
       await businessApi.deleteMenuItem(activePlaceId, itemId);
+      toast.success('Plato eliminado');
       loadMenu();
-    } catch (err) {
+    } catch {
       toast.error('Error al eliminar');
     }
   };
 
-  if (isLoading) return <div className="p-20 text-center font-bold text-gray-400">Cargando la carta...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-12 h-12 border-4 border-orange-200 border-t-[#F26122] rounded-full animate-spin" />
+        <p className="text-gray-400 font-semibold">Cargando la carta...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+    <div className="max-w-6xl pb-24 space-y-8">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">La Carta</h1>
-          <p className="text-[#6B7280] font-medium max-w-md">Elige cómo quieres mostrar tus productos a los clientes.</p>
+          <p className="text-xs font-bold text-[#F26122] uppercase tracking-widest mb-1">Gestión de menú</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">La Carta</h1>
+          <p className="text-gray-400 text-sm font-medium mt-1">
+            {categories.length} {categories.length === 1 ? 'categoría' : 'categorías'} · {totalDishes} {totalDishes === 1 ? 'plato' : 'platos'}
+          </p>
         </div>
 
-        <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 self-stretch md:self-auto">
-          <button 
-            onClick={() => setMenuType('digital')}
-            className={`flex-1 md:flex-none px-6 py-3 rounded-xl font-bold text-sm transition-all ${menuType === 'digital' ? 'bg-[#F26122] text-white shadow-lg shadow-orange-200' : 'text-gray-400 hover:bg-gray-50'}`}
-          >
-            Digital Pro
-          </button>
-          <button 
-            onClick={() => setMenuType('photo')}
-            className={`flex-1 md:flex-none px-6 py-3 rounded-xl font-bold text-sm transition-all ${menuType === 'photo' ? 'bg-[#F26122] text-white shadow-lg shadow-orange-200' : 'text-gray-400 hover:bg-gray-50'}`}
-          >
-            Solo Foto
-          </button>
-        </div>
-      </header>
-
-      {menuType === 'photo' ? (
-        <section className="bg-white p-10 rounded-[3rem] border border-gray-100 shadow-sm space-y-10">
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-[#1A1A1A]">Carta en Imagen</h2>
-              <p className="text-gray-400 font-medium">Sube una foto clara de tu carta física. Es lo más rápido para empezar.</p>
-            </div>
-
-            <div className="aspect-[3/4] md:aspect-square bg-gray-50 rounded-[2.5rem] border-4 border-dashed border-gray-100 overflow-hidden relative group">
-              {menuPhoto ? (
-                <>
-                  <img src={menuPhoto} className="w-full h-full object-contain" alt="Carta Física" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={() => setMenuPhoto('')} className="bg-white text-red-600 px-6 py-3 rounded-2xl font-bold">Cambiar Imagen</button>
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-10 text-center gap-4">
-                  <span className="text-5xl">📷</span>
-                  <div>
-                    <p className="font-black text-gray-400 uppercase text-[10px] tracking-widest">Pega la URL de la imagen aquí</p>
-                    <input 
-                      type="text" 
-                      placeholder="https://instasize.com/..." 
-                      className="mt-4 w-full bg-white border border-gray-100 py-4 px-6 rounded-2xl outline-none focus:ring-4 focus:ring-orange-50 font-bold"
-                      onChange={(e) => setMenuPhoto(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button 
-              onClick={saveMenuPhoto}
-              disabled={isSavingPhoto || !menuPhoto}
-              className="w-full bg-[#1A1A1A] text-white py-5 rounded-2xl font-black shadow-xl hover:scale-[1.02] transition-transform active:scale-95 disabled:opacity-50"
+        <div className="flex items-center gap-3">
+          {/* Toggle */}
+          <div className="flex bg-gray-100 p-1 rounded-xl">
+            <button
+              onClick={() => setMenuType('digital')}
+              className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${menuType === 'digital' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              {isSavingPhoto ? 'GUARDANDO...' : 'GUARDAR CARTA'}
+              Digital
             </button>
-          </div>
-        </section>
-      ) : (
-        <>
-          <div className="flex justify-end">
-            <button 
-              onClick={() => openModal()}
-              className="bg-[#F26122] text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-[#F26122]/20 hover:scale-[1.02] transition-transform active:scale-95 flex items-center gap-2"
+            <button
+              onClick={() => setMenuType('photo')}
+              className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${menuType === 'photo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <span>+</span> Nuevo Plato
+              Foto
             </button>
           </div>
 
-          {categories.length === 0 ? (
-            <div className="bg-white border-2 border-dashed border-gray-100 rounded-[3rem] p-20 text-center">
-              <p className="text-gray-400 font-bold mb-4">No tienes categorías en tu menú digital</p>
+          {menuType === 'digital' && (
+            <>
               <button
                 onClick={() => openCategoryModal()}
-                className="text-[#F26122] font-black underline hover:text-orange-600 transition-colors"
+                className="px-4 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 text-sm font-bold hover:border-gray-300 hover:bg-gray-50 transition-all flex items-center gap-2"
               >
-                Crear mi primera categoría
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                Categoría
               </button>
+              <button
+                onClick={() => openModal()}
+                className="px-5 py-2.5 rounded-xl bg-[#F26122] text-white text-sm font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transition-all flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                Nuevo Plato
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Digital Menu ── */}
+      {menuType === 'digital' ? (
+        categories.length === 0 ? (
+          /* Empty State */
+          <div className="flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-gray-200 py-24 px-8 text-center">
+            <div className="w-20 h-20 bg-orange-50 rounded-2xl flex items-center justify-center mb-6">
+              <svg className="w-10 h-10 text-[#F26122]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
-          ) : (
-            <div className="space-y-16">
-              {categories.map((category) => (
-                <section key={category.id} className="space-y-8">
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-2xl font-black text-[#1A1A1A] uppercase tracking-tight">{category.name}</h2>
-                      <button
-                        onClick={() => openCategoryModal(category)}
-                        className="text-lg hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
-                        title="Editar categoría"
-                      >
-                        ✏️
-                      </button>
-                    </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Empieza tu carta digital</h3>
+            <p className="text-gray-400 text-sm mb-8 max-w-xs">Crea categorías como "Entradas", "Platos de fondo" y añade tus platos con fotos y precios.</p>
+            <button
+              onClick={() => openCategoryModal()}
+              className="px-8 py-3 bg-[#F26122] text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transition-all"
+            >
+              Crear primera categoría
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {categories.map((category) => (
+              <div key={category.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* Category Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[#F26122]" />
+                    <h2 className="font-black text-gray-900 text-base uppercase tracking-wider">{category.name}</h2>
+                    <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+                      {category.dishes?.length || 0} {(category.dishes?.length || 0) === 1 ? 'plato' : 'platos'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => openModal(null, category.id)}
-                      className="text-xs font-bold text-[#F26122] bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition-colors"
+                      className="text-xs font-bold text-[#F26122] bg-orange-50 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors"
                     >
-                      + Agregar a {category.name}
+                      + Agregar plato
+                    </button>
+                    <button
+                      onClick={() => openCategoryModal(category)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                      title="Editar categoría"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500"
+                      title="Eliminar categoría"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
+                {/* Dishes */}
+                {!category.dishes || category.dishes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                    <p className="text-gray-400 text-sm font-medium mb-3">Esta categoría está vacía</p>
+                    <button
+                      onClick={() => openModal(null, category.id)}
+                      className="text-sm font-bold text-[#F26122] hover:underline"
+                    >
+                      + Añadir el primer plato
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-gray-100">
                     {category.dishes.map((item) => (
-                      <div key={item.id} className="group bg-white rounded-[3rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all">
-                        <div className="aspect-[4/3] relative overflow-hidden">
-                          <img src={item.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                          <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openModal(item)} className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-blue-600 shadow-lg hover:bg-blue-600 hover:text-white transition-all">✏️</button>
-                            <button onClick={() => handleDelete(item.id)} className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-red-600 shadow-lg hover:bg-red-600 hover:text-white transition-all">🗑️</button>
-                          </div>
-                          <div className="absolute bottom-4 left-4">
-                            <span className="bg-white/90 backdrop-blur px-4 py-2 rounded-xl font-black text-[#F26122] text-sm shadow-sm border border-orange-50">S/. {item.price}</span>
+                      <div key={item.id} className="group bg-white hover:bg-gray-50 transition-colors relative">
+                        <div className="aspect-[4/3] overflow-hidden">
+                          <img
+                            src={item.imageUrl || DEFAULT_DISH_IMG}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-gray-900 text-sm leading-tight truncate">{item.name}</h4>
+                              {item.description && (
+                                <p className="text-gray-400 text-xs mt-0.5 line-clamp-2 leading-relaxed">{item.description}</p>
+                              )}
+                            </div>
+                            <span className="text-sm font-black text-[#F26122] whitespace-nowrap shrink-0">
+                              S/ {Number(item.price).toFixed(2)}
+                            </span>
                           </div>
                         </div>
-                        <div className="p-7 space-y-2">
-                          <h4 className="font-black text-[#1A1A1A] text-lg leading-tight uppercase tracking-tight">{item.name}</h4>
-                          <p className="text-gray-400 text-[13px] font-medium leading-relaxed line-clamp-2">{item.description}</p>
+                        {/* Hover actions */}
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openModal(item)}
+                            className="w-7 h-7 bg-white/95 backdrop-blur rounded-lg flex items-center justify-center shadow-md hover:bg-blue-50 hover:text-blue-600 transition-all text-gray-600"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="w-7 h-7 bg-white/95 backdrop-blur rounded-lg flex items-center justify-center shadow-md hover:bg-red-50 hover:text-red-600 transition-all text-gray-600"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
-                </section>
-              ))}
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        /* ── Photo Menu ── */
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-[#F26122]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
-          )}
-        </>
+            <h2 className="text-xl font-black text-gray-900">Carta en Imagen</h2>
+            <p className="text-gray-400 text-sm mt-1">Sube una foto de tu carta física o usa una URL de imagen.</p>
+          </div>
+
+          <div className={`rounded-2xl border-2 border-dashed overflow-hidden relative ${menuPhoto ? 'border-gray-200' : 'border-gray-200'}`}>
+            {menuPhoto ? (
+              <div className="group relative">
+                <img src={menuPhoto} className="w-full object-contain max-h-[500px]" alt="Carta" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <button onClick={() => setMenuPhoto('')} className="bg-white text-gray-900 px-6 py-2.5 rounded-xl font-bold text-sm">
+                    Cambiar imagen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 px-8 text-center gap-4">
+                <svg className="w-12 h-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <p className="text-gray-400 text-sm font-medium">Pega la URL de tu imagen</p>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  className="w-full max-w-sm bg-gray-50 border border-gray-200 py-3 px-5 rounded-xl outline-none focus:ring-2 focus:ring-orange-200 text-sm font-medium"
+                  onChange={(e) => setMenuPhoto(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={saveMenuPhoto}
+            disabled={isSavingPhoto || !menuPhoto}
+            className="mt-6 w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSavingPhoto ? 'Guardando...' : 'Guardar carta'}
+          </button>
+        </div>
       )}
 
-      {/* Item Modal */}
+      {/* ── Modal: New/Edit Dish ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#1A1A1A]/60 backdrop-blur-md" onClick={() => setShowModal(false)}></div>
-          <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl relative overflow-hidden">
-            <div className="p-10 space-y-8">
-              <h3 className="text-3xl font-black text-[#1A1A1A] tracking-tighter">{editingItem ? 'EDITAR PLATO' : 'NUEVO PLATO'}</h3>
-              <div className="space-y-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-base font-black text-gray-900">{editingItem ? 'Editar plato' : 'Nuevo plato'}</h3>
+              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Nombre del plato *</label>
                 <input
-                  type="text" placeholder="Nombre del plato" value={modalData.name}
-                  onChange={(e) => setModalData({...modalData, name: e.target.value})}
-                  className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
+                  type="text" placeholder="Ej: Lomo Saltado" value={modalData.name}
+                  onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Descripción</label>
                 <textarea
-                  placeholder="Descripción" value={modalData.description}
-                  onChange={(e) => setModalData({...modalData, description: e.target.value})}
-                  className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm min-h-[100px]"
+                  placeholder="Ingredientes, presentación..." value={modalData.description}
+                  onChange={(e) => setModalData({ ...modalData, description: e.target.value })}
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 resize-none"
                 />
-                <div className="grid grid-cols-2 gap-4">
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Precio (S/.)</label>
                   <input
-                    type="number" placeholder="Precio (S/.)" value={modalData.price}
-                    onChange={(e) => setModalData({...modalData, price: e.target.value})}
-                    className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
+                    type="number" placeholder="0.00" value={modalData.price}
+                    onChange={(e) => setModalData({ ...modalData, price: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
                   />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Categoría</label>
                   <select
                     value={modalData.categoryId}
-                    onChange={(e) => setModalData({...modalData, categoryId: e.target.value})}
-                    className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
+                    onChange={(e) => setModalData({ ...modalData, categoryId: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
                   >
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">URL de imagen</label>
                 <input
-                  type="text" placeholder="URL de la imagen" value={modalData.imageUrl}
-                  onChange={(e) => setModalData({...modalData, imageUrl: e.target.value})}
-                  className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm"
+                  type="text" placeholder="https://..." value={modalData.imageUrl}
+                  onChange={(e) => setModalData({ ...modalData, imageUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
                 />
+                {modalData.imageUrl && (
+                  <img src={modalData.imageUrl} alt="preview" className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                )}
               </div>
-              <div className="flex gap-4">
-                <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-black">CANCELAR</button>
-                <button onClick={handleSave} className="flex-[2] bg-[#F26122] text-white py-4 rounded-2xl font-black">GUARDAR</button>
-              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex gap-3">
+              <button onClick={() => setShowModal(false)} className="flex-1 bg-white border border-gray-200 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSave} disabled={isSaving || !modalData.name.trim()} className="flex-[2] bg-[#F26122] text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">
+                {isSaving ? 'Guardando...' : (editingItem ? 'Actualizar' : 'Crear plato')}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Category Modal */}
+      {/* ── Modal: Category ── */}
       {showCategoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#1A1A1A]/60 backdrop-blur-md" onClick={() => setShowCategoryModal(false)}></div>
-          <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative overflow-hidden">
-            <div className="p-10 space-y-8">
-              <div>
-                <h3 className="text-3xl font-black text-[#1A1A1A] tracking-tighter">
-                  {editingCategory ? 'EDITAR CATEGORÍA' : 'NUEVA CATEGORÍA'}
-                </h3>
-                <p className="text-gray-400 text-sm font-medium mt-2">
-                  {editingCategory ? 'Modifica el nombre de tu categoría' : 'Crea una nueva sección para tu menú'}
-                </p>
-              </div>
-
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCategoryModal(false)} />
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative z-10 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-base font-black text-gray-900">{editingCategory ? 'Editar categoría' : 'Nueva categoría'}</h3>
+              <button onClick={() => setShowCategoryModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">Nombre</label>
               <input
                 type="text"
-                placeholder="Nombre de la categoría"
+                placeholder="Ej: Entradas, Bebidas, Postres..."
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveCategory()}
                 autoFocus
-                className="w-full bg-[#F7F8FA] border-none rounded-2xl py-4 px-6 outline-none font-bold text-sm focus:ring-4 focus:ring-orange-100"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
               />
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setShowCategoryModal(false)}
-                  className="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-gray-700 hover:bg-gray-200 transition-colors"
-                >
-                  CANCELAR
-                </button>
-                <button
-                  onClick={handleSaveCategory}
-                  disabled={!categoryName.trim()}
-                  className="flex-1 bg-[#F26122] text-white py-4 rounded-2xl font-black hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {editingCategory ? 'ACTUALIZAR' : 'CREAR'}
-                </button>
-              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 flex gap-3">
+              <button onClick={() => setShowCategoryModal(false)} className="flex-1 bg-white border border-gray-200 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSaveCategory} disabled={isSaving || !categoryName.trim()} className="flex-[2] bg-[#F26122] text-white py-3 rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">
+                {isSaving ? 'Guardando...' : (editingCategory ? 'Actualizar' : 'Crear')}
+              </button>
             </div>
           </div>
         </div>
