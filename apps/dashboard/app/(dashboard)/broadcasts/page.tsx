@@ -20,11 +20,17 @@ interface Broadcast {
   whatsappNumber?: { phoneNumber: string };
 }
 
+type TemplateStatus = 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'FAILED';
+
 interface Template {
   id: string;
-  elementName: string;
+  name: string;
   languageCode: string;
   category: string;
+  status: TemplateStatus;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface WaNumber { id: string; phoneNumber: string; isActive: boolean }
@@ -58,6 +64,14 @@ const CATEGORY_INFO: Record<TemplateCategory, { icon: string; color: string; des
 const TEMPLATE_STEPS: TemplateStep[] = ['info', 'message', 'buttons'];
 const STEP_LABELS: Record<TemplateStep, string> = { info: 'Plantilla', message: 'Mensaje', buttons: 'Botones' };
 
+const TEMPLATE_STATUS_CONFIG: Record<TemplateStatus, { label: string; color: string; icon: string }> = {
+  PENDING:   { label: 'Pendiente',  color: 'bg-gray-100 text-gray-600 border-gray-200',      icon: '⏳' },
+  SUBMITTED: { label: 'En revisión', color: 'bg-blue-50 text-blue-700 border-blue-200',       icon: '📤' },
+  APPROVED:  { label: 'Aprobada',   color: 'bg-green-50 text-green-700 border-green-200',     icon: '✅' },
+  REJECTED:  { label: 'Rechazada',  color: 'bg-red-50 text-red-700 border-red-200',           icon: '❌' },
+  FAILED:    { label: 'Error envío', color: 'bg-orange-50 text-orange-700 border-orange-200', icon: '⚠️' },
+};
+
 const STATUS_COLOR: Record<BroadcastStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
   SCHEDULED: 'bg-blue-100 text-blue-700',
@@ -86,6 +100,7 @@ export default function BroadcastsPage() {
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState('');
 
   // Campaign modal
@@ -120,11 +135,21 @@ export default function BroadcastsPage() {
   const syncTemplates = async () => {
     setSyncing(true);
     try {
-      const ts = await plazbotApi.getTemplates();
+      const ts = await plazbotApi.syncTemplates();
       setTemplates(Array.isArray(ts) ? ts : []);
-      toast.success('Plantillas sincronizadas');
-    } catch { toast.error('Error al sincronizar plantillas'); }
+      toast.success('Estados sincronizados con Meta');
+    } catch { toast.error('Error al sincronizar estados'); }
     finally { setSyncing(false); }
+  };
+
+  const handleResend = async (id: string) => {
+    setResendingId(id);
+    try {
+      const updated = await plazbotApi.resendTemplate(id);
+      setTemplates(prev => prev.map(t => t.id === id ? updated : t));
+      toast.success(updated.status === 'SUBMITTED' ? 'Plantilla reenviada a Meta' : 'Error al reenviar');
+    } catch (e: any) { toast.error(e?.message || 'Error al reenviar plantilla'); }
+    finally { setResendingId(null); }
   };
 
   const handleCreateCampaign = async () => {
@@ -203,7 +228,7 @@ export default function BroadcastsPage() {
   };
 
   const filteredTemplates = templates.filter(t =>
-    !templateSearch || t.elementName?.toLowerCase().includes(templateSearch.toLowerCase())
+    !templateSearch || t.name?.toLowerCase().includes(templateSearch.toLowerCase())
   );
 
   if (loading) {
@@ -333,8 +358,8 @@ export default function BroadcastsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <p className="font-black text-gray-700 text-lg">Plantillas</p>
-              <p className="text-sm text-gray-400 max-w-sm mx-auto">Crea y gestiona plantillas de WhatsApp para usar en tus campañas y envíos individuales.</p>
+              <p className="font-black text-gray-700 text-lg">Sin plantillas aún</p>
+              <p className="text-sm text-gray-400 max-w-sm mx-auto">Crea una plantilla, se guardará en la base de datos y se enviará a Meta para aprobación.</p>
               <button
                 onClick={() => { setShowTemplateModal(true); setTemplateForm(EMPTY_TEMPLATE); setTemplateStep('info'); }}
                 className="px-6 py-3 bg-[#1E73BE] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all"
@@ -344,21 +369,52 @@ export default function BroadcastsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredTemplates.map(t => (
-                <div key={t.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4 flex items-center justify-between hover:shadow-sm transition-all">
-                  <div>
-                    <p className="font-black text-gray-900 text-sm">{t.elementName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 font-mono">{t.languageCode?.toUpperCase()}</p>
+              {filteredTemplates.map(t => {
+                const statusCfg = TEMPLATE_STATUS_CONFIG[t.status] || TEMPLATE_STATUS_CONFIG.PENDING;
+                const isResendable = t.status === 'FAILED' || t.status === 'REJECTED';
+                return (
+                  <div key={t.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4 hover:shadow-sm transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-black text-gray-900 text-sm font-mono">{t.name}</p>
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border ${
+                            t.category === 'MARKETING' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                            t.category === 'UTILITY' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            'bg-purple-50 text-purple-700 border-purple-200'
+                          }`}>
+                            {t.category}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{t.languageCode?.toUpperCase()} · {new Date(t.createdAt).toLocaleDateString('es-PE')}</p>
+                        {t.errorMessage && (
+                          <p className="text-[11px] text-red-500 mt-1 bg-red-50 px-2 py-1 rounded-lg">{t.errorMessage}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full border ${statusCfg.color}`}>
+                          <span>{statusCfg.icon}</span>
+                          {statusCfg.label}
+                        </span>
+                        {isResendable && (
+                          <button
+                            onClick={() => handleResend(t.id)}
+                            disabled={resendingId === t.id}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white text-[10px] font-black rounded-lg hover:bg-gray-700 transition-all disabled:opacity-50"
+                          >
+                            {resendingId === t.id ? (
+                              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                            ) : (
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            )}
+                            Reenviar
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest border ${
-                    t.category === 'MARKETING' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                    t.category === 'UTILITY' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                    'bg-purple-50 text-purple-700 border-purple-200'
-                  }`}>
-                    {t.category}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -408,17 +464,17 @@ export default function BroadcastsPage() {
 
               <div>
                 <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Plantilla a enviar</label>
-                {templates.length === 0 ? (
+                {templates.filter(t => t.status === 'APPROVED').length === 0 ? (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700 font-medium">
-                    No hay plantillas aprobadas. Primero crea una plantilla en la pestaña Plantilla y espera la aprobación de Meta.
+                    No hay plantillas aprobadas por Meta. Ve a la pestaña <strong>Plantilla</strong>, crea una y espera aprobación (24-72h).
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {templates.map(t => (
+                    {templates.filter(t => t.status === 'APPROVED').map(t => (
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setCampaignForm(p => ({ ...p, templateId: t.id, templateName: t.elementName }))}
+                        onClick={() => setCampaignForm(p => ({ ...p, templateId: t.id, templateName: t.name }))}
                         className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
                           campaignForm.templateId === t.id
                             ? 'bg-orange-50 border-orange-400'
@@ -426,7 +482,7 @@ export default function BroadcastsPage() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-black text-gray-900">{t.elementName}</span>
+                          <span className="text-sm font-black text-gray-900">{t.name}</span>
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${
                             t.category === 'MARKETING' ? 'bg-orange-100 text-orange-700' :
                             t.category === 'UTILITY' ? 'bg-blue-100 text-blue-700' :
