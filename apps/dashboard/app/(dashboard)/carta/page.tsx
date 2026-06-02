@@ -11,15 +11,14 @@ interface MenuItem {
   description?: string;
   price: number;
   imageUrl?: string;
-  isAvailable: boolean;
   categoryId: string;
 }
 
 interface MenuCategory {
   id: string;
   name: string;
-  order: number;
-  items: MenuItem[];
+  displayOrder: number;
+  dishes: MenuItem[];
 }
 
 export default function CartaPage() {
@@ -43,7 +42,7 @@ export default function CartaPage() {
     try {
       // Load digital menu
       const data = await businessApi.getMenu(activePlaceId);
-      setCategories(data);
+      setCategories(Array.isArray(data) ? data : []);
 
       // Load profile for menu photo
       const profile = await businessApi.getProfile(activePlaceId);
@@ -107,11 +106,9 @@ export default function CartaPage() {
     if (!activePlaceId || !categoryName.trim()) return;
     try {
       if (editingCategory) {
-        // Editar categoría (si la API lo soporta)
-        await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, order: editingCategory.order });
+        await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, displayOrder: editingCategory.displayOrder });
       } else {
-        // Crear categoría
-        await businessApi.createCategory(activePlaceId, { name: categoryName, order: categories.length });
+        await businessApi.createCategory(activePlaceId, { name: categoryName, displayOrder: categories.length });
       }
       setShowCategoryModal(false);
       loadMenu();
@@ -265,7 +262,7 @@ export default function CartaPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150 fill-mode-both">
-                    {category.items.map((item) => (
+                    {category.dishes.map((item) => (
                       <div key={item.id} className="group bg-white rounded-[3rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all">
                         <div className="aspect-[4/3] relative overflow-hidden">
                           <img src={item.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
