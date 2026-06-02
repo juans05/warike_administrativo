@@ -147,7 +147,11 @@ export default function BroadcastsPage() {
     try {
       const updated = await plazbotApi.resendTemplate(id);
       setTemplates(prev => prev.map(t => t.id === id ? updated : t));
-      toast.success(updated.status === 'SUBMITTED' ? 'Plantilla reenviada a Meta' : 'Error al reenviar');
+      if (updated?.status === 'SUBMITTED') {
+        toast.success('Plantilla reenviada a revisión de Meta');
+      } else {
+        toast.error(`Error al reenviar: ${updated?.errorMessage || 'Error desconocido'}`);
+      }
     } catch (e: any) { toast.error(e?.message || 'Error al reenviar plantilla'); }
     finally { setResendingId(null); }
   };
@@ -184,9 +188,20 @@ export default function BroadcastsPage() {
   const handleCreateTemplate = async () => {
     if (!templateForm.elementName.trim()) { toast.warning('Escribe el nombre de la plantilla'); return; }
     if (!templateForm.body.trim()) { toast.warning('Escribe el cuerpo del mensaje'); return; }
+
+    // Validar que los valores de muestra no estén vacíos
+    const vars = bodyVariables(templateForm.body);
+    for (const n of vars) {
+      if (!templateForm.variableSamples[n]?.value?.trim()) {
+        toast.warning(`Escribe un valor de muestra para la variable {{${n}}}`);
+        setTemplateStep('message');
+        return;
+      }
+    }
+
     setCreatingTemplate(true);
     try {
-      await plazbotApi.createTemplate({
+      const result = await plazbotApi.createTemplate({
         elementName: templateForm.elementName,
         category: templateForm.category,
         languageCode: templateForm.language,
@@ -197,11 +212,19 @@ export default function BroadcastsPage() {
         ctaButtons: templateForm.ctaButtons.filter(c => c.text.trim()),
         variableSamples: templateForm.variableSamples,
       });
-      toast.success('Plantilla enviada para aprobación de Meta');
-      setShowTemplateModal(false);
-      setTemplateForm(EMPTY_TEMPLATE);
-      setTemplateStep('info');
-      await syncTemplates();
+
+      if (result?.status === 'FAILED') {
+        toast.error(`Error al enviar a Meta: ${result.errorMessage || 'Error desconocido'}`);
+      } else {
+        toast.success('Plantilla guardada y enviada a revisión de Meta');
+        setShowTemplateModal(false);
+        setTemplateForm(EMPTY_TEMPLATE);
+        setTemplateStep('info');
+      }
+
+      // Recargar lista desde DB (no sync, solo refresh)
+      const ts = await plazbotApi.getTemplates();
+      setTemplates(Array.isArray(ts) ? ts : []);
     } catch (e: any) { toast.error(e?.message || 'Error al crear plantilla'); }
     finally { setCreatingTemplate(false); }
   };
