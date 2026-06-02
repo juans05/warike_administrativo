@@ -394,7 +394,7 @@ export default function BroadcastsPage() {
             <div className="space-y-2">
               {filteredTemplates.map(t => {
                 const statusCfg = TEMPLATE_STATUS_CONFIG[t.status] || TEMPLATE_STATUS_CONFIG.PENDING;
-                const isResendable = t.status === 'FAILED' || t.status === 'REJECTED';
+                const isResendable = t.status === 'FAILED' || t.status === 'REJECTED' || t.status === 'SUBMITTED';
                 return (
                   <div key={t.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4 hover:shadow-sm transition-all">
                     <div className="flex items-start justify-between gap-4">
