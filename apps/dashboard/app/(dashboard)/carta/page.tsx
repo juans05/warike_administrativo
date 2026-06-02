@@ -155,9 +155,69 @@ export default function CartaPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 border-4 border-orange-200 border-t-[#F26122] rounded-full animate-spin" />
-        <p className="text-gray-400 font-semibold">Cargando la carta...</p>
+      <div className="max-w-6xl pb-24 space-y-8">
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: -800px 0; }
+            100% { background-position: 800px 0; }
+          }
+          .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s infinite linear;
+            border-radius: 8px;
+          }
+        `}</style>
+
+        {/* Header skeleton */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-2">
+            <div className="skeleton h-3 w-28" />
+            <div className="skeleton h-8 w-40" />
+            <div className="skeleton h-3 w-32" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="skeleton h-10 w-32 rounded-xl" />
+            <div className="skeleton h-10 w-28 rounded-xl" />
+            <div className="skeleton h-10 w-32 rounded-xl" />
+          </div>
+        </div>
+
+        {/* Category card skeleton × 2 */}
+        {[1, 2].map((n) => (
+          <div key={n} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Category header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="skeleton w-2 h-2 rounded-full" />
+                <div className="skeleton h-4 w-24" />
+                <div className="skeleton h-5 w-14 rounded-full" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="skeleton h-7 w-24 rounded-lg" />
+                <div className="skeleton w-8 h-8 rounded-lg" />
+                <div className="skeleton w-8 h-8 rounded-lg" />
+              </div>
+            </div>
+
+            {/* Dish grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-gray-100">
+              {[1, 2, 3, n === 1 ? 4 : null].filter(Boolean).map((i) => (
+                <div key={i} className="bg-white">
+                  <div className="skeleton aspect-[4/3] rounded-none" />
+                  <div className="p-4 space-y-2">
+                    <div className="flex justify-between gap-2">
+                      <div className="skeleton h-4 w-28" />
+                      <div className="skeleton h-4 w-12" />
+                    </div>
+                    <div className="skeleton h-3 w-full" />
+                    <div className="skeleton h-3 w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

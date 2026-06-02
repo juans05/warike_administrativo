@@ -22,11 +22,15 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
       window.location.href = '/login?expired=1';
       return;
     }
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Error en la petición');
+    const text = await response.text().catch(() => '');
+    let error: any = {};
+    try { error = text ? JSON.parse(text) : {}; } catch { /* empty body */ }
+    throw new Error(error.message || `Error ${response.status}`);
   }
 
-  return response.json();
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 // Carta Methods
