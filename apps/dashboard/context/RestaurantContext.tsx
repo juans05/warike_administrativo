@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { businessApi } from '../lib/api-client';
 
 interface Place {
@@ -19,32 +19,35 @@ interface RestaurantContextValue {
 
 const RestaurantContext = createContext<RestaurantContextValue | undefined>(undefined);
 
-function getInitialActivePlaceId(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('activePlaceId');
-}
-
 export function RestaurantProvider({ children }: { children: React.ReactNode }) {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [activePlaceId, setActivePlaceIdState] = useState<string | null>(getInitialActivePlaceId);
+  // Inicializar en null — se asigna solo después de validar con el backend
+  const [activePlaceId, setActivePlaceIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshingRef = useRef(false);
 
   const refreshPlaces = async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     try {
-      const data = await businessApi.getMyPlaces();
+      const rawData = await businessApi.getMyPlaces();
+      const data: Place[] = Array.isArray(rawData) ? rawData : (rawData?.data ?? []);
       setPlaces(data);
 
-      const stored = localStorage.getItem('activePlaceId');
-      if (stored && data.find((p: Place) => p.id === stored)) {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
+      if (stored && data.find(p => p.id === stored)) {
         setActivePlaceIdState(stored);
       } else if (data.length > 0) {
         setActivePlaceIdState(data[0].id);
         localStorage.setItem('activePlaceId', data[0].id);
+      } else {
+        setActivePlaceIdState(null);
       }
     } catch (error) {
       console.error('Error fetching restaurants:', error);
     } finally {
       setIsLoading(false);
+      refreshingRef.current = false;
     }
   };
 

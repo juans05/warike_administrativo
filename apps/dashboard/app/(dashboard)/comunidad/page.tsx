@@ -3,12 +3,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 
 interface User {
   id: string;
   fullName: string;
   email: string;
-  role: string;
+  role: 'admin' | 'business';
   isBanned: boolean;
   createdAt: string;
 }
@@ -22,7 +23,7 @@ export default function ComunidadPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newUser, setNewUser] = useState({ fullName: '', email: '', password: '', role: 'business' });
+  const [newUser, setNewUser] = useState<{ fullName: string; email: string; password: string; role: 'admin' | 'business' }>({ fullName: '', email: '', password: '', role: 'business' });
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -127,11 +128,10 @@ export default function ComunidadPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {loading && (
+              {loading && users.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-10 py-14 text-center">
-                    <div className="w-7 h-7 border-4 border-[#F26122] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-gray-400 font-bold text-sm">Cargando usuarios...</p>
+                    <SkeletonPage type="table" />
                   </td>
                 </tr>
               )}
@@ -257,7 +257,7 @@ export default function ComunidadPage() {
                     <button
                       key={r.value}
                       type="button"
-                      onClick={() => setNewUser({ ...newUser, role: r.value })}
+                      onClick={() => setNewUser({ ...newUser, role: r.value as 'admin' | 'business' })}
                       className={`p-3 rounded-xl border-2 text-center transition-all ${
                         newUser.role === r.value
                           ? 'border-[#F26122] bg-[#F26122]/5'

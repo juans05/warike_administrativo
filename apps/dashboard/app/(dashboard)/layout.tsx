@@ -7,9 +7,16 @@ import { RestaurantProvider, useRestaurant } from '../../context/RestaurantConte
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
 
+interface DashboardUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: 'admin' | 'business';
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<DashboardUser | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -28,7 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       setIsLoaded(true);
     }
-  }, [router]);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -47,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: any; handleLogout: () => void }) {
+function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: DashboardUser | null; handleLogout: () => void }) {
   const pathname = usePathname();
   const { places, isLoading: contextLoading, refreshPlaces } = useRestaurant();
 

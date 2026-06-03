@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 
 export default function BotSettingsPage() {
@@ -41,7 +42,7 @@ export default function BotSettingsPage() {
     }
   };
 
-  if (isLoading) return <div className="p-20 text-center font-bold text-gray-400">Cargando cerebro del bot...</div>;
+  if (isLoading) return <SkeletonPage type="default" />;
 
   return (
     <div className="max-w-4xl space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-8 duration-700">

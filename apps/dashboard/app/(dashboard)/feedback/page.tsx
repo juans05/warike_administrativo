@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 
 export default function FeedbackPage() {
   const { activePlaceId } = useRestaurant();
@@ -121,12 +122,7 @@ export default function FeedbackPage() {
         </div>
       </div>
 
-      {isLoading && (
-        <div className="py-20 text-center">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="font-bold text-gray-400">Cargando datos...</p>
-        </div>
-      )}
+      {isLoading && <SkeletonPage type="default" />}
 
       {/* ═══════════════════════════════════════════════ */}
       {/* TAB: RESEÑAS POSITIVAS                          */}

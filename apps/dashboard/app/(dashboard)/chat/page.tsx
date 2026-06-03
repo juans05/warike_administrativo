@@ -65,29 +65,65 @@ export default function ChatPage() {
     setNewMessageCount(prev => ({ ...prev, [selectedConv.id]: 0 }));
   }, [selectedConv?.id]);
 
+  // Ref para leer selectedConv sin agregarlo como dependencia del SSE
+  const selectedConvRef = useRef(selectedConv);
+  useEffect(() => { selectedConvRef.current = selectedConv; }, [selectedConv]);
+
   useEffect(() => {
     if (!activePlaceId) return;
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
-    console.log(`${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}?token=${token}`);
-    const es = new EventSource(`${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}?token=${token}`);
-    es.onmessage = (e) => {
+
+    const controller = new AbortController();
+
+    const connectSSE = async () => {
       try {
-        const data = JSON.parse(e.data);
-        setConversations(prev => prev.map(c =>
-          c.id === data.conversationId ? { ...c, lastMessage: data.messageBody } : c
-        ));
-        if (selectedConv?.id === data.conversationId) {
-          businessApi.getConversationMessages(selectedConv.id)
-            .then(res => setMessages(res.data || []));
-        } else {
-          setNewMessageCount(prev => ({ ...prev, [data.conversationId]: (prev[data.conversationId] || 0) + 1 }));
+        const response = await fetch(
+          `${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}`,
+          { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+        );
+        if (!response.ok || !response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              setConversations(prev => prev.map(c =>
+                c.id === data.conversationId ? { ...c, lastMessage: data.messageBody } : c
+              ));
+              const current = selectedConvRef.current;
+              if (current?.id === data.conversationId) {
+                businessApi.getConversationMessages(current.id)
+                  .then(res => setMessages(res.data || []));
+              } else {
+                setNewMessageCount(prev => ({
+                  ...prev,
+                  [data.conversationId]: (prev[data.conversationId] || 0) + 1,
+                }));
+              }
+            } catch { }
+          }
         }
-      } catch { }
+      } catch (err: unknown) {
+        if ((err as Error)?.name !== 'AbortError') {
+          console.error('[Chat SSE] Error en stream de mensajes');
+        }
+      }
     };
-    es.onerror = () => es.close();
-    return () => es.close();
-  }, [activePlaceId, selectedConv?.id]);
+
+    connectSSE();
+    return () => controller.abort();
+  }, [activePlaceId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

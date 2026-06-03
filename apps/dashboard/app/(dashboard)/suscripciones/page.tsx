@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { subscriptionApi } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 
 interface SubscriptionRecord {
   id: string;
@@ -109,10 +110,7 @@ export default function SuscripcionesPage() {
         </div>
 
         {loading && subs.length === 0 ? (
-          <div className="p-16 text-center">
-            <div className="w-8 h-8 border-4 border-[#F26122] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-400 font-bold text-sm">Cargando...</p>
-          </div>
+          <div className="p-8"><SkeletonPage type="table" /></div>
         ) : (
           <>
             <div className="overflow-x-auto">

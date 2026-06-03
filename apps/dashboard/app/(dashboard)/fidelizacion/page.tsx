@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 
 export default function FidelizacionPage() {
   const { activePlaceId } = useRestaurant();
@@ -81,12 +82,7 @@ export default function FidelizacionPage() {
     ? `${window.location.origin}/tarjeta/${activePlaceId}`
     : '';
 
-  if (isLoading) return (
-    <div className="py-20 text-center">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-      <p className="font-bold text-gray-400">Cargando programa...</p>
-    </div>
-  );
+  if (isLoading) return <SkeletonPage type="default" />;
 
   return (
     <div className="max-w-6xl space-y-8 pb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">

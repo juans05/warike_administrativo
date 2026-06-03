@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 
 export default function ReputacionPage() {
@@ -189,12 +190,7 @@ export default function ReputacionPage() {
 
   const publicLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${activePlaceId}`;
 
-  if (isLoading) return (
-    <div className="py-20 text-center">
-      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="font-bold text-gray-400">Cargando estadísticas...</p>
-    </div>
-  );
+  if (isLoading) return <SkeletonPage type="stats" />;
 
   return (
     <div className="max-w-6xl space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
@@ -650,12 +646,13 @@ function DeviceCard({
     const svg = qrCanvasRef.current.querySelector('svg') as SVGElement;
     const svgData = new XMLSerializer().serializeToString(svg);
     const qrImage = 'data:image/svg+xml;base64,' + btoa(svgData);
+    const safeDeviceName = device.name.replace(/[<>&"']/g, '');
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Imprimir QR - ${device.name}</title>
+          <title>Imprimir QR - ${safeDeviceName}</title>
           <style>
             body { 
               margin: 0; 

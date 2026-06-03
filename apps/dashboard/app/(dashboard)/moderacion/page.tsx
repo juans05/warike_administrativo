@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { adminApi } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 
 interface Place {
@@ -58,7 +59,7 @@ export default function ModeracionPage() {
     }
   };
 
-  if (loading && places.length === 0) return <div className="p-20 text-center font-bold text-gray-400">Cargando moderación...</div>;
+  if (loading && places.length === 0) return <SkeletonPage type="table" />;
 
   return (
     <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">

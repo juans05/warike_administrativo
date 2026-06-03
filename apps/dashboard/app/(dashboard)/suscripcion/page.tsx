@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Script from 'next/script';
 import { subscriptionApi } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 
 declare global {
@@ -128,16 +129,7 @@ export default function SuscripcionPage() {
   const fmtMoney = (centavos: number) =>
     `S/. ${(centavos / 100).toFixed(2)}`;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-[#F26122] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-gray-400 font-bold text-sm">Cargando suscripción...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <SkeletonPage type="default" />;
 
   const isActive = subscription?.status === 'active';
   const isCanceled = subscription?.status === 'canceled';

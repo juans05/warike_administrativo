@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -323,6 +324,8 @@ export default function RestaurantePage() {
     }
   };
 
+
+  if (isLoading) return <SkeletonPage type="profile" />;
 
   return (
     <div className="max-w-6xl space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">

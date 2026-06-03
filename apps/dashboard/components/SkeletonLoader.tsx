@@ -37,9 +37,9 @@ export function SkeletonTable() {
   );
 }
 
-export function SkeletonHeader() {
+export function SkeletonHeader({ className = "" }: { className?: string }) {
   return (
-    <div className="space-y-2 animate-pulse">
+    <div className={`space-y-2 animate-pulse ${className}`}>
       <div className="h-10 bg-gray-200 rounded-lg w-1/2"></div>
       <div className="h-5 bg-gray-100 rounded w-2/3"></div>
     </div>
@@ -75,6 +75,77 @@ export function SkeletonListItem() {
           <div className="h-3 bg-gray-100 rounded w-1/2"></div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function SkeletonStatsGrid() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-white rounded-[2rem] border border-gray-200 p-6 space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-8 bg-gray-300 rounded w-1/3"></div>
+          <div className="h-3 bg-gray-100 rounded w-2/3"></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonProfileForm() {
+  return (
+    <div className="animate-pulse space-y-8">
+      <div className="flex gap-6 items-start">
+        <div className="w-48 h-48 bg-gray-200 rounded-[2rem] flex-shrink-0"></div>
+        <div className="flex-1 space-y-4">
+          <SkeletonFormField />
+          <SkeletonFormField />
+        </div>
+      </div>
+      <SkeletonFormField />
+      <SkeletonFormField />
+    </div>
+  );
+}
+
+export function SkeletonChat() {
+  return (
+    <div className="flex h-[70vh] gap-6 animate-pulse">
+      <div className="w-80 bg-white rounded-[2rem] border border-gray-200 p-4 space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 p-3">
+            <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+            <div className="flex-1 space-y-2">
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              <div className="h-2 bg-gray-100 rounded w-1/2"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex-1 bg-white rounded-[2rem] border border-gray-200 p-6 space-y-6">
+        <div className="h-8 bg-gray-200 rounded-lg w-1/3"></div>
+        <div className="space-y-4 flex-1">
+          <div className="h-20 bg-gray-100 rounded-2xl w-3/4"></div>
+          <div className="h-20 bg-gray-100 rounded-2xl w-1/2 ml-auto"></div>
+          <div className="h-20 bg-gray-100 rounded-2xl w-2/3"></div>
+        </div>
+        <div className="h-12 bg-gray-200 rounded-full"></div>
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonPage({ type = 'default' }: { type?: 'default' | 'profile' | 'chat' | 'table' | 'stats' }) {
+  if (type === 'profile') return <div className="max-w-6xl space-y-16 pb-32"><SkeletonHeader /><SkeletonProfileForm /></div>;
+  if (type === 'chat') return <div className="max-w-6xl space-y-8 pb-32"><SkeletonHeader /><SkeletonChat /></div>;
+  if (type === 'table') return <div className="max-w-6xl space-y-8 pb-32"><SkeletonHeader /><SkeletonTable /></div>;
+  if (type === 'stats') return <div className="max-w-6xl space-y-8 pb-32"><SkeletonHeader /><SkeletonStatsGrid /><SkeletonTable /></div>;
+  return (
+    <div className="max-w-6xl space-y-16 pb-32">
+      <SkeletonHeader />
+      <SkeletonCard />
+      <SkeletonGrid count={3} />
     </div>
   );
 }

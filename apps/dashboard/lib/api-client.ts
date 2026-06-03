@@ -1,6 +1,90 @@
 // apps/dashboard/lib/api-client.ts
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// ── Payload types ────────────────────────────────────────────────────────────
+
+export interface ProfileUpdate {
+  name?: string;
+  description?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  coverImageUrl?: string;
+  menuImageUrl?: string;
+  categoryId?: string;
+  districtId?: string | null;
+  amenityIds?: string[];
+  openHoursText?: string;
+  latitude?: number;
+  longitude?: number;
+  priceMin?: number;
+  countryCode?: string;
+  spainCommunity?: string | null;
+  spainProvince?: string | null;
+  spainMunicipality?: string | null;
+  [key: string]: unknown;
+}
+
+export interface BotSettingsUpdate {
+  systemPrompt?: string;
+  tone?: 'professional' | 'casual' | 'friendly';
+  isActive?: boolean;
+}
+
+export interface MenuCategoryPayload { name: string; description?: string; displayOrder?: number }
+export interface MenuCategoryUpdate extends Partial<MenuCategoryPayload> {}
+
+export interface MenuItemPayload {
+  name: string;
+  description?: string;
+  price: number;
+  categoryId: string;
+  imageUrl?: string;
+  available?: boolean;
+  displayOrder?: number;
+}
+export interface MenuItemUpdate extends Partial<MenuItemPayload> {}
+
+export interface DevicePayload { name: string; type?: string; deviceType?: string; location?: string }
+export interface DeviceUpdate extends Partial<DevicePayload> { isActive?: boolean; action?: string; [key: string]: unknown }
+
+export interface BroadcastPayload {
+  placeId: string;
+  whatsappNumberId: string;
+  campaignName: string;
+  templateBody: string;
+  segmentFilter?: { type: string; templateId?: string };
+}
+
+export interface EmailCampaignPayload {
+  placeId: string;
+  subject: string;
+  body: string;
+  segmentFilter?: { type: string };
+}
+
+export interface AdminUserPayload {
+  email: string;
+  password: string;
+  fullName: string;
+  role: 'admin' | 'business';
+}
+
+export interface AdminPlaceUpdate {
+  name?: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface WhatsappNumberPayload {
+  placeId: string;
+  phoneNumber: string;
+}
+
+// ── Core fetch helper ────────────────────────────────────────────────────────
+
 export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const url = endpoint.startsWith('/api/') ? endpoint : `/api${endpoint}`;
@@ -20,7 +104,7 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
       localStorage.removeItem('user');
       localStorage.removeItem('activePlaceId');
       window.location.href = '/login?expired=1';
-      return;
+      throw new Error('Sesión expirada');
     }
     const text = await response.text().catch(() => '');
     let error: any = {};
@@ -46,7 +130,7 @@ export const cartaApi = {
 // Bot Methods
 export const botApi = {
   getSettings: (restaurantId: string) => fetchWithAuth(`/bot/${restaurantId}`),
-  updateSettings: (restaurantId: string, data: any) =>
+  updateSettings: (restaurantId: string, data: BotSettingsUpdate) =>
     fetchWithAuth(`/bot/${restaurantId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -70,7 +154,7 @@ export const businessApi = {
   // Places & Profile
   getMyPlaces: () => fetchWithAuth('/business/my-places'),
   getProfile: (id: string) => fetchWithAuth(`/business/places/${id}/profile`),
-  updateProfile: (id: string, data: any) =>
+  updateProfile: (id: string, data: ProfileUpdate) =>
     fetchWithAuth(`/business/places/${id}/profile`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -79,12 +163,12 @@ export const businessApi = {
   // Menu Management
   getMenu: (id: string) => fetchWithAuth(`/business/places/${id}/menu`),
 
-  createCategory: (id: string, data: any) =>
+  createCategory: (id: string, data: MenuCategoryPayload) =>
     fetchWithAuth(`/business/places/${id}/menu/categories`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateCategory: (id: string, catId: string, data: any) =>
+  updateCategory: (id: string, catId: string, data: MenuCategoryUpdate) =>
     fetchWithAuth(`/business/places/${id}/menu/categories/${catId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -94,12 +178,12 @@ export const businessApi = {
       method: 'DELETE',
     }),
 
-  createMenuItem: (id: string, data: any) =>
+  createMenuItem: (id: string, data: MenuItemPayload) =>
     fetchWithAuth(`/business/places/${id}/menu/items`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateMenuItem: (id: string, itemId: string, data: any) =>
+  updateMenuItem: (id: string, itemId: string, data: MenuItemUpdate) =>
     fetchWithAuth(`/business/places/${id}/menu/items/${itemId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -115,7 +199,7 @@ export const businessApi = {
 
   // Bot Management
   getBotSettings: (id: string) => fetchWithAuth(`/business/places/${id}/bot`),
-  updateBotSettings: (id: string, data: any) =>
+  updateBotSettings: (id: string, data: BotSettingsUpdate) =>
     fetchWithAuth(`/business/places/${id}/bot`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -155,12 +239,12 @@ export const businessApi = {
   // Devices Management
   getDevices: (placeId: string) =>
     fetchWithAuth(`/business/places/${placeId}/devices`),
-  createDevice: (placeId: string, data: any) =>
+  createDevice: (placeId: string, data: DevicePayload) =>
     fetchWithAuth(`/business/places/${placeId}/devices`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateDevice: (placeId: string, deviceId: string, data: any) =>
+  updateDevice: (placeId: string, deviceId: string, data: DeviceUpdate) =>
     fetchWithAuth(`/business/places/${placeId}/devices/${deviceId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -177,7 +261,7 @@ export const businessApi = {
   // WhatsApp Configuration
   getWhatsappNumbers: (placeId: string) =>
     fetchWithAuth(`/business/whatsapp-numbers/${placeId}`),
-  createWhatsappNumber: (data: any) =>
+  createWhatsappNumber: (data: WhatsappNumberPayload) =>
     fetchWithAuth('/business/whatsapp-numbers', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -237,7 +321,7 @@ export const businessApi = {
   // Broadcasts (WhatsApp)
   getBroadcasts: (placeId: string) =>
     fetchWithAuth(`/business/broadcasts/place/${placeId}`),
-  createBroadcast: (data: any) =>
+  createBroadcast: (data: BroadcastPayload) =>
     fetchWithAuth('/business/broadcasts', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -250,7 +334,7 @@ export const businessApi = {
   // Email Campaigns
   getEmailCampaigns: (placeId: string) =>
     fetchWithAuth(`/business/email-campaigns/place/${placeId}`),
-  createEmailCampaign: (data: any) =>
+  createEmailCampaign: (data: EmailCampaignPayload) =>
     fetchWithAuth('/business/email-campaigns', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -334,16 +418,16 @@ export const adminApi = {
   getPendingClaims: () => fetchWithAuth('/admin/claims'),
   verifyClaim: (id: string) => fetchWithAuth(`/admin/claims/${id}/verify`, { method: 'POST' }),
 
-  getUsers: (page = 1, search = '') => fetchWithAuth(`/admin/users?page=${page}&search=${search}`),
-  createUser: (data: any) => fetchWithAuth('/admin/users', {
+  getUsers: (page = 1, search = '') => fetchWithAuth(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`),
+  createUser: (data: AdminUserPayload) => fetchWithAuth('/admin/users', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
   banUser: (id: string) => fetchWithAuth(`/admin/users/${id}/ban`, { method: 'PATCH' }),
   activateUser: (id: string) => fetchWithAuth(`/admin/users/${id}/activate`, { method: 'PATCH' }),
 
-  getPlaces: (page = 1, search = '') => fetchWithAuth(`/admin/places?page=${page}&search=${search}`),
-  updatePlace: (id: string, data: any) => fetchWithAuth(`/admin/places/${id}`, {
+  getPlaces: (page = 1, search = '') => fetchWithAuth(`/admin/places?page=${page}&search=${encodeURIComponent(search)}`),
+  updatePlace: (id: string, data: AdminPlaceUpdate) => fetchWithAuth(`/admin/places/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
@@ -397,6 +481,13 @@ export const plazbotApi = {
     fetchWithAuth(`/plazbot-setup/templates/${id}/resend`, { method: 'POST' }),
   syncTemplates: () =>
     fetchWithAuth('/plazbot-setup/templates/sync', { method: 'POST' }),
+
+  deleteTemplate: (id: string) =>
+    fetchWithAuth(`/plazbot-setup/templates/${id}`, { method: 'DELETE' }),
+  toggleTemplate: (id: string) =>
+    fetchWithAuth(`/plazbot-setup/templates/${id}/toggle`, { method: 'POST' }),
+  updateTemplate: (id: string, data: any) =>
+    fetchWithAuth(`/plazbot-setup/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   createCampaign: (data: { name: string; templateId: string; contacts: string[] }) =>
     fetchWithAuth('/plazbot-setup/campaign', { method: 'POST', body: JSON.stringify(data) }),

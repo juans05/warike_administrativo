@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
+import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { maskPhone } from '../../../lib/mask';
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -45,7 +46,7 @@ export default function ClientesPage() {
     } catch { setHistory([]); }
   };
 
-  if (isLoading) return <div className="py-20 text-center font-bold text-gray-400">Cargando clientes...</div>;
+  if (isLoading) return <SkeletonPage type="table" />;
 
   return (
     <div className="max-w-6xl space-y-10 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
