@@ -382,12 +382,12 @@ export default function PlazbotSetupPage() {
               <textarea
                 value={formData.systemPrompt}
                 onChange={e => setFormData(p => ({ ...p, systemPrompt: e.target.value }))}
-                placeholder="Ej: Eres el asistente de El Huarique. Sé amable, menciona siempre la promoción del día y ofrece reservas para grupos de más de 4 personas."
+                placeholder={`Ejemplos de instrucciones personalizadas:\n– Menciona siempre que tenemos delivery hasta las 10pm\n– Si preguntan por reservas, pide nombre, hora y número de personas\n– Promoción del día: anticucho a S/ 8 los lunes\n– Si el cliente pide la cuenta, indícale que puede pagar con Yape o efectivo`}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm resize-none"
-                rows={4}
+                rows={5}
               />
               <p className="text-xs text-gray-400 mt-1">
-                Si lo dejas vacío, el bot usa instrucciones generales de asistente de restaurante.
+                Estas instrucciones se suman al comportamiento base del bot y tienen prioridad sobre él.
               </p>
             </div>
 
