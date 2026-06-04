@@ -468,7 +468,7 @@ export const plazbotApi = {
   getStatus: () => fetchWithAuth('/plazbot-setup/status'),
 
   getConfig: (placeId: string) => fetchWithAuth(`/plazbot-setup/config?placeId=${placeId}`),
-  configure: (data: { placeId: string; systemPrompt?: string; tone?: string }) =>
+  configure: (data: { placeId: string; botName?: string; restaurantName?: string; systemPrompt?: string; tone?: string }) =>
     fetchWithAuth('/plazbot-setup/configure', { method: 'POST', body: JSON.stringify(data) }),
 
   getMetrics: () => fetchWithAuth('/plazbot-setup/metrics'),

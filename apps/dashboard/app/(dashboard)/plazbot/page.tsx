@@ -15,6 +15,8 @@ const TONE_LABELS: Record<Tone, string> = {
 
 type BotConfig = {
   placeId: string;
+  botName: string | null;
+  restaurantName: string | null;
   systemPrompt: string | null;
   tone: Tone;
   isActive: boolean;
@@ -50,7 +52,7 @@ export default function PlazbotSetupPage() {
   const [loading, setLoading] = useState(true);
 
   // Bot config form
-  const [formData, setFormData] = useState({ systemPrompt: '', tone: 'professional' as Tone });
+  const [formData, setFormData] = useState({ botName: '', restaurantName: '', systemPrompt: '', tone: 'professional' as Tone });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
@@ -97,6 +99,8 @@ export default function PlazbotSetupPage() {
         if (status?.connected && activePlaceId) {
           const config = await plazbotApi.getConfig(activePlaceId);
           setFormData({
+            botName: config?.botName || '',
+            restaurantName: config?.restaurantName || '',
             systemPrompt: config?.systemPrompt || '',
             tone: (config?.tone as Tone) || 'professional',
           });
@@ -307,6 +311,33 @@ export default function PlazbotSetupPage() {
             Personalización del Bot
           </h2>
           <form onSubmit={handleSaveConfig} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                  Nombre del restaurante
+                </label>
+                <input
+                  type="text"
+                  value={formData.restaurantName}
+                  onChange={e => setFormData(p => ({ ...p, restaurantName: e.target.value }))}
+                  placeholder="Ej: La Bajadita"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                  Nombre del bot
+                </label>
+                <input
+                  type="text"
+                  value={formData.botName}
+                  onChange={e => setFormData(p => ({ ...p, botName: e.target.value }))}
+                  placeholder="Ej: Mario"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
                 Tono de Respuesta
