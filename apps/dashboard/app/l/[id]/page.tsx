@@ -55,11 +55,12 @@ export default function PublicScanPage() {
         customerContact: customerContact || undefined,
         marketingConsent,
       });
-    } catch (err) {
-      console.error('Error submitting feedback:', err);
-    } finally {
+    } catch (err: any) {
       setIsSending(false);
+      toast.error(err?.message || 'No se pudo enviar tu reseña. Intenta de nuevo.');
+      return;
     }
+    setIsSending(false);
 
     if (rating >= 4) {
       const placeId = profile?.googlePlaceId;
@@ -318,7 +319,7 @@ export default function PublicScanPage() {
 
       {/* Quick Links */}
       <div className="grid grid-cols-1 gap-4">
-        <LinkButton icon="🍽️" label="Ver la Carta Digital" />
+        <LinkButton icon="🍽️" label="Ver la Carta Digital" href={`/menu/${id}`} />
         <LinkButton icon="📲" label="Seguir en Instagram" />
         <LinkButton icon="💬" label="Contactar por WhatsApp" />
       </div>
@@ -326,11 +327,14 @@ export default function PublicScanPage() {
   );
 }
 
-function LinkButton({ icon, label }: { icon: string; label: string }) {
-  return (
-    <button className="w-full bg-white/50 backdrop-blur-md p-6 rounded-[2rem] border border-[var(--border)] flex items-center gap-6 group hover:bg-white hover:shadow-xl transition-all">
+function LinkButton({ icon, label, href }: { icon: string; label: string; href?: string }) {
+  const cls = "w-full bg-white/50 backdrop-blur-md p-6 rounded-[2rem] border border-[var(--border)] flex items-center gap-6 group hover:bg-white hover:shadow-xl transition-all";
+  const content = (
+    <>
       <div className="text-3xl group-hover:scale-125 transition-transform">{icon}</div>
       <span className="font-black text-[var(--text)] uppercase tracking-widest text-xs">{label}</span>
-    </button>
+    </>
   );
+  if (href) return <a href={href} className={cls}>{content}</a>;
+  return <button className={cls}>{content}</button>;
 }

@@ -366,6 +366,7 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 
 export const publicApi = {
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
+  getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
 
   submitFeedback: (data: {
     placeId: string;
@@ -470,6 +471,9 @@ export const plazbotApi = {
   getConfig: (placeId: string) => fetchWithAuth(`/plazbot-setup/config?placeId=${placeId}`),
   configure: (data: { placeId: string; botName?: string; restaurantName?: string; systemPrompt?: string; tone?: string }) =>
     fetchWithAuth('/plazbot-setup/configure', { method: 'POST', body: JSON.stringify(data) }),
+
+  demoChat: (data: { placeId: string; message: string; history?: { role: 'user' | 'assistant'; content: string }[] }) =>
+    fetchWithAuth('/plazbot-setup/demo-chat', { method: 'POST', body: JSON.stringify(data) }),
 
   getMetrics: () => fetchWithAuth('/plazbot-setup/metrics'),
 

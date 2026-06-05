@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { plazbotApi, businessApi } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { toast } from 'sonner';
@@ -57,6 +57,13 @@ export default function PlazbotSetupPage() {
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
+
+  // Demo chat
+  type DemoMessage = { role: 'user' | 'bot'; text: string };
+  const [demoMessages, setDemoMessages] = useState<DemoMessage[]>([]);
+  const [demoInput, setDemoInput] = useState('');
+  const [demoLoading, setDemoLoading] = useState(false);
+  const demoEndRef = useRef<HTMLDivElement>(null);
 
   // Metrics & templates
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -124,6 +131,26 @@ export default function PlazbotSetupPage() {
       toast.error('Error al generar las instrucciones');
     } finally {
       setGeneratingPrompt(false);
+    }
+  };
+
+  const handleDemoSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = demoInput.trim();
+    if (!text || !activePlaceId || demoLoading) return;
+    const userMsg: DemoMessage = { role: 'user', text };
+    const history = demoMessages.map(m => ({ role: (m.role === 'bot' ? 'assistant' : 'user') as 'user' | 'assistant', content: m.text }));
+    setDemoMessages(prev => [...prev, userMsg]);
+    setDemoInput('');
+    setDemoLoading(true);
+    try {
+      const res = await plazbotApi.demoChat({ placeId: activePlaceId, message: text, history });
+      setDemoMessages(prev => [...prev, { role: 'bot', text: res.response || '...' }]);
+    } catch {
+      setDemoMessages(prev => [...prev, { role: 'bot', text: '❌ Error al obtener respuesta.' }]);
+    } finally {
+      setDemoLoading(false);
+      setTimeout(() => demoEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }
   };
 
@@ -400,6 +427,83 @@ export default function PlazbotSetupPage() {
               className="w-full bg-[#F26122] text-white py-3 rounded-xl font-black hover:opacity-95 transition-all disabled:opacity-50 text-sm"
             >
               {saving ? 'Guardando...' : 'Guardar configuración'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ─── DEMO BOT ─── */}
+      {plazbotConnected && activePlaceId && (
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">
+                Probar Bot
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Simula una conversación con la configuración actual
+              </p>
+            </div>
+            {demoMessages.length > 0 && (
+              <button
+                onClick={() => setDemoMessages([])}
+                className="text-xs text-gray-400 hover:text-red-500 font-bold transition-colors"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Chat area */}
+          <div className="h-80 overflow-y-auto px-4 py-3 space-y-2 bg-[#e5ddd5]">
+            {demoMessages.length === 0 && (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-xs text-gray-500 bg-white/60 px-4 py-2 rounded-full">
+                  Escribe un mensaje para probar el bot
+                </p>
+              </div>
+            )}
+            {demoMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap shadow-sm ${
+                  msg.role === 'user'
+                    ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-sm'
+                    : 'bg-white text-gray-900 rounded-tl-sm'
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            {demoLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white px-4 py-2.5 rounded-2xl rounded-tl-sm shadow-sm flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                </div>
+              </div>
+            )}
+            <div ref={demoEndRef} />
+          </div>
+
+          {/* Input */}
+          <form onSubmit={handleDemoSend} className="flex gap-2 px-4 py-3 border-t border-gray-100 bg-[#f0f0f0]">
+            <input
+              type="text"
+              value={demoInput}
+              onChange={e => setDemoInput(e.target.value)}
+              placeholder="Escribe como si fueras un cliente..."
+              disabled={demoLoading}
+              className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={!demoInput.trim() || demoLoading}
+              className="w-10 h-10 bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-40 rounded-full flex items-center justify-center transition-colors shrink-0"
+            >
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              </svg>
             </button>
           </form>
         </div>

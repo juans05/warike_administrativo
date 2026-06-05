@@ -7,6 +7,29 @@ import { toast } from 'sonner';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+function playNotificationSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const play = (freq: number, start: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    };
+    play(880, 0, 0.15);
+    play(1100, 0.12, 0.2);
+  } catch { }
+}
+
 function timeAgo(date: string) {
   if (!date) return '';
   const d = new Date(date);
@@ -75,14 +98,19 @@ export default function ChatPage() {
     if (!token) return;
 
     const controller = new AbortController();
+    let retryTimeout: ReturnType<typeof setTimeout>;
 
     const connectSSE = async () => {
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}`,
-          { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+          `${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}?token=${encodeURIComponent(token)}`,
+          { signal: controller.signal }
         );
-        if (!response.ok || !response.body) return;
+        if (!response.ok || !response.body) {
+          console.error('[Chat SSE] Error de conexión:', response.status);
+          retryTimeout = setTimeout(connectSSE, 5000);
+          return;
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -98,14 +126,25 @@ export default function ChatPage() {
             if (!line.startsWith('data: ')) continue;
             try {
               const data = JSON.parse(line.slice(6));
-              setConversations(prev => prev.map(c =>
-                c.id === data.conversationId ? { ...c, lastMessage: data.messageBody } : c
-              ));
+              setConversations(prev => {
+                const exists = prev.some(c => c.id === data.conversationId);
+                const updated = prev.map(c =>
+                  c.id === data.conversationId ? { ...c, lastMessage: data.messageBody } : c
+                );
+                // Si es conversación nueva, recargar lista completa
+                if (!exists && activePlaceId) {
+                  businessApi.getConversations(activePlaceId)
+                    .then(res => setConversations(res.data || []));
+                }
+                return updated;
+              });
               const current = selectedConvRef.current;
               if (current?.id === data.conversationId) {
                 businessApi.getConversationMessages(current.id)
                   .then(res => setMessages(res.data || []));
+                if (document.hidden) playNotificationSound();
               } else {
+                playNotificationSound();
                 setNewMessageCount(prev => ({
                   ...prev,
                   [data.conversationId]: (prev[data.conversationId] || 0) + 1,
@@ -114,15 +153,18 @@ export default function ChatPage() {
             } catch { }
           }
         }
+        // Stream cerrado normalmente — reconectar
+        if (!controller.signal.aborted) retryTimeout = setTimeout(connectSSE, 2000);
       } catch (err: unknown) {
         if ((err as Error)?.name !== 'AbortError') {
-          console.error('[Chat SSE] Error en stream de mensajes');
+          console.error('[Chat SSE] Error en stream, reconectando en 5s');
+          retryTimeout = setTimeout(connectSSE, 5000);
         }
       }
     };
 
     connectSSE();
-    return () => controller.abort();
+    return () => { controller.abort(); clearTimeout(retryTimeout); };
   }, [activePlaceId]);
 
   useEffect(() => {
