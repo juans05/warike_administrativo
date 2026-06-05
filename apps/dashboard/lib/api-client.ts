@@ -369,6 +369,7 @@ export const publicApi = {
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   recordScan: (data: { placeId: string; deviceId?: string; source?: 'nfc' | 'qr' | 'direct' }) =>
     fetchPublic('/public/scan', { method: 'POST', body: JSON.stringify(data) }),
+  getDevice: (deviceId: string) => fetchPublic(`/public/device/${deviceId}`),
 
   submitFeedback: (data: {
     placeId: string;

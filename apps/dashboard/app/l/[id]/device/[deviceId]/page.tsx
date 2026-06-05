@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { publicApi } from '../../../../../lib/api-client';
 import { toast } from 'sonner';
 
@@ -9,6 +9,7 @@ type Step = 'rating' | 'loyalty' | 'thanks' | 'card';
 
 export default function PublicDeviceScanPage() {
   const { id, deviceId } = useParams();
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [device, setDevice] = useState<any>(null);
   const [loyaltyProgram, setLoyaltyProgram] = useState<any>(null);
@@ -27,20 +28,30 @@ export default function PublicDeviceScanPage() {
   const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !deviceId) return;
+
+    // Registrar escaneo NFC con deviceId
+    publicApi.recordScan({ placeId: id as string, deviceId: deviceId as string, source: 'nfc' }).catch(() => {});
+
+    // Verificar acción del dispositivo — si es "menu", redirigir directo a la carta
+    publicApi.getDevice(deviceId as string)
+      .then(device => {
+        if (device?.action === 'menu') {
+          router.replace(`/menu/${id}`);
+        }
+      })
+      .catch(() => {});
+
     publicApi.getPlace(id as string)
       .then(data => setProfile(data))
       .catch(() => {
         setProfile({ id, name: 'El Huarique', coverImageUrl: '/images/interior.png', category: { name: 'Restaurante' } });
       });
 
-    // Registrar escaneo NFC con deviceId
-    publicApi.recordScan({ placeId: id as string, deviceId: deviceId as string, source: 'nfc' }).catch(() => {});
-
     publicApi.getLoyaltyProgram(id as string)
       .then(data => setLoyaltyProgram(data))
       .catch(() => setLoyaltyProgram(null));
-  }, [id]);
+  }, [id, deviceId]);
 
   const handleRating = async () => {
     if (rating >= 4 && feedback && navigator.clipboard) {
