@@ -34,6 +34,9 @@ export default function PublicDeviceScanPage() {
         setProfile({ id, name: 'El Huarique', coverImageUrl: '/images/interior.png', category: { name: 'Restaurante' } });
       });
 
+    // Registrar escaneo NFC con deviceId
+    publicApi.recordScan({ placeId: id as string, deviceId: deviceId as string, source: 'nfc' }).catch(() => {});
+
     publicApi.getLoyaltyProgram(id as string)
       .then(data => setLoyaltyProgram(data))
       .catch(() => setLoyaltyProgram(null));
@@ -55,11 +58,12 @@ export default function PublicDeviceScanPage() {
         deviceId: deviceId as string,
         marketingConsent,
       });
-    } catch (err) {
-      console.error('Error submitting feedback:', err);
-    } finally {
+    } catch (err: any) {
       setIsSending(false);
+      toast.error(err?.message || 'No se pudo enviar tu reseña. Intenta de nuevo.');
+      return;
     }
+    setIsSending(false);
 
     if (rating >= 4) {
       const placeId = profile?.googlePlaceId;

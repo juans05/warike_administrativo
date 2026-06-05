@@ -96,14 +96,15 @@ export default function ReputacionPage() {
 
       // Analytics
       const analytics = analyticsRes.status === 'fulfilled' ? analyticsRes.value : null;
-      if (analytics?.rating) {
+      if (analytics) {
         setStats(prev => ({
           ...prev,
-          ratingAverage: analytics.rating.average || 0, // Fallback a analytics si no hay googleRating
-          totalTaps: analytics.rating.total || 0,
-          reviewsSentToGoogle: Math.round((analytics.rating.total || 0) * 0.7),
-          nfcPercent: 65,
-          qrPercent: 35,
+          totalTaps: analytics.scans?.total || 0,
+          nfcPercent: analytics.scans?.nfcPercent || 0,
+          qrPercent: analytics.scans?.qrPercent || 0,
+          reviewsSentToGoogle: analytics.feedback?.positive || 0,
+          pendingComplaints: analytics.complaints?.pending ?? prev.pendingComplaints,
+          resolvedComplaints: analytics.complaints?.resolved ?? prev.resolvedComplaints,
         }));
       }
 

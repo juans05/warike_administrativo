@@ -367,6 +367,8 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 export const publicApi = {
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
+  recordScan: (data: { placeId: string; deviceId?: string; source?: 'nfc' | 'qr' | 'direct' }) =>
+    fetchPublic('/public/scan', { method: 'POST', body: JSON.stringify(data) }),
 
   submitFeedback: (data: {
     placeId: string;
