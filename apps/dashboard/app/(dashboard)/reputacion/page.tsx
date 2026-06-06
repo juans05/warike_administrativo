@@ -625,7 +625,9 @@ function DeviceCard({
   const [showDelete, setShowDelete] = React.useState(false);
   const [showQR, setShowQR] = React.useState(false);
   const qrCanvasRef = React.useRef<HTMLDivElement>(null);
-  const deviceQRUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${device.placeId}/device/${device.id}`;
+  const baseUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${device.placeId}/device/${device.id}`;
+  // If device is NFC type, add source=nfc parameter so it registers correctly
+  const deviceQRUrl = device.deviceType === 'NFC' ? `${baseUrl}?source=nfc` : baseUrl;
 
   const handleDownloadQR = async () => {
     if (!qrCanvasRef.current) return;
