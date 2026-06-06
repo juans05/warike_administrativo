@@ -4,14 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { publicApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 
-type Step = 'rating' | 'loyalty' | 'thanks' | 'card';
+type Step = 'welcome' | 'rating' | 'loyalty' | 'thanks' | 'card';
 
 export default function PublicScanPage() {
   const { id } = useParams();
   const [profile, setProfile] = useState<any>(null);
   const [loyaltyProgram, setLoyaltyProgram] = useState<any>(null);
-  const [step, setStep] = useState<Step>('rating');
+  const [step, setStep] = useState<Step>('welcome');
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -102,11 +103,81 @@ export default function PublicScanPage() {
   };
 
   if (!profile) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-      <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
-      <p className="font-black text-[var(--text-muted)] uppercase tracking-widest text-xs">Preparando tu experiencia...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="font-black text-white uppercase tracking-widest text-xs">Preparando tu experiencia...</p>
     </div>
   );
+
+  // Welcome screen with QR code
+  if (step === 'welcome') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in duration-500">
+        {/* Restaurant Info */}
+        <div className="text-center space-y-3 mb-4">
+          <h1 className="text-4xl font-black text-white font-warike uppercase tracking-tight">{profile.name}</h1>
+          <p className="text-orange-400 font-bold text-sm uppercase tracking-widest">¡Nos dejas tu opinión!</p>
+        </div>
+
+        {/* QR Code Card */}
+        <div className="bg-white p-8 rounded-3xl shadow-2xl space-y-6 max-w-sm w-full">
+          <div className="bg-gradient-to-br from-slate-50 to-gray-100 p-6 rounded-2xl flex justify-center">
+            <QRCodeSVG
+              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/l/${id}`}
+              size={220}
+              level="H"
+              includeMargin={true}
+              fgColor="#000000"
+              bgColor="#ffffff"
+            />
+          </div>
+
+          <p className="text-center text-xs text-gray-600 font-bold uppercase tracking-widest">
+            Escanea con la cámara de tu celular
+          </p>
+        </div>
+
+        {/* 3 Steps */}
+        <div className="space-y-3 w-full max-w-sm">
+          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4">
+            <div className="text-3xl flex-shrink-0">📷</div>
+            <div>
+              <p className="font-black text-white text-sm">Abre Cámara</p>
+              <p className="text-orange-200 text-xs">De tu celular</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4">
+            <div className="text-3xl flex-shrink-0">🔍</div>
+            <div>
+              <p className="font-black text-white text-sm">Escanea QR</p>
+              <p className="text-orange-200 text-xs">Apunta al código</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4">
+            <div className="text-3xl flex-shrink-0">⭐</div>
+            <div>
+              <p className="font-black text-white text-sm">Valórnos</p>
+              <p className="text-orange-200 text-xs">Tu opinión importa</p>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Button */}
+        <button
+          onClick={() => setStep('rating')}
+          className="w-full max-w-sm py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95"
+        >
+          Continuar →
+        </button>
+
+        {/* Branding */}
+        <div className="text-center mt-8 space-y-2">
+          <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Powered by</p>
+          <p className="text-white font-black text-lg tracking-wider">WUARIKE</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-1000">
@@ -316,7 +387,7 @@ export default function PublicScanPage() {
               </a>
             </>
           )}
-          <button onClick={() => window.location.reload()} className="w-full py-5 rounded-2xl bg-[var(--background)] text-[var(--text)] font-black text-xs uppercase tracking-widest">
+          <button onClick={() => { setStep('welcome'); setRating(0); setFeedback(''); setCustomerName(''); setCustomerContact(''); setMarketingConsent(false); }} className="w-full py-5 rounded-2xl bg-[var(--background)] text-[var(--text)] font-black text-xs uppercase tracking-widest">
             Volver al Inicio
           </button>
         </div>
