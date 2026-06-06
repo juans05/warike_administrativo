@@ -124,7 +124,7 @@ export default function ReputacionPage() {
         totalTaps: 1240, nfcPercent: 65, qrPercent: 35, ratingAverage: 4.8,
         totalComplaints: 12, pendingComplaints: 3, resolvedComplaints: 9,
         totalAccounts: 2, totalComments: 47, aiReplied: 38, pendingReplies: 9,
-        disastersAvoided: 12, reviewsSentToGoogle: 85,
+        disastersAvoided: 12, reviewsSentToGoogle: 85, conversionRate: 7,
       });
       setRecentComplaints([
         { id: '1', rating: 2, comment: 'Esperamos mucho tiempo', customerName: 'María', status: 'pending', createdAt: new Date().toISOString() },
