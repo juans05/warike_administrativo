@@ -361,48 +361,9 @@ export default function ReputacionPage() {
             </div>
           </div>
 
-          {!isAddingDevice ? (
-            <button
-              onClick={() => setIsAddingDevice(true)}
-              className="w-full py-5 rounded-2xl border-2 border-dashed border-primary text-primary font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
-            >
-              + Solicitar Nuevo Stand Físico
-            </button>
-          ) : (
-            <div className="space-y-4 p-6 bg-primary/5 rounded-2xl border border-primary/20">
-              <input
-                type="text"
-                value={newDeviceName}
-                onChange={(e) => setNewDeviceName(e.target.value)}
-                placeholder="Ej: Stand Premium Mesa 1"
-                className="w-full input-premium text-sm"
-              />
-              <select
-                value={newDeviceType}
-                onChange={(e) => setNewDeviceType(e.target.value)}
-                className="w-full input-premium text-sm"
-              >
-                <option value="NFC">NFC Reader</option>
-                <option value="TABLET">Tablet</option>
-                <option value="QR">QR Solo</option>
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleAddDevice}
-                  disabled={!newDeviceName.trim()}
-                  className="flex-1 py-3 bg-primary text-white font-black text-xs uppercase rounded-xl hover:bg-opacity-90 disabled:opacity-50 transition-all"
-                >
-                  Crear Stand
-                </button>
-                <button
-                  onClick={() => setIsAddingDevice(false)}
-                  className="flex-1 py-3 bg-background text-text font-black text-xs uppercase rounded-xl border border-border hover:bg-gray-50 transition-all"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
+          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">
+            ℹ️ Contacta al equipo Wuarike para solicitar nuevos dispositivos
+          </p>
         </section>
 
         {/* Logic Configuration */}
@@ -829,58 +790,45 @@ function DeviceCard({
   };
 
   return (
-    <div className={`p-6 bg-background rounded-3xl border transition-all space-y-4 ${isDeleting ? 'opacity-50 pointer-events-none' : 'border-border group hover:border-primary'}`}>
-      <div className="flex justify-between items-start">
-        <div className="flex items-start gap-4 flex-1">
-          <div className="text-3xl">🪧</div>
-          <div className="flex-1">
-            <p className="font-black text-text text-sm">{device.name}</p>
-            <div className="flex gap-2 items-center mt-1">
-              <span className={`w-2 h-2 rounded-full ${device.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                {device.status === 'active' ? 'Activo' : 'Inactivo'}
-              </p>
-            </div>
-            <p className="text-[9px] text-gray-400 mt-2 font-mono">{device.deviceType}</p>
-          </div>
-        </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowDelete(!showDelete)}
-            className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            ⋮
-          </button>
-          {showDelete && (
-            <button
-              onClick={() => {
-                setShowDelete(false);
-                onDelete();
-              }}
-              className="absolute right-0 top-8 bg-red-500 text-white text-[9px] font-black px-3 py-2 rounded-lg whitespace-nowrap hover:bg-red-600 transition-all z-10"
-            >
-              Eliminar
-            </button>
-          )}
+    <div className={`flex items-center gap-4 p-4 bg-background rounded-2xl border border-border transition-all ${isDeleting ? 'opacity-50' : 'hover:border-primary'}`}>
+      {/* Dispositivo Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-black text-text text-sm truncate">{device.name}</p>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${device.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+          <span className="text-[9px] font-bold text-gray-400 uppercase flex-shrink-0">{device.deviceType}</span>
         </div>
       </div>
 
-      {/* QR Code Section */}
-      <div className="pt-4 border-t border-gray-100">
-        {!showQR ? (
-          <button
-            onClick={() => setShowQR(true)}
-            className="w-full py-3 text-center text-[10px] font-black text-primary uppercase tracking-widest border border-dashed border-primary rounded-lg hover:bg-primary/5 transition-all"
-          >
-            📲 Ver QR Code (Zona: {device.name})
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-center p-6 bg-white rounded-lg border border-gray-200">
+      {/* Acción Dropdown */}
+      <select
+        value={device.action}
+        onChange={(e) => onActionChange(e.target.value)}
+        className="py-2 px-3 text-[10px] font-bold rounded-lg border border-border hover:border-primary transition-all cursor-pointer"
+      >
+        <option value="reputation">⭐ Reseña</option>
+        <option value="raffle">🎁 Sorteo</option>
+        <option value="menu">🍽️ Menú</option>
+      </select>
+
+      {/* Ver QR Button */}
+      <button
+        onClick={() => setShowQR(!showQR)}
+        className="px-4 py-2 text-[10px] font-black text-primary uppercase rounded-lg border border-dashed border-primary hover:bg-primary/5 transition-all flex-shrink-0"
+      >
+        📲 QR
+      </button>
+
+      {/* QR Modal */}
+      {showQR && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full space-y-4 animate-in fade-in zoom-in">
+            <h3 className="font-black text-lg text-text">QR: {device.name}</h3>
+            <div className="flex justify-center p-6 bg-gray-50 rounded-2xl">
               <div ref={qrCanvasRef}>
                 <QRCodeSVG
                   value={deviceQRUrl}
-                  size={256}
+                  size={200}
                   level="H"
                   includeMargin={true}
                 />
@@ -890,39 +838,26 @@ function DeviceCard({
             <div className="flex gap-2">
               <button
                 onClick={handleDownloadQR}
-                className="flex-1 py-2 text-[10px] font-black bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all uppercase"
+                className="flex-1 py-2 text-[10px] font-black bg-primary text-white rounded-lg hover:bg-opacity-90"
               >
-                ⬇️ Descargar QR
+                ⬇️ Descargar
               </button>
               <button
                 onClick={handlePrintQR}
-                className="flex-1 py-2 text-[10px] font-black bg-accent text-white rounded-lg hover:bg-opacity-90 transition-all uppercase"
+                className="flex-1 py-2 text-[10px] font-black bg-accent text-white rounded-lg hover:bg-opacity-90"
               >
                 🖨️ Imprimir
               </button>
             </div>
             <button
               onClick={() => setShowQR(false)}
-              className="w-full py-2 text-[9px] font-bold text-text-muted uppercase border border-border rounded-lg hover:bg-background transition-all"
+              className="w-full py-2 text-[10px] font-bold text-text-muted uppercase border border-border rounded-lg hover:bg-background"
             >
-              Cerrar QR
+              Cerrar
             </button>
           </div>
-        )}
-      </div>
-
-      <div className="pt-2 border-t border-gray-100">
-        <label className="text-[9px] font-black text-text-muted uppercase tracking-widest block mb-2">Acción al escanear:</label>
-        <select
-          value={device.action}
-          onChange={(e) => onActionChange(e.target.value)}
-          className="input-premium py-2 text-xs font-bold text-text w-full cursor-pointer"
-        >
-          <option value="reputation">⭐ Captar Reseñas (Filtrado Inteligente)</option>
-          <option value="raffle">🎁 Formulario de Sorteo / Promoción</option>
-          <option value="menu">🍽️ Ver Menú Digital</option>
-        </select>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
