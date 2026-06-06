@@ -332,15 +332,32 @@ export default function ReputacionPage() {
             )}
           </div>
 
-          <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 space-y-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/50 rounded-full blur-3xl"></div>
-            <div>
-              <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Tu Enlace Base</p>
-              <p className="text-sm font-black text-text break-all">{publicLink}</p>
+          {/* QR & NFC URLs */}
+          <div className="space-y-4">
+            {/* QR Genérico */}
+            <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 space-y-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200/50 rounded-full blur-3xl"></div>
+              <div>
+                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">📱 QR Genérico</p>
+                <p className="text-xs font-bold text-text-muted mb-2">Para acceso directo (sin especificar NFC/QR)</p>
+                <p className="text-xs font-mono text-text break-all bg-white/60 p-3 rounded-lg">{publicLink}</p>
+              </div>
+              <button onClick={() => { navigator.clipboard.writeText(publicLink); toast.success('URL QR copiada'); }} className="w-full py-2 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">
+                Copiar URL QR
+              </button>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => { navigator.clipboard.writeText(publicLink); toast.success('Copiado'); }} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-orange-700 transition-all">Copiar Enlace</button>
-              <button className="flex-1 py-3 rounded-xl bg-white text-orange-600 border border-orange-200 font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition-all">Imprimir QR</button>
+
+            {/* NFC Tag */}
+            <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 space-y-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200/50 rounded-full blur-3xl"></div>
+              <div>
+                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">🏷️ Para Tags NFC</p>
+                <p className="text-xs font-bold text-text-muted mb-2">Usa esta URL para grabar en tags NFC físicos</p>
+                <p className="text-xs font-mono text-text break-all bg-white/60 p-3 rounded-lg">{publicLink}?source=nfc</p>
+              </div>
+              <button onClick={() => { navigator.clipboard.writeText(`${publicLink}?source=nfc`); toast.success('URL NFC copiada'); }} className="w-full py-2 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all">
+                Copiar URL NFC
+              </button>
             </div>
           </div>
 
