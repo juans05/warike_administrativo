@@ -31,6 +31,7 @@ export default function ReputacionPage() {
     // Impacto
     disastersAvoided: 0,
     reviewsSentToGoogle: 0,
+    conversionRate: 0,
   });
 
   const [recentComplaints, setRecentComplaints] = useState<any[]>([]);
@@ -103,6 +104,7 @@ export default function ReputacionPage() {
           nfcPercent: analytics.scans?.nfcPercent || 0,
           qrPercent: analytics.scans?.qrPercent || 0,
           reviewsSentToGoogle: analytics.feedback?.positive || 0,
+          conversionRate: analytics.feedback?.conversionRate ?? 0,
           pendingComplaints: analytics.complaints?.pending ?? prev.pendingComplaints,
           resolvedComplaints: analytics.complaints?.resolved ?? prev.resolvedComplaints,
         }));
@@ -248,7 +250,7 @@ export default function ReputacionPage() {
 
           <div className="bg-green-50 p-4 rounded-2xl border border-green-100 text-center">
             <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">Tasa de conversión</p>
-            <p className="text-2xl font-black text-green-700">{stats.totalTaps > 0 ? Math.round((stats.reviewsSentToGoogle / stats.totalTaps) * 100) : 0}%</p>
+            <p className="text-2xl font-black text-green-700">{stats.conversionRate}%</p>
             <p className="text-[9px] font-bold text-green-400">escaneos → reseñas en Google</p>
           </div>
         </div>

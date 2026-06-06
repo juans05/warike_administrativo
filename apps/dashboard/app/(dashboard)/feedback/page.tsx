@@ -16,54 +16,34 @@ export default function FeedbackPage() {
   const [reviewsMeta, setReviewsMeta] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load analytics data
+  // Load reviews and complaints in parallel on mount so tab badges show correct counts immediately
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
-    if (activeTab !== 'analytics') return;
+    setIsLoading(true);
+    Promise.allSettled([
+      businessApi.getReviews(activePlaceId),
+      businessApi.getComplaints(activePlaceId),
+    ]).then(([reviewsRes, complaintsRes]) => {
+      if (reviewsRes.status === 'fulfilled') {
+        setReviews(reviewsRes.value?.data || []);
+        setReviewsMeta(reviewsRes.value?.meta || null);
+      }
+      if (complaintsRes.status === 'fulfilled') {
+        setComplaints(complaintsRes.value?.data || []);
+        setComplaintsMeta(complaintsRes.value?.meta || null);
+      }
+    }).finally(() => setIsLoading(false));
+  }, [activePlaceId]);
+
+  // Load analytics only when analytics tab is active or timeRange changes
+  useEffect(() => {
+    if (!activePlaceId || activeTab !== 'analytics') return;
     setIsLoading(true);
     businessApi.getAnalytics(activePlaceId, timeRange)
       .then(setAnalyticsData)
       .catch(err => console.error('Error fetching analytics:', err))
       .finally(() => setIsLoading(false));
   }, [activePlaceId, timeRange, activeTab]);
-
-  // Load reviews (rating >= 4)
-  useEffect(() => {
-    if (!activePlaceId || activeTab !== 'reviews') { if (!activePlaceId) setIsLoading(false); return; }
-    setIsLoading(true);
-    businessApi.getReviews(activePlaceId)
-      .then((res: any) => {
-        setReviews(res.data || []);
-        setReviewsMeta(res.meta || null);
-      })
-      .catch(err => {
-        console.error('Error fetching reviews:', err);
-        setReviews([]);
-      })
-      .finally(() => setIsLoading(false));
-  }, [activePlaceId, activeTab]);
-
-  // Load complaints (rating <= 3)
-  useEffect(() => {
-    if (!activePlaceId || activeTab !== 'complaints') { if (!activePlaceId) setIsLoading(false); return; }
-    setIsLoading(true);
-    businessApi.getComplaints(activePlaceId)
-      .then((res: any) => {
-        setComplaints(res.data || []);
-        setComplaintsMeta(res.meta || null);
-      })
-      .catch(err => {
-        console.error('Error fetching complaints:', err);
-        setComplaints([
-          { id: '1', rating: 2, comment: 'Esperamos más de 40 minutos para que nos atiendan. La comida estaba fría.', customerName: 'María García', customerContact: '+51 987654321', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-          { id: '2', rating: 1, comment: 'Encontré un cabello en mi plato. Muy decepcionante.', customerName: 'Carlos López', customerContact: 'carlos@email.com', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
-          { id: '3', rating: 3, comment: 'La comida estaba bien pero el local estaba sucio.', customerName: null, customerContact: null, status: 'resolved', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-          { id: '4', rating: 2, comment: 'Me cobraron de más y el mozo fue grosero cuando le reclamé.', customerName: 'Ana Torres', customerContact: '+51 912345678', status: 'contacted', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
-        ]);
-        setComplaintsMeta({ total: 4 });
-      })
-      .finally(() => setIsLoading(false));
-  }, [activePlaceId, activeTab]);
 
   const handleResolve = async (complaintId: string) => {
     if (!activePlaceId) return;

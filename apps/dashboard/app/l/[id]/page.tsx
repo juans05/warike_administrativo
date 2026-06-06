@@ -33,8 +33,10 @@ export default function PublicScanPage() {
         setProfile({ id, name: 'El Huarique', coverImageUrl: '/images/interior.png', category: { name: 'Restaurante' } });
       });
 
-    // Registrar escaneo NFC/QR (sin deviceId = acceso directo/QR genérico)
-    publicApi.recordScan({ placeId: id as string, source: 'qr' }).catch(() => {});
+    // Registrar escaneo NFC/QR: si el tag NFC apunta a /l/{id}?source=nfc → NFC, si no → QR genérico
+    const params = new URLSearchParams(window.location.search);
+    const source = (params.get('source') as 'nfc' | 'qr') || 'qr';
+    publicApi.recordScan({ placeId: id as string, source }).catch(() => {});
 
     // Load loyalty program silently
     publicApi.getLoyaltyProgram(id as string)
