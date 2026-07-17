@@ -58,9 +58,10 @@ export interface BroadcastPayload {
 
 export interface EmailCampaignPayload {
   placeId: string;
+  campaignName: string;
   subject: string;
-  body: string;
-  segmentFilter?: { type: string };
+  bodyHtml: string;
+  scheduledAt?: string;
 }
 
 export interface AdminUserPayload {
@@ -81,6 +82,29 @@ export interface AdminPlaceUpdate {
 export interface WhatsappNumberPayload {
   placeId: string;
   phoneNumber: string;
+}
+
+export interface Contact {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  dni: string | null;
+  source: 'whatsapp' | 'feedback' | 'import';
+  tags: string[] | null;
+  marketingConsent: boolean;
+  createdAt: string;
+}
+
+export interface ContactImport {
+  id: string;
+  filename: string;
+  totalRows: number;
+  importedRows: number;
+  failedRows: number;
+  errorLog: { row: number; error: string }[] | null;
+  status: 'processing' | 'completed' | 'failed';
+  createdAt: string;
 }
 
 // ── Core fetch helper ────────────────────────────────────────────────────────
@@ -115,6 +139,27 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
   const text = await response.text();
   if (!text) return null;
   return JSON.parse(text);
+}
+
+export async function uploadContactsFile(placeId: string, file: File) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}/api/business/contacts/import?placeId=${placeId}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    let error: any = {};
+    try { error = text ? JSON.parse(text) : {}; } catch { /* empty body */ }
+    throw new Error(error.message || `Error ${response.status}`);
+  }
+
+  return response.json();
 }
 
 // Carta Methods
@@ -334,15 +379,41 @@ export const businessApi = {
   // Email Campaigns
   getEmailCampaigns: (placeId: string) =>
     fetchWithAuth(`/business/email-campaigns/place/${placeId}`),
+  getEmailAudienceCount: (placeId: string) =>
+    fetchWithAuth(`/business/email-campaigns/place/${placeId}/audience-count`),
   createEmailCampaign: (data: EmailCampaignPayload) =>
     fetchWithAuth('/business/email-campaigns', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  updateEmailCampaign: (campaignId: string, data: Partial<Pick<EmailCampaignPayload, 'campaignName' | 'subject' | 'bodyHtml'>>) =>
+    fetchWithAuth(`/business/email-campaigns/${campaignId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteEmailCampaign: (campaignId: string) =>
+    fetchWithAuth(`/business/email-campaigns/${campaignId}`, {
+      method: 'DELETE',
+    }),
   sendEmailCampaign: (campaignId: string) =>
     fetchWithAuth(`/business/email-campaigns/${campaignId}/send`, {
       method: 'POST',
     }),
+  completeEmailCampaign: (campaignId: string) =>
+    fetchWithAuth(`/business/email-campaigns/${campaignId}/complete`, {
+      method: 'PATCH',
+    }),
+  unscheduleEmailCampaign: (campaignId: string) =>
+    fetchWithAuth(`/business/email-campaigns/${campaignId}/unschedule`, {
+      method: 'POST',
+    }),
+
+  // Contactos (CRM de marketing)
+  getContacts: (placeId: string, page = 1, search = '') =>
+    fetchWithAuth(`/business/contacts?placeId=${placeId}&page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  getContactImports: (placeId: string) =>
+    fetchWithAuth(`/business/contacts/imports/list?placeId=${placeId}`),
+  uploadContacts: (placeId: string, file: File) => uploadContactsFile(placeId, file),
 };
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)
@@ -398,12 +469,12 @@ export const publicApi = {
 };
 
 export const subscriptionApi = {
-  getPlan: () => fetchWithAuth('/subscriptions/plan'),
+  getPlans: () => fetchWithAuth('/subscriptions/plans'),
   getMy: () => fetchWithAuth('/subscriptions/my'),
   getMyPayments: () => fetchWithAuth('/subscriptions/my/payments'),
-  subscribe: (token: string) => fetchWithAuth('/subscriptions/subscribe', {
+  subscribe: (token: string, tier: string) => fetchWithAuth('/subscriptions/subscribe', {
     method: 'POST',
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, tier }),
   }),
   cancel: () => fetchWithAuth('/subscriptions/my', { method: 'DELETE' }),
   adminGetAll: (page = 1) => fetchWithAuth(`/subscriptions/admin/all?page=${page}`),

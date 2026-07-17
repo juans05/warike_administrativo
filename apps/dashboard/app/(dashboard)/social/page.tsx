@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import { SkeletonPage } from '../../../components/SkeletonLoader';
@@ -107,17 +108,21 @@ export default function SocialPage() {
     if (!confirm('¿Estás seguro de desvincular esta cuenta?')) return;
     try {
       await socialApi.disconnect(activePlaceId, accountId);
-    } catch {}
-    setAccounts(prev => prev.filter(a => a.id !== accountId));
+      setAccounts(prev => prev.filter(a => a.id !== accountId));
+    } catch {
+      toast.error('No se pudo desvincular la cuenta. Intenta de nuevo.');
+    }
   };
 
   const handleReply = async (commentId: string) => {
     if (!activePlaceId || !replyText[commentId]) return;
     try {
       await socialApi.reply(activePlaceId, commentId, replyText[commentId]);
-    } catch {}
-    setComments(prev => prev.map(c => c.id === commentId ? { ...c, isReplied: true, manualReply: replyText[commentId] } : c));
-    setReplyText(prev => ({ ...prev, [commentId]: '' }));
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, isReplied: true, manualReply: replyText[commentId] } : c));
+      setReplyText(prev => ({ ...prev, [commentId]: '' }));
+    } catch {
+      toast.error('No se pudo enviar la respuesta. Intenta de nuevo.');
+    }
   };
 
   const handleSaveRules = async () => {
@@ -176,7 +181,7 @@ export default function SocialPage() {
           </div>
           <div className="space-y-4">
              <h2 className="text-3xl font-black text-text font-warike">Conecta tu Instagram Profesional</h2>
-             <p className="text-text-muted font-bold">Autoriza a Warique para leer y responder automáticamente los comentarios de tus clientes 24/7.</p>
+             <p className="text-text-muted font-bold">Autoriza a Wuarike para leer y responder automáticamente los comentarios de tus clientes 24/7.</p>
              <p className="text-xs font-bold text-gray-400">Puedes vincular <span className="text-primary">múltiples cuentas</span> si tu negocio tiene varias sedes o marcas.</p>
           </div>
           <button 

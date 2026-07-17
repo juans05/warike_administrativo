@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Directorio de los Mejores Huariques y Restaurantes | Warique',
+  title: 'Directorio de los Mejores Huariques y Restaurantes | Wuarike',
   description: 'Descubre los mejores huariques, bares y restaurantes ocultos con reseñas 100% verificadas por la comunidad mediante tecnología NFC.',
   keywords: ['mejores huariques', 'restaurantes recomendados', 'guia gastronomica', 'reseñas verificadas', 'donde comer en lima', 'huariques peru'],
   openGraph: {
-    title: 'Directorio de los Mejores Huariques | Warique',
+    title: 'Directorio de los Mejores Huariques | Wuarike',
     description: 'Encuentra la verdadera sazón. Restaurantes ocultos y huariques validados por clientes reales.',
     url: 'https://warique.com/explorar',
     type: 'website',

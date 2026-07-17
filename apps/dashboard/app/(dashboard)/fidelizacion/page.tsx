@@ -12,6 +12,7 @@ export default function FidelizacionPage() {
   const [rewards, setRewards] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
   const [type, setType] = useState<'stamps' | 'points'>('stamps');
   const [stampsToReward, setStampsToReward] = useState(10);
@@ -27,7 +28,12 @@ export default function FidelizacionPage() {
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
     Promise.all([
-      fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`).catch(() => null),
+      fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`).catch((err) => {
+        if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
+          setSubscriptionBlocked(err.message);
+        }
+        return null;
+      }),
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards`).catch(() => []),
     ]).then(([prog, rwds]) => {
       if (prog) {
@@ -83,6 +89,21 @@ export default function FidelizacionPage() {
     : '';
 
   if (isLoading) return <SkeletonPage type="default" />;
+
+  if (subscriptionBlocked) {
+    return (
+      <div className="max-w-2xl rounded-2xl p-8 border border-[#F26122]/30 bg-[#F26122]/5 space-y-4">
+        <h1 className="text-2xl font-black text-text">Fidelización disponible en un plan superior</h1>
+        <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
+        <a
+          href="/suscripcion"
+          className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+        >
+          Ver planes
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl space-y-8 pb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">

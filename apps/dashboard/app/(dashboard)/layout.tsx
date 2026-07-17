@@ -3,15 +3,56 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import {
+  Building2,
+  Star,
+  Camera,
+  UtensilsCrossed,
+  Gift,
+  Users,
+  MessageCircle,
+  Bot,
+  MessagesSquare,
+  Megaphone,
+  Mail,
+  Brain,
+  CreditCard,
+  Shield,
+  LogOut,
+  type LucideIcon,
+} from 'lucide-react';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
+import { subscriptionApi } from '../../lib/api-client';
 
 interface DashboardUser {
   id: string;
   email: string;
   fullName: string;
   role: 'admin' | 'business';
+}
+
+// Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.
+type SubscriptionTier = 'reputacion' | 'fidelizacion' | 'ia_total';
+const TIER_ORDER: SubscriptionTier[] = ['reputacion', 'fidelizacion', 'ia_total'];
+
+function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier): boolean {
+  if (!ownedTier) return false;
+  const ownedIndex = TIER_ORDER.indexOf(ownedTier as SubscriptionTier);
+  const requiredIndex = TIER_ORDER.indexOf(requiredTier);
+  return ownedIndex !== -1 && ownedIndex >= requiredIndex;
+}
+
+function useSubscriptionTier(enabled: boolean) {
+  const [tier, setTier] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    subscriptionApi.getMy()
+      .then((sub) => setTier(sub?.status === 'active' ? sub.tier : null))
+      .catch(() => setTier(null));
+  }, [enabled]);
+  return tier;
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -57,16 +98,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: DashboardUser | null; handleLogout: () => void }) {
   const pathname = usePathname();
   const { places, isLoading: contextLoading, refreshPlaces } = useRestaurant();
+  const tier = useSubscriptionTier(user?.role === 'business');
 
   const hasSavedPlace = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
   const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business' && !hasSavedPlace;
+
+  const canReputacion = hasTierAccess(tier, 'reputacion');
+  const canFidelizacion = hasTierAccess(tier, 'fidelizacion');
+  const canIaTotal = hasTierAccess(tier, 'ia_total');
 
   return (
     <div className="flex min-h-screen bg-background texture-paper">
       <aside className="w-80 bg-white border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-sm z-10">
         <div className="p-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-primary tracking-tight">WARIKE</h1>
+            <h1 className="text-2xl font-bold text-primary tracking-tight">WUARIKE</h1>
             <p className="text-xs uppercase tracking-widest font-semibold text-gray-400">Global Reputación</p>
           </div>
           {user?.role === 'business' && !noPlaces && (
@@ -74,60 +120,68 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           )}
         </div>
 
-        <nav className="flex-1 px-4 overflow-y-auto">
+        <div className="relative flex-1 min-h-0">
+          <nav className="h-full overflow-y-auto px-4 pb-6">
+            {user?.role === 'business' && !noPlaces && (
+              <>
+                {/* PRINCIPALES */}
+                <div className="pt-2">
+                  <SidebarItem href="/inicio" icon={Building2} label="Mi Establecimiento" active={pathname === '/inicio'} />
+                </div>
+
+                {/* REPUTACIÓN & MARKETING */}
+                {canReputacion && (
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <SidebarLabel>Reputación & Marketing</SidebarLabel>
+                    <SidebarItem href="/reputacion" icon={Star} label="Reputación Google" active={pathname === '/reputacion'} />
+                    <SidebarItem href="/social" icon={Camera} label="Instagram IA" active={pathname === '/social'} />
+                    <SidebarItem href="/carta" icon={UtensilsCrossed} label="Carta Digital" active={pathname === '/carta'} />
+                    {canFidelizacion && <SidebarItem href="/fidelizacion" icon={Gift} label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />}
+                  </div>
+                )}
+
+                {/* CLIENTES & COMUNICACIÓN */}
+                {canReputacion && (
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <SidebarLabel>Clientes & Comunicación</SidebarLabel>
+                    {canFidelizacion && <SidebarItem href="/clientes" icon={Users} label="Clientes CRM" active={pathname === '/clientes'} />}
+                    <SidebarItem href="/feedback" icon={MessageCircle} label="Buzón Privado" active={pathname === '/feedback'} />
+                  </div>
+                )}
+
+                {/* WHATSAPP & IA */}
+                {canIaTotal && (
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <SidebarLabel>WhatsApp & IA</SidebarLabel>
+                    <SidebarItem href="/plazbot" icon={Bot} label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
+                    <SidebarItem href="/chat" icon={MessagesSquare} label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
+                    <SidebarItem href="/broadcasts" icon={Megaphone} label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
+                    <SidebarItem href="/email-marketing" icon={Mail} label="Email Marketing" badge="NEW" active={pathname === '/email-marketing'} />
+                    <SidebarItem href="/ia" icon={Brain} label="Base de IA" badge="NEW" active={pathname === '/ia'} />
+                  </div>
+                )}
+              </>
+            )}
+
+            {user?.role === 'admin' && (
+              <>
+                <div className="mt-5 pt-5 border-t border-gray-200">
+                  <SidebarLabel>Administración</SidebarLabel>
+                  <SidebarItem href="/moderacion" icon={Shield} label="Control de Locales" active={pathname === '/moderacion'} />
+                  <SidebarItem href="/comunidad" icon={Users} label="Gestión de Usuarios" active={pathname === '/comunidad'} />
+                  <SidebarItem href="/suscripciones" icon={CreditCard} label="Suscripciones" active={pathname === '/suscripciones'} />
+                </div>
+              </>
+            )}
+          </nav>
+          {/* Fade cue: signals there's more nav content below the fold */}
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+        </div>
+
+        <div className="p-6 border-t border-gray-200 flex flex-col gap-3">
           {user?.role === 'business' && !noPlaces && (
-            <>
-              {/* PRINCIPALES */}
-              <div className="pt-2">
-                <SidebarItem href="/inicio" icon="🏢" label="Mi Establecimiento" active={pathname === '/inicio'} />
-              </div>
-
-              {/* REPUTACIÓN & MARKETING */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <SidebarLabel>Reputación & Marketing</SidebarLabel>
-                <SidebarItem href="/reputacion" icon="⭐" label="Reputación Google" active={pathname === '/reputacion'} />
-                <SidebarItem href="/social" icon="📷" label="Instagram IA" active={pathname === '/social'} />
-                <SidebarItem href="/carta" icon="🍽️" label="Carta Digital" active={pathname === '/carta'} />
-                <SidebarItem href="/fidelizacion" icon="🎁" label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />
-              </div>
-
-              {/* CLIENTES & COMUNICACIÓN */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <SidebarLabel>Clientes & Comunicación</SidebarLabel>
-                <SidebarItem href="/clientes" icon="👥" label="Clientes CRM" active={pathname === '/clientes'} />
-                <SidebarItem href="/feedback" icon="💭" label="Buzón Privado" active={pathname === '/feedback'} />
-              </div>
-
-              {/* WHATSAPP & IA */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <SidebarLabel>WhatsApp & IA</SidebarLabel>
-                <SidebarItem href="/plazbot" icon="🤖" label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
-                <SidebarItem href="/chat" icon="💬" label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
-                <SidebarItem href="/broadcasts" icon="📢" label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
-                <SidebarItem href="/ia" icon="🧠" label="Base de IA" badge="NEW" active={pathname === '/ia'} />
-              </div>
-
-              {/* CUENTA */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <SidebarLabel>Cuenta</SidebarLabel>
-                <SidebarItem href="/suscripcion" icon="💳" label="Suscripción" active={pathname === '/suscripcion'} />
-              </div>
-            </>
+            <SidebarItem href="/suscripcion" icon={CreditCard} label="Suscripción" active={pathname === '/suscripcion'} />
           )}
-
-          {user?.role === 'admin' && (
-            <>
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <SidebarLabel>Administración</SidebarLabel>
-                <SidebarItem href="/moderacion" icon="🛡️" label="Control de Locales" active={pathname === '/moderacion'} />
-                <SidebarItem href="/comunidad" icon="👥" label="Gestión de Usuarios" active={pathname === '/comunidad'} />
-                <SidebarItem href="/suscripciones" icon="💳" label="Suscripciones" active={pathname === '/suscripciones'} />
-              </div>
-            </>
-          )}
-        </nav>
-
-        <div className="p-6 border-t border-gray-200 flex flex-col gap-4">
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
               {user?.fullName?.charAt(0) || 'A'}
@@ -141,7 +195,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 duration-200"
           >
-            <span className="text-sm">🚪</span> Cerrar Sesión
+            <LogOut size={16} /> Cerrar Sesión
           </button>
         </div>
       </aside>
@@ -153,20 +207,27 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-border flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {user?.role === 'business' && !noPlaces && (
           <>
-            <MobileNavItem href="/inicio" icon="🏢" label="Local" active={pathname === '/inicio'} />
-            <MobileNavItem href="/chat" icon="💬" label="Chat" badge="NEW" active={pathname === '/chat'} />
-            <MobileNavItem href="/broadcasts" icon="📢" label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
-            <MobileNavItem href="/ia" icon="🧠" label="IA" badge="NEW" active={pathname === '/ia'} />
+            <MobileNavItem href="/inicio" icon={Building2} label="Local" active={pathname === '/inicio'} />
+            {canIaTotal && (
+              <>
+                <MobileNavItem href="/chat" icon={MessagesSquare} label="Chat" badge="NEW" active={pathname === '/chat'} />
+                <MobileNavItem href="/broadcasts" icon={Megaphone} label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
+                <MobileNavItem href="/email-marketing" icon={Mail} label="Email" badge="NEW" active={pathname === '/email-marketing'} />
+                <MobileNavItem href="/ia" icon={Brain} label="IA" badge="NEW" active={pathname === '/ia'} />
+              </>
+            )}
           </>
         )}
         {user?.role === 'admin' && (
           <>
-            <MobileNavItem href="/moderacion" icon="🛡️" label="Locales" active={pathname === '/moderacion'} />
-            <MobileNavItem href="/comunidad" icon="👥" label="Usuarios" active={pathname === '/comunidad'} />
+            <MobileNavItem href="/moderacion" icon={Shield} label="Locales" active={pathname === '/moderacion'} />
+            <MobileNavItem href="/comunidad" icon={Users} label="Usuarios" active={pathname === '/comunidad'} />
           </>
         )}
         <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-text-muted hover:text-primary transition-colors active:scale-95 duration-200">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-xl shadow-sm">🚪</div>
+          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shadow-sm">
+            <LogOut size={18} />
+          </div>
           <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
         </button>
       </nav>
@@ -213,7 +274,7 @@ const SidebarLabel = ({ children }: { children: React.ReactNode }) => (
   </p>
 );
 
-function SidebarItem({ href, icon, label, active, badge }: { href: string, icon: string, label: string, active?: boolean, badge?: string }) {
+function SidebarItem({ href, icon: Icon, label, active, badge }: { href: string, icon: LucideIcon, label: string, active?: boolean, badge?: string }) {
   return (
     <Link
       href={href}
@@ -223,7 +284,7 @@ function SidebarItem({ href, icon, label, active, badge }: { href: string, icon:
           : 'text-gray-700 hover:bg-gray-50 font-medium'
       }`}
     >
-      <span className="text-base flex-shrink-0">{icon}</span>
+      <Icon size={18} className="flex-shrink-0" />
       <span className="flex-1 text-sm truncate">{label}</span>
       {badge && (
         <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-md flex-shrink-0 group-hover:bg-gray-200 transition-colors">
@@ -234,14 +295,14 @@ function SidebarItem({ href, icon, label, active, badge }: { href: string, icon:
   );
 }
 
-function MobileNavItem({ href, icon, label, active, badge }: { href: string, icon: string, label: string, active?: boolean, badge?: string }) {
+function MobileNavItem({ href, icon: Icon, label, active, badge }: { href: string, icon: LucideIcon, label: string, active?: boolean, badge?: string }) {
   return (
-    <Link 
+    <Link
       href={href}
       className={`flex flex-col items-center gap-1.5 relative transition-colors duration-300 active:scale-95 ${active ? 'text-primary' : 'text-text-muted hover:text-primary'}`}
     >
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-300 ${active ? 'bg-primary/10 shadow-inner' : 'bg-gray-50 shadow-sm hover:shadow-md'}`}>
-        {icon}
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${active ? 'bg-primary/10 shadow-inner' : 'bg-gray-50 shadow-sm hover:shadow-md'}`}>
+        <Icon size={22} />
       </div>
       <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
       {badge && <span className="absolute top-0 right-0 bg-primary text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-md">{badge}</span>}

@@ -471,7 +471,7 @@ export default function RestaurantePage() {
                 </div>
 
                 <InputGroup
-                  label="Precio Promedio Inmenso"
+                  label="Precio Promedio"
                   value={formData.precio}
                   onChange={(v) => setFormData({ ...formData, precio: v })}
                   placeholder="S/. 45 - 90"

@@ -14,7 +14,7 @@ export default function PublicLayout({
       </div>
       
       <footer className="mt-auto py-10 text-center">
-        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em]">Potenciado por <span className="text-[var(--primary)]">WARIKE</span></p>
+        <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em]">Potenciado por <span className="text-[var(--primary)]">WUARIKE</span></p>
       </footer>
     </div>
   );

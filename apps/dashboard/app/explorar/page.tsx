@@ -45,7 +45,7 @@ export default function ExplorarPage() {
       <nav className="bg-white/70 backdrop-blur-xl border-b border-[var(--border)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-8 h-20 flex justify-between items-center">
           <Link href="/" className="flex flex-col">
-            <span className="text-2xl font-black text-[var(--primary)] tracking-tighter font-warike">WARIKE</span>
+            <span className="text-2xl font-black text-[var(--primary)] tracking-tighter font-warike">WUARIKE</span>
             <span className="text-[8px] uppercase tracking-[0.4em] font-black text-[var(--text-muted)] -mt-1">La Guía Oficial</span>
           </Link>
           <div className="flex gap-4">
@@ -145,7 +145,7 @@ export default function ExplorarPage() {
          <div className="bg-[var(--primary)] rounded-[4rem] p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-[var(--primary)]/30">
             <div className="relative z-10 space-y-8">
                <h2 className="text-5xl font-black font-warike italic">La sazón no se busca, se descubre.</h2>
-               <p className="text-lg font-bold opacity-90 max-w-2xl mx-auto leading-relaxed">Descarga la app de Warique. Guarda tus huariques favoritos, lee las reseñas de la comunidad y encuentra tesoros gastronómicos en Lima y España.</p>
+               <p className="text-lg font-bold opacity-90 max-w-2xl mx-auto leading-relaxed">Descarga la app de Wuarike. Guarda tus huariques favoritos, lee las reseñas de la comunidad y encuentra tesoros gastronómicos en Lima y España.</p>
                <button className="bg-white text-[var(--primary)] px-10 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform shadow-xl">
                  Descargar para iOS y Android
                </button>

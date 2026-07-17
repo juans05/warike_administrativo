@@ -153,7 +153,7 @@ export default function PublicMenuPage() {
       {/* Footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 text-center">
         <p className="text-[10px] text-gray-400">
-          Carta digital con <span className="font-bold text-[#F26122]">Warike</span>
+          Carta digital con <span className="font-bold text-[#F26122]">Wuarike</span>
         </p>
       </div>
     </div>

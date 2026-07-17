@@ -16,6 +16,7 @@ declare global {
 interface Subscription {
   id: string;
   status: string;
+  tier: string;
   amount: number;
   currency: string;
   cardLast4: string;
@@ -37,18 +38,21 @@ interface Payment {
 }
 
 interface PlanInfo {
+  tier: string;
   name: string;
   price: number;
   currency: string;
   interval: string;
   features: string[];
+  configured: boolean;
 }
 
 const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || 'pk_live_xxxxxxxxxxxxxxxx';
 
 export default function SuscripcionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [plan, setPlan] = useState<PlanInfo | null>(null);
+  const [plans, setPlans] = useState<PlanInfo[]>([]);
+  const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [canceling, setCanceling] = useState(false);
@@ -57,12 +61,14 @@ export default function SuscripcionPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [subData, planData] = await Promise.all([
+      const [subData, plansData] = await Promise.all([
         subscriptionApi.getMy().catch(() => null),
-        subscriptionApi.getPlan(),
+        subscriptionApi.getPlans(),
       ]);
       setSubscription(subData);
-      setPlan(planData);
+      setPlans(plansData);
+      // Preselect the middle tier (Fidelización+) as the recommended default.
+      setSelectedTier((prev) => prev || plansData[1]?.tier || plansData[0]?.tier || null);
     } finally {
       setLoading(false);
     }
@@ -70,14 +76,16 @@ export default function SuscripcionPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const selectedPlan = plans.find((p) => p.tier === selectedTier) || null;
+
   const initCulqi = useCallback(() => {
-    if (!window.Culqi) return;
+    if (!window.Culqi || !selectedPlan) return;
     window.Culqi.publicKey = CULQI_PUBLIC_KEY;
     window.Culqi.settings({
-      title: 'Warike Pro',
+      title: selectedPlan.name,
       currency: 'PEN',
       description: 'Suscripción mensual',
-      amount: (plan?.price || 99) * 100,
+      amount: selectedPlan.price * 100,
       order: `sub-${Date.now()}`,
     });
     setCulqiReady(true);
@@ -87,7 +95,7 @@ export default function SuscripcionPage() {
         const token = window.Culqi.token.id;
         setPaying(true);
         try {
-          await subscriptionApi.subscribe(token);
+          await subscriptionApi.subscribe(token, selectedPlan.tier);
           window.Culqi.close();
           await load();
         } catch (err: any) {
@@ -99,16 +107,19 @@ export default function SuscripcionPage() {
         // handle order flow if needed
       }
     };
-  }, [plan, load]);
+  }, [selectedPlan, load]);
 
   useEffect(() => {
-    if (culqiReady && plan) initCulqi();
-  }, [plan, culqiReady, initCulqi]);
+    if (culqiReady && selectedPlan) initCulqi();
+  }, [selectedPlan, culqiReady, initCulqi]);
 
   const handleSubscribe = () => {
+    if (!selectedPlan?.configured) { toast.warning('Este plan todavía no está configurado para cobros.'); return; }
     if (!window.Culqi) { toast.warning('Cargando procesador de pagos...'); return; }
     window.Culqi.open();
   };
+
+  const planName = (tier: string) => plans.find((p) => p.tier === tier)?.name || tier;
 
   const handleCancel = async () => {
     if (!confirm('¿Cancelar tu suscripción? Perderás acceso al finalizar el período actual.')) return;
@@ -145,7 +156,7 @@ export default function SuscripcionPage() {
       <div className="space-y-10 pb-20 max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-700">
         <header>
           <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Mi Suscripción</h1>
-          <p className="text-[#6B7280] font-medium">Gestiona tu plan Warike Pro y tu historial de pagos.</p>
+          <p className="text-[#6B7280] font-medium">Gestiona tu plan Wuarike Pro y tu historial de pagos.</p>
         </header>
 
         {/* Estado de suscripción activa */}
@@ -158,7 +169,7 @@ export default function SuscripcionPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <h2 className="text-2xl font-black text-[#1A1A1A]">Warike Pro</h2>
+                    <h2 className="text-2xl font-black text-[#1A1A1A]">{planName(subscription.tier)}</h2>
                     <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest rounded-full">
                       Activa
                     </span>
@@ -230,44 +241,69 @@ export default function SuscripcionPage() {
           </section>
         )}
 
-        {/* Sin suscripción - plan de precios */}
-        {!subscription && plan && (
-          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-br from-[#F26122] to-[#d4511a] p-10 text-white">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-3">Plan Pro · Mensual</p>
-              <div className="flex items-end gap-2 mb-2">
-                <span className="text-6xl font-black">S/. {plan.price}</span>
-                <span className="text-lg font-bold opacity-70 mb-3">/mes</span>
-              </div>
-              <p className="font-medium opacity-80 text-sm">Todo lo que necesitas para gestionar tu reputación online.</p>
-            </div>
-
-            <div className="p-10">
-              <ul className="space-y-4 mb-10">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-4">
-                    <div className="w-6 h-6 rounded-full bg-[#F26122]/10 flex items-center justify-center shrink-0">
-                      <svg className="w-3 h-3 text-[#F26122]" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+        {/* Sin suscripción - elegir plan */}
+        {!subscription && plans.length > 0 && (
+          <section className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {plans.map((p) => {
+                const isSelected = p.tier === selectedTier;
+                const isRecommended = p.tier === plans[1]?.tier;
+                return (
+                  <button
+                    key={p.tier}
+                    onClick={() => setSelectedTier(p.tier)}
+                    className={`relative text-left rounded-[2rem] border-2 p-8 transition-all ${
+                      isSelected
+                        ? 'border-[#F26122] shadow-xl shadow-[#F26122]/10 bg-white scale-[1.02]'
+                        : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
+                  >
+                    {isRecommended && (
+                      <span className="absolute -top-3 left-8 bg-[#F26122] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                        Recomendado
+                      </span>
+                    )}
+                    <p className="text-sm font-black text-[#1A1A1A] mb-4">{p.name}</p>
+                    <div className="flex items-end gap-1 mb-6">
+                      <span className="text-4xl font-black text-[#1A1A1A]">S/. {p.price}</span>
+                      <span className="text-sm font-bold text-gray-400 mb-1">/mes</span>
                     </div>
-                    <span className="font-bold text-sm text-[#1A1A1A]">{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={handleSubscribe}
-                disabled={paying || !culqiReady}
-                className="w-full bg-[#F26122] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-xl shadow-[#F26122]/25 hover:opacity-90 active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
-              >
-                {paying ? 'Procesando...' : culqiReady ? 'Suscribirme ahora — S/. ' + plan.price + '/mes' : 'Cargando...'}
-              </button>
-
-              <p className="text-center text-[11px] text-gray-400 font-medium mt-4">
-                Pago seguro con tarjeta. Cancela cuando quieras.
-              </p>
+                    <ul className="space-y-3">
+                      {p.features.map((f, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <div className="w-5 h-5 rounded-full bg-[#F26122]/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <svg className="w-2.5 h-2.5 text-[#F26122]" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-xs text-gray-600">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {!p.configured && (
+                      <p className="mt-4 text-[10px] font-bold text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                        Cobro no configurado todavía
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {selectedPlan && (
+              <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
+                <button
+                  onClick={handleSubscribe}
+                  disabled={paying || !culqiReady}
+                  className="w-full bg-[#F26122] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-xl shadow-[#F26122]/25 hover:opacity-90 active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
+                >
+                  {paying ? 'Procesando...' : culqiReady ? `Suscribirme a ${selectedPlan.name} — S/. ${selectedPlan.price}/mes` : 'Cargando...'}
+                </button>
+                <p className="text-center text-[11px] text-gray-400 font-medium mt-4">
+                  Pago seguro con tarjeta. Cancela cuando quieras.
+                </p>
+              </div>
+            )}
           </section>
         )}
 
@@ -284,7 +320,7 @@ export default function SuscripcionPage() {
                     <p className="font-bold text-sm text-[#1A1A1A]">
                       {p.paidAt ? fmt(p.paidAt) : fmt(p.createdAt)}
                     </p>
-                    <p className="text-xs text-gray-400 font-medium">Warike Pro · Mensual</p>
+                    <p className="text-xs text-gray-400 font-medium">{subscription ? planName(subscription.tier) : ''} · Mensual</p>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${p.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>

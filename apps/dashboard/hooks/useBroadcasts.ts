@@ -44,13 +44,18 @@ export function useBroadcasts() {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [campaignForm, setCampaignForm] = useState<CampaignFormData>(makeEmptyCampaign);
   const [creatingCampaign, setCreatingCampaign] = useState(false);
+  const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
   const loadBroadcasts = useCallback(async (placeId: string) => {
     const [bs, nums] = await Promise.allSettled([
       businessApi.getBroadcasts(placeId),
       businessApi.getWhatsappNumbers(placeId),
     ]);
-    if (bs.status === 'fulfilled') setBroadcasts(bs.value || []);
+    if (bs.status === 'fulfilled') {
+      setBroadcasts(bs.value || []);
+    } else if (bs.reason?.message?.includes('suscripción activa') || bs.reason?.message?.includes('requiere el plan')) {
+      setSubscriptionBlocked(bs.reason.message);
+    }
     if (nums.status === 'fulfilled') {
       setWaNumbers((nums.value?.data || []).filter((n: WaNumber) => n.isActive));
     }
@@ -101,6 +106,7 @@ export function useBroadcasts() {
     campaignForm,
     setCampaignForm,
     creatingCampaign,
+    subscriptionBlocked,
     loadBroadcasts,
     handleSendBroadcast,
     handleCreateCampaign,

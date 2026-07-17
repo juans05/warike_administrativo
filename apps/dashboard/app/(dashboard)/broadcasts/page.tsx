@@ -21,6 +21,7 @@ export default function BroadcastsPage() {
     showCampaignModal, setShowCampaignModal,
     campaignForm, setCampaignForm,
     creatingCampaign,
+    subscriptionBlocked,
     loadBroadcasts, handleSendBroadcast, handleCreateCampaign,
   } = useBroadcasts();
 
@@ -61,6 +62,20 @@ export default function BroadcastsPage() {
         <p className="text-gray-500 mt-1 font-medium">Envía mensajes personalizados de WhatsApp a tus clientes.</p>
       </div>
 
+      {subscriptionBlocked && (
+        <div className="rounded-2xl p-6 border border-[#F26122]/30 bg-[#F26122]/5 space-y-3">
+          <p className="font-black text-sm text-gray-900">Función disponible en un plan superior</p>
+          <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
+          <a
+            href="/suscripcion"
+            className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+          >
+            Ver planes
+          </a>
+        </div>
+      )}
+
+      {!subscriptionBlocked && (
       <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
         {([['campaigns', '💬 Campañas'], ['templates', '📋 Plantilla']] as const).map(([id, label]) => (
           <button
@@ -72,8 +87,9 @@ export default function BroadcastsPage() {
           </button>
         ))}
       </div>
+      )}
 
-      {tab === 'campaigns' && (
+      {!subscriptionBlocked && tab === 'campaigns' && (
         <CampaignList
           broadcasts={broadcasts}
           onSend={handleSendBroadcast}
@@ -81,7 +97,7 @@ export default function BroadcastsPage() {
         />
       )}
 
-      {tab === 'templates' && (
+      {!subscriptionBlocked && tab === 'templates' && (
         <TemplateList
           templates={filteredTemplates}
           search={templateSearch}

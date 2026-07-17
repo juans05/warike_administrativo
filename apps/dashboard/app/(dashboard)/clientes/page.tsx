@@ -5,6 +5,9 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
 import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { maskPhone } from '../../../lib/mask';
+import { useContacts } from '../../../hooks/useContacts';
+import { ContactsList } from '../../../components/clientes/ContactsList';
+import { ContactsUploadModal } from '../../../components/clientes/ContactsUploadModal';
 
 const LEVEL_COLORS: Record<string, string> = {
   BRONCE: 'bg-amber-100 text-amber-700',
@@ -17,14 +20,24 @@ const LEVEL_EMOJI: Record<string, string> = {
   BRONCE: '🥉', PLATA: '🥈', ORO: '🥇', VIP: '👑',
 };
 
+type Tab = 'fidelizacion' | 'contactos';
+
 export default function ClientesPage() {
   const { activePlaceId } = useRestaurant();
+  const [tab, setTab] = useState<Tab>('fidelizacion');
   const [clients, setClients] = useState<any[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+
+  const {
+    contacts, meta: contactsMeta, loadingContacts,
+    showUploadModal, setShowUploadModal, uploading, lastImportResult, setLastImportResult,
+    loadContacts, loadImports, handleUploadFile,
+  } = useContacts();
+  const [contactsPage, setContactsPage] = useState(1);
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -37,6 +50,12 @@ export default function ClientesPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [activePlaceId, page]);
+
+  useEffect(() => {
+    if (!activePlaceId || tab !== 'contactos') return;
+    loadContacts(activePlaceId, contactsPage);
+    loadImports(activePlaceId);
+  }, [activePlaceId, tab, contactsPage]);
 
   const handleSelectClient = async (client: any) => {
     setSelected(client);
@@ -51,10 +70,41 @@ export default function ClientesPage() {
   return (
     <div className="max-w-6xl space-y-10 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header className="space-y-2">
-        <h1 className="text-5xl font-black text-text tracking-tight font-warike">Clientes Frecuentes</h1>
-        <p className="text-text-muted font-bold text-lg">CRM de tu programa de fidelización — {meta.total} clientes registrados.</p>
+        <h1 className="text-5xl font-black text-text tracking-tight font-warike">Clientes</h1>
+        <p className="text-text-muted font-bold text-lg">Programa de fidelización y base de contactos de tu negocio.</p>
       </header>
 
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
+        {([['fidelizacion', '🎫 Fidelización'], ['contactos', '👥 Contactos']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${tab === id ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'contactos' ? (
+        <>
+          <ContactsList
+            contacts={contacts}
+            meta={contactsMeta}
+            loading={loadingContacts}
+            onPageChange={setContactsPage}
+            onNew={() => setShowUploadModal(true)}
+          />
+          <ContactsUploadModal
+            open={showUploadModal}
+            onClose={() => { setShowUploadModal(false); setLastImportResult(null); }}
+            onUpload={file => activePlaceId && handleUploadFile(activePlaceId, file)}
+            uploading={uploading}
+            lastResult={lastImportResult}
+          />
+        </>
+      ) : (
+      <>
       {/* Stats rápidas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon="👥" label="Total clientes" value={meta.total} color="bg-blue-500" />
@@ -174,6 +224,8 @@ export default function ClientesPage() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

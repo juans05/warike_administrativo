@@ -116,7 +116,7 @@ export default function DispositivosPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-[#1A1A1A] mb-2">Asignar a Warike</label>
+              <label className="block text-sm font-bold text-[#1A1A1A] mb-2">Asignar a Wuarike</label>
               <select
                 value={formData.placeId}
                 onChange={(e) => setFormData({ ...formData, placeId: e.target.value })}
@@ -171,7 +171,7 @@ export default function DispositivosPage() {
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Nombre</th>
                   <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Tipo</th>
-                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Warike</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Wuarike</th>
                   <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Estado</th>
                   <th className="px-6 py-4 text-center text-sm font-black text-gray-600">Acciones</th>
                 </tr>

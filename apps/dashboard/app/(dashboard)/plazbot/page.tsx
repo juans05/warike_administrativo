@@ -50,6 +50,7 @@ export default function PlazbotSetupPage() {
 
   const [plazbotConnected, setPlazbotConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
   // Bot config form
   const [formData, setFormData] = useState({ botName: '', restaurantName: '', systemPrompt: '', tone: 'professional' as Tone });
@@ -113,7 +114,12 @@ export default function PlazbotSetupPage() {
           });
           await loadMetricsAndTemplates();
         }
-      } catch { /* sin conexión */ }
+      } catch (err: any) {
+        if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
+          setSubscriptionBlocked(err.message);
+        }
+        /* otros errores: sin conexión, se ignoran */
+      }
       finally { setLoading(false); }
     };
     load();
@@ -223,7 +229,21 @@ export default function PlazbotSetupPage() {
         <p className="text-gray-500 mt-1">Configura el comportamiento del bot de WhatsApp para tu restaurante</p>
       </div>
 
+      {subscriptionBlocked && (
+        <div className="rounded-2xl p-6 border border-[#F26122]/30 bg-[#F26122]/5 space-y-3">
+          <p className="font-black text-sm text-[#1A1A1A]">Función disponible en un plan superior</p>
+          <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
+          <a
+            href="/suscripcion"
+            className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
+          >
+            Ver planes
+          </a>
+        </div>
+      )}
+
       {/* Estado PlazBot */}
+      {!subscriptionBlocked && (
       <div className={`rounded-2xl p-4 border flex items-center gap-3 ${plazbotConnected ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${plazbotConnected ? 'bg-green-500' : 'bg-amber-400'}`} />
         <div>
@@ -237,6 +257,7 @@ export default function PlazbotSetupPage() {
           </p>
         </div>
       </div>
+      )}
 
       {/* ─── REGISTRO NÚMERO WHATSAPP ─── */}
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-5">

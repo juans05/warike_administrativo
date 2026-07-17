@@ -16,6 +16,7 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
@@ -52,17 +53,27 @@ function LoginContent() {
 
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      router.push('/inicio');
+      setShowSplash(true);
+      setTimeout(() => router.push('/inicio'), 500);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('La solicitud tardó demasiado. Verifica que el servidor está disponible.');
       } else {
         setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  if (showSplash) {
+    return (
+      <div className="min-h-screen bg-[#F7F8FA] flex flex-col items-center justify-center gap-6">
+        <h1 className="text-4xl font-black text-[#F26122] tracking-tighter">WUARIKE</h1>
+        <div className="w-12 h-12 border-4 border-[#F26122] border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Cargando tu panel...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center p-4">
