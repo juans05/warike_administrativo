@@ -17,6 +17,7 @@ export default function FidelizacionPage() {
   const [type, setType] = useState<'stamps' | 'points'>('stamps');
   const [stampsToReward, setStampsToReward] = useState(10);
   const [pointsPerVisit, setPointsPerVisit] = useState(10);
+  const [minHoursBetweenVisits, setMinHoursBetweenVisits] = useState(24);
   const [rewardTitle, setRewardTitle] = useState('');
   const [rewardDescription, setRewardDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -41,6 +42,7 @@ export default function FidelizacionPage() {
         setType(prog.type || 'stamps');
         setStampsToReward(prog.stampsToReward || 10);
         setPointsPerVisit(prog.pointsPerVisit || 10);
+        setMinHoursBetweenVisits(prog.minHoursBetweenVisits ?? 24);
         setRewardTitle(prog.rewardTitle || '');
         setRewardDescription(prog.rewardDescription || '');
         setIsActive(prog.isActive ?? true);
@@ -55,7 +57,7 @@ export default function FidelizacionPage() {
     try {
       const saved = await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`, {
         method: 'PUT',
-        body: JSON.stringify({ type, stampsToReward, pointsPerVisit, rewardTitle, rewardDescription, isActive }),
+        body: JSON.stringify({ type, stampsToReward, pointsPerVisit, minHoursBetweenVisits, rewardTitle, rewardDescription, isActive }),
       });
       setProgram(saved);
       toast.success('Programa guardado');
@@ -195,6 +197,20 @@ export default function FidelizacionPage() {
                 <input type="number" min={1} value={pointsPerVisit} onChange={e => setPointsPerVisit(+e.target.value)} className="input-premium w-full" />
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Espera mínima entre visitas (horas)</label>
+              <input
+                type="number"
+                min={0}
+                value={minHoursBetweenVisits}
+                onChange={e => setMinHoursBetweenVisits(Math.max(0, +e.target.value))}
+                className="input-premium w-full"
+              />
+              <p className="text-[10px] font-bold text-text-muted">
+                Evita que el mismo cliente sume sellos varias veces seguidas. Usa 0 para desactivar el límite.
+              </p>
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Premio principal</label>

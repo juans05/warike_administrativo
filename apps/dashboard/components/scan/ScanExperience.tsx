@@ -329,15 +329,17 @@ export default function ScanExperience({ placeId, deviceId }: { placeId: string;
 
       {step === 'result' && (
         <div className="relative bg-white p-12 rounded-[3.5rem] shadow-2xl border border-border text-center space-y-8 animate-in fade-in zoom-in duration-500 overflow-hidden">
-          <Confetti />
+          {!loyaltyResult?.blocked && <Confetti />}
           <AnimatedCheck />
 
           <div className="space-y-3">
             <h2 className="text-3xl font-black text-text font-warike">
-              {loyaltyResult?.rewardUnlocked ? '¡Premio desbloqueado!' : loyaltyResult ? '¡Sello sumado!' : '¡Muchas Gracias!'}
+              {loyaltyResult?.blocked ? '¡Ya te tenemos registrado! 🙌' : loyaltyResult?.rewardUnlocked ? '¡Premio desbloqueado!' : loyaltyResult ? '¡Sello sumado!' : '¡Muchas Gracias!'}
             </h2>
             <p className="text-text-muted font-bold text-sm leading-relaxed text-balance">
-              {loyaltyResult
+              {loyaltyResult?.blocked
+                ? `Ya registramos tu visita reciente.${loyaltyResult.nextEligibleAt ? ` Podrás sumar tu próximo sello en ${formatWait(loyaltyResult.nextEligibleAt)}.` : ''}`
+                : loyaltyResult
                 ? 'Tu visita quedó registrada.'
                 : 'Trabajaremos para que tu próxima visita sea aún mejor.'}
             </p>
@@ -392,6 +394,15 @@ export default function ScanExperience({ placeId, deviceId }: { placeId: string;
       )}
     </div>
   );
+}
+
+function formatWait(nextEligibleAt: string | Date): string {
+  const ms = new Date(nextEligibleAt).getTime() - Date.now();
+  if (ms <= 0) return 'unos minutos';
+  const hours = Math.ceil(ms / 3600_000);
+  if (hours < 24) return `${hours} hora${hours === 1 ? '' : 's'}`;
+  const days = Math.ceil(hours / 24);
+  return `${days} día${days === 1 ? '' : 's'}`;
 }
 
 function ProgressBar({ current, total }: { current: number; total: number }) {

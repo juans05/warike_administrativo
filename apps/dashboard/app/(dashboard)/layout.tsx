@@ -10,7 +10,6 @@ import {
   UtensilsCrossed,
   Gift,
   Users,
-  MessageCircle,
   Bot,
   MessagesSquare,
   Megaphone,
@@ -145,7 +144,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                   <div className="mt-5 pt-5 border-t border-gray-200">
                     <SidebarLabel>Clientes & Comunicación</SidebarLabel>
                     {canFidelizacion && <SidebarItem href="/clientes" icon={Users} label="Clientes CRM" active={pathname === '/clientes'} />}
-                    <SidebarItem href="/feedback" icon={MessageCircle} label="Buzón Privado" active={pathname === '/feedback'} />
+                    {canIaTotal && <SidebarItem href="/email-marketing" icon={Mail} label="Email Marketing" badge="NEW" active={pathname === '/email-marketing'} />}
                   </div>
                 )}
 
@@ -156,7 +155,6 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                     <SidebarItem href="/plazbot" icon={Bot} label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
                     <SidebarItem href="/chat" icon={MessagesSquare} label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
                     <SidebarItem href="/broadcasts" icon={Megaphone} label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
-                    <SidebarItem href="/email-marketing" icon={Mail} label="Email Marketing" badge="NEW" active={pathname === '/email-marketing'} />
                     <SidebarItem href="/ia" icon={Brain} label="Base de IA" badge="NEW" active={pathname === '/ia'} />
                   </div>
                 )}
