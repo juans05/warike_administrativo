@@ -48,6 +48,8 @@ export interface MenuItemUpdate extends Partial<MenuItemPayload> {}
 export interface DevicePayload { name: string; type?: string; deviceType?: string; location?: string }
 export interface DeviceUpdate extends Partial<DevicePayload> { isActive?: boolean; action?: string; [key: string]: unknown }
 
+export interface DeviceRequestPayload { tapType: 'generico' | 'personalizado'; quantity: number }
+
 export interface BroadcastPayload {
   placeId: string;
   whatsappNumberId: string;
@@ -303,6 +305,15 @@ export const businessApi = {
       method: 'PATCH',
     }),
 
+  // Device Requests (pedir nuevos taps genéricos/personalizados)
+  getDeviceRequests: (placeId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/device-requests`),
+  createDeviceRequest: (placeId: string, data: DeviceRequestPayload) =>
+    fetchWithAuth(`/business/places/${placeId}/device-requests`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // WhatsApp Configuration
   getWhatsappNumbers: (placeId: string) =>
     fetchWithAuth(`/business/whatsapp-numbers/${placeId}`),
@@ -506,6 +517,13 @@ export const adminApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+
+  getDeviceRequests: () => fetchWithAuth('/admin/device-requests'),
+  updateDeviceRequestStatus: (id: string, status: 'pending' | 'fulfilled' | 'rejected') =>
+    fetchWithAuth(`/admin/device-requests/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
 };
 
 // Ubigeo API (Departamentos, Provincias, Distritos)

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 export default function DispositivosPage() {
   const [devices, setDevices] = useState<any[]>([]);
   const [places, setPlaces] = useState<any[]>([]);
+  const [deviceRequests, setDeviceRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -30,11 +31,27 @@ export default function DispositivosPage() {
 
       // Por ahora, simulamos dispositivos (necesitarías endpoint en backend)
       setDevices([]);
+
+      const requestsRes = await adminApi.getDeviceRequests();
+      setDeviceRequests(requestsRes || []);
     } catch (err) {
       console.error('Error loading data:', err);
       toast.error('Error cargando datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const placeName = (placeId: string) => places.find(p => p.id === placeId)?.name || placeId;
+
+  const handleRequestStatus = async (id: string, status: 'fulfilled' | 'rejected') => {
+    try {
+      await adminApi.updateDeviceRequestStatus(id, status);
+      const requestsRes = await adminApi.getDeviceRequests();
+      setDeviceRequests(requestsRes || []);
+      toast.success('Pedido actualizado');
+    } catch (err) {
+      toast.error('Error actualizando el pedido');
     }
   };
 
@@ -151,6 +168,65 @@ export default function DispositivosPage() {
           </div>
         </div>
       )}
+
+      {/* Pedidos de taps de los negocios */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-10 border-b border-gray-50">
+          <h2 className="text-xl font-black text-[#1A1A1A]">Pedidos de Taps</h2>
+          <p className="text-sm text-gray-500 mt-1">{deviceRequests.filter(r => r.status === 'pending').length} pendientes</p>
+        </div>
+        <div className="overflow-x-auto">
+          {deviceRequests.length === 0 ? (
+            <div className="p-10 text-center text-gray-500">
+              <p className="font-bold">Sin pedidos aún</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Wuarike</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Tipo</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Cantidad</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Total</th>
+                  <th className="px-6 py-4 text-left text-sm font-black text-gray-600">Estado</th>
+                  <th className="px-6 py-4 text-center text-sm font-black text-gray-600">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deviceRequests.map(r => (
+                  <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-[#1A1A1A]">{placeName(r.placeId)}</td>
+                    <td className="px-6 py-4 text-sm capitalize">{r.tapType}</td>
+                    <td className="px-6 py-4 text-sm">{r.quantity}</td>
+                    <td className="px-6 py-4 text-sm">S/ {Number(r.totalPrice).toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        r.status === 'fulfilled' ? 'bg-green-100 text-green-700' :
+                        r.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {r.status === 'fulfilled' ? 'Entregado' : r.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center space-x-3">
+                      {r.status === 'pending' && (
+                        <>
+                          <button onClick={() => handleRequestStatus(r.id, 'fulfilled')} className="text-sm text-green-600 font-bold hover:underline">
+                            Entregar
+                          </button>
+                          <button onClick={() => handleRequestStatus(r.id, 'rejected')} className="text-sm text-red-600 font-bold hover:underline">
+                            Rechazar
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
       {/* Tabla de dispositivos */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">

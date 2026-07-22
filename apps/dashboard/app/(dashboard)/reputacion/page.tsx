@@ -45,10 +45,15 @@ export default function ReputacionPage() {
 
   // Devices
   const [devices, setDevices] = useState<any[]>([]);
-  const [isAddingDevice, setIsAddingDevice] = useState(false);
-  const [newDeviceName, setNewDeviceName] = useState('');
-  const [newDeviceType, setNewDeviceType] = useState('NFC');
   const [isDeletingDevice, setIsDeletingDevice] = useState<string | null>(null);
+
+  // Pedido de nuevos taps (genérico o personalizado)
+  const [deviceRequests, setDeviceRequests] = useState<any[]>([]);
+  const [isRequestingTaps, setIsRequestingTaps] = useState(false);
+  const [tapType, setTapType] = useState<'generico' | 'personalizado'>('generico');
+  const [tapQuantity, setTapQuantity] = useState(5);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const TAP_PRICES = { generico: 20, personalizado: 40 } as const;
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -137,30 +142,33 @@ export default function ReputacionPage() {
     }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
-  // Cargar dispositivos
+  // Cargar dispositivos y solicitudes de taps
   useEffect(() => {
     if (!activePlaceId) return;
     businessApi.getDevices(activePlaceId)
       .then(setDevices)
       .catch(() => setDevices([]));
+    businessApi.getDeviceRequests(activePlaceId)
+      .then(setDeviceRequests)
+      .catch(() => setDeviceRequests([]));
   }, [activePlaceId]);
 
-  // Manejar agregar dispositivo
-  const handleAddDevice = async () => {
-    if (!activePlaceId || !newDeviceName.trim()) return;
+  // Manejar pedido de nuevos taps
+  const handleRequestTaps = async () => {
+    if (!activePlaceId || tapQuantity < 5) return;
+    setIsSubmittingRequest(true);
     try {
-      await businessApi.createDevice(activePlaceId, {
-        name: newDeviceName,
-        deviceType: newDeviceType,
-      });
-      setNewDeviceName('');
-      setNewDeviceType('NFC');
-      setIsAddingDevice(false);
-      // Recargar lista
-      const updated = await businessApi.getDevices(activePlaceId);
-      setDevices(updated);
+      await businessApi.createDeviceRequest(activePlaceId, { tapType, quantity: tapQuantity });
+      setIsRequestingTaps(false);
+      setTapType('generico');
+      setTapQuantity(5);
+      const updated = await businessApi.getDeviceRequests(activePlaceId);
+      setDeviceRequests(updated);
+      toast.success('Pedido enviado. El equipo Wuarike lo revisará pronto.');
     } catch (err) {
-      toast.error('Error al agregar dispositivo');
+      toast.error('Error al enviar el pedido');
+    } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -353,9 +361,87 @@ export default function ReputacionPage() {
             </div>
           </div>
 
-          <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-center">
-            ℹ️ Contacta al equipo Wuarike para solicitar nuevos dispositivos
-          </p>
+          {/* Pedido de nuevos taps */}
+          <div className="space-y-4 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            {!isRequestingTaps ? (
+              <button
+                onClick={() => setIsRequestingTaps(true)}
+                className="w-full py-3 rounded-xl bg-text text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-colors"
+              >
+                + Pedir nuevos taps
+              </button>
+            ) : (
+              <>
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">🏷️ Pedir Nuevos Taps</p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setTapType('generico')}
+                    className={`flex-1 p-4 rounded-2xl border text-left transition-colors ${tapType === 'generico' ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'}`}
+                  >
+                    <p className="font-black text-sm text-text">Genérico</p>
+                    <p className="text-[10px] text-text-muted">S/ {TAP_PRICES.generico} c/u</p>
+                  </button>
+                  <button
+                    onClick={() => setTapType('personalizado')}
+                    className={`flex-1 p-4 rounded-2xl border text-left transition-colors ${tapType === 'personalizado' ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'}`}
+                  >
+                    <p className="font-black text-sm text-text">Personalizado</p>
+                    <p className="text-[10px] text-text-muted">S/ {TAP_PRICES.personalizado} c/u</p>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Cantidad (mín. 5)</label>
+                  <input
+                    type="number"
+                    min={5}
+                    value={tapQuantity}
+                    onChange={(e) => setTapQuantity(Math.max(5, Number(e.target.value) || 5))}
+                    className="input-premium w-24"
+                  />
+                </div>
+
+                <p className="text-sm font-black text-text">
+                  Total: S/ {(TAP_PRICES[tapType] * tapQuantity).toFixed(2)}
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleRequestTaps}
+                    disabled={isSubmittingRequest}
+                    className="flex-1 py-3 rounded-xl bg-primary text-white font-black text-[10px] uppercase tracking-widest hover:bg-opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {isSubmittingRequest ? 'Enviando...' : 'Enviar Pedido'}
+                  </button>
+                  <button
+                    onClick={() => setIsRequestingTaps(false)}
+                    className="flex-1 py-3 rounded-xl border border-gray-200 text-text font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {deviceRequests.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Pedidos recientes</p>
+                {deviceRequests.slice(0, 3).map((r: any) => (
+                  <div key={r.id} className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text">{r.quantity}x {r.tapType === 'generico' ? 'Genérico' : 'Personalizado'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                      r.status === 'fulfilled' ? 'bg-green-100 text-green-700' :
+                      r.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {r.status === 'fulfilled' ? 'Entregado' : r.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Logic Configuration */}

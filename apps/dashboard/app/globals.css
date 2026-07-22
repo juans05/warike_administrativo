@@ -58,3 +58,22 @@ h1, h2, h3, .font-warike {
 .texture-paper {
   background-image: url("https://www.transparenttextures.com/patterns/felt.png");
 }
+
+/* ── Scan experience micro-interactions ── */
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(240px) rotate(540deg); opacity: 0; }
+}
+.confetti-piece {
+  animation: confetti-fall 1.6s ease-in forwards;
+}
+
+@keyframes check-draw {
+  from { stroke-dashoffset: 48; }
+  to { stroke-dashoffset: 0; }
+}
+.check-draw {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: check-draw 0.5s ease-out 0.15s forwards;
+}

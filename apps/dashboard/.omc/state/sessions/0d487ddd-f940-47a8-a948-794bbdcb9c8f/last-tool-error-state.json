@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__plugin_playwright_playwright__browser_click",
+  "tool_input_preview": "{\"target\":\"Calificar mi experiencia button\",\"element\":\"Calificar mi experiencia → button\"}",
+  "error": "### Error\nError: \"Calificar mi experiencia button\" does not match any elements.",
+  "timestamp": "2026-07-22T16:40:52.495Z",
+  "retry_count": 1
+}
