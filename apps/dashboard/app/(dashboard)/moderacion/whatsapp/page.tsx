@@ -26,6 +26,7 @@ export default function AdminWhatsappConfigPage() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [waForm, setWaForm] = useState({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
   const [waRegistering, setWaRegistering] = useState(false);
   const [waError, setWaError] = useState('');
@@ -39,6 +40,7 @@ export default function AdminWhatsappConfigPage() {
     try {
       const res = await adminApi.getWhatsappNumbers(placeId);
       setWaNumbers(res.data || []);
+      setWebhookUrl(res.webhookUrl || '');
     } catch {
       setWaNumbers([]);
     }
@@ -59,9 +61,10 @@ export default function AdminWhatsappConfigPage() {
     }
     setWaRegistering(true); setWaError(''); setWaSuccess('');
     try {
-      await adminApi.createWhatsappNumber({ placeId: selectedPlace.id, ...waForm });
+      const res = await adminApi.createWhatsappNumber({ placeId: selectedPlace.id, ...waForm });
       setWaForm({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-      setWaSuccess('✅ Número registrado. El webhook se configuró automáticamente en PlazBot.');
+      setWebhookUrl(res?.webhookUrl || webhookUrl);
+      setWaSuccess('✅ Número registrado. Falta configurar el webhook manualmente en PlazBot (ver abajo).');
       await loadWaNumbers(selectedPlace.id);
     } catch (err: any) {
       setWaError(err.message || 'Error al registrar número');
@@ -76,6 +79,11 @@ export default function AdminWhatsappConfigPage() {
     } catch {
       toast.error('Error al eliminar el número');
     }
+  };
+
+  const copyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success('URL copiada');
   };
 
   return (
@@ -124,6 +132,30 @@ export default function AdminWhatsappConfigPage() {
                 📱 {selectedPlace.name}
               </h2>
 
+              {webhookUrl && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                  <p className="text-xs font-black text-amber-800 uppercase tracking-widest">
+                    ⚠️ Paso manual requerido en PlazBot
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    PlazBot no tiene API para registrar webhooks automáticamente. Copia esta URL y pégala en su dashboard
+                    (o CLI: <code className="font-mono">plazbot whatsapp register-webhook</code>) para el canal de este número.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-white border border-amber-200 rounded-lg px-3 py-2 truncate">
+                      {webhookUrl}
+                    </code>
+                    <button
+                      onClick={copyWebhookUrl}
+                      type="button"
+                      className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-black hover:opacity-90 transition-opacity shrink-0"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {waNumbers.length > 0 && (
                 <div className="space-y-2">
                   {waNumbers.map(num => (
@@ -150,7 +182,7 @@ export default function AdminWhatsappConfigPage() {
 
               <form onSubmit={handleRegisterWaNumber} className="space-y-4">
                 <p className="text-xs text-gray-400">
-                  Registra el número de WhatsApp Business de este local. El webhook de PlazBot se configura automáticamente con el número — no hace falta nada más de Gupshup/Meta si el bot corre por PlazBot.
+                  Registra el número de WhatsApp Business de este local. El webhook hay que configurarlo a mano en PlazBot (instrucciones arriba tras guardar).
                 </p>
 
                 <div>

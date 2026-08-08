@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd \\\"D:/Github/wuarikes/warike_administrativo\\\" && grep -n \\\"^\\\\.next\\\" .gitignore apps/dashboard/.gitignore 2>/dev/null\",\"description\":\"Check .next is gitignored\"}",
+  "error": "Exit code 2\n.gitignore:5:.next/",
+  "timestamp": "2026-08-08T18:06:42.399Z",
+  "retry_count": 1
+}
