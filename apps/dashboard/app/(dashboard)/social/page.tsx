@@ -1,20 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
-import { SkeletonPage } from '../../../components/SkeletonLoader';
+import { SkeletonPage, SkeletonChat } from '../../../components/SkeletonLoader';
 
 // API helpers for social module
 const socialApi = {
   getAccounts: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/social/accounts`),
-  connect: (placeId: string, data: any) => fetchWithAuth(`/business/places/${placeId}/social/connect`, { method: 'POST', body: JSON.stringify(data) }),
+  getConnectUrl: (placeId: string, platform: string) => fetchWithAuth(`/business/places/${placeId}/social/connect-url?platform=${platform}`),
   disconnect: (placeId: string, accountId: string) => fetchWithAuth(`/business/places/${placeId}/social/accounts/${accountId}`, { method: 'DELETE' }),
   getComments: (placeId: string, accountId?: string) => fetchWithAuth(`/business/places/${placeId}/social/comments${accountId ? `?accountId=${accountId}` : ''}`),
   getRules: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/social/rules`),
   updateRules: (placeId: string, data: any) => fetchWithAuth(`/business/places/${placeId}/social/rules`, { method: 'PUT', body: JSON.stringify(data) }),
   reply: (placeId: string, commentId: string, reply: string) => fetchWithAuth(`/business/places/${placeId}/social/comments/${commentId}/reply`, { method: 'POST', body: JSON.stringify({ reply }) }),
+  getConversations: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/social/conversations`),
+  getConversationMessages: (placeId: string, conversationId: string, accountId: string) => fetchWithAuth(`/business/places/${placeId}/social/conversations/${conversationId}/messages?accountId=${accountId}`),
+  sendMessage: (placeId: string, conversationId: string, accountId: string, message: string) => fetchWithAuth(`/business/places/${placeId}/social/conversations/${conversationId}/messages`, { method: 'POST', body: JSON.stringify({ accountId, message }) }),
 };
 
 interface SocialAccountInfo {
@@ -26,15 +30,46 @@ interface SocialAccountInfo {
 
 export default function SocialPage() {
   const { activePlaceId } = useRestaurant();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [accounts, setAccounts] = useState<SocialAccountInfo[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isPickingPlatform, setIsPickingPlatform] = useState(false);
+  const [accountPendingDisconnect, setAccountPendingDisconnect] = useState<SocialAccountInfo | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeAccountFilter, setActiveAccountFilter] = useState<string | null>(null);
   const [isSavingRules, setIsSavingRules] = useState(false);
 
+  // Esta misma página es el destino final del redirect de OAuth de Zernio.
+  // Instagram/Zernio aíslan la ventana (Cross-Origin-Opener-Policy) durante el OAuth, así que
+  // window.opener llega null la mayoría de las veces — no podemos avisar a la ventana principal
+  // por mensaje. Solo intentamos cerrarnos; la ventana principal detecta el cierre por su cuenta
+  // (ver el poll en handleConnect). Si no se puede cerrar (no era un popup real), limpiamos la URL.
+  useEffect(() => {
+    const connected = searchParams.get('connected');
+    const oauthError = searchParams.get('error');
+    if (!connected && !oauthError) return;
+
+    if (oauthError) toast.error('No se pudo conectar la cuenta. Intenta de nuevo.');
+    window.close();
+    const t = setTimeout(() => router.replace('/social'), 300);
+    return () => clearTimeout(t);
+  }, [searchParams, router]);
+
   // Comments
   const [comments, setComments] = useState<any[]>([]);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+
+  // Direct Messages
+  const [activeTab, setActiveTab] = useState<'comments' | 'messages'>('comments');
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [activeConversation, setActiveConversation] = useState<any | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Bot Rules
   const [rules, setRules] = useState({
@@ -45,38 +80,38 @@ export default function SocialPage() {
     personality: 'friendly' as 'friendly' | 'formal' | 'casual',
   });
 
-  // Load accounts
-  useEffect(() => {
+  const loadAccounts = React.useCallback(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     socialApi.getAccounts(activePlaceId)
-      .then((res: any) => {
-        setAccounts(res.accounts || []);
-      })
-      .catch(() => {
-        // Demo data if backend unavailable
-        setAccounts([
-          { id: 'demo-1', platform: 'instagram', username: '@mi_huarique_lima', connectedAt: new Date().toISOString() },
-        ]);
-      })
+      .then((res: any) => setAccounts(res.accounts || []))
+      .catch(() => toast.error('No se pudieron cargar las cuentas conectadas.'))
       .finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
+  // Load accounts
+  useEffect(() => { loadAccounts(); }, [loadAccounts]);
+
   // Load comments when accounts change
   useEffect(() => {
-    if (!activePlaceId || accounts.length === 0) return;
+    if (!activePlaceId || accounts.length === 0) { setComments([]); return; }
     socialApi.getComments(activePlaceId, activeAccountFilter || undefined)
-      .then((res: any) => setComments(res.data || []))
-      .catch(() => {
-        // Demo comments
-        setComments([
-          { id: '1', authorUsername: '@foodie_lima', text: '¿A qué hora abren los domingos?', sentiment: 'question', isReplied: true, aiReply: '¡Hola! Los domingos abrimos de 12:00 PM a 5:00 PM. ¡Te esperamos!', accountUsername: accounts[0]?.username, createdAt: new Date(Date.now() - 300000).toISOString() },
-          { id: '2', authorUsername: '@carlos.m', text: '¡El ceviche estuvo increíble! Volveremos seguro.', sentiment: 'positive', isReplied: true, aiReply: '¡Muchas gracias Carlos! Nos alegra que hayas disfrutado de nuestra sazón.', accountUsername: accounts[0]?.username, createdAt: new Date(Date.now() - 7200000).toISOString() },
-          { id: '3', authorUsername: '@mariana_99', text: 'Tienen opciones vegetarianas?', sentiment: 'question', isReplied: false, aiReply: '', accountUsername: accounts[0]?.username, createdAt: new Date(Date.now() - 86400000).toISOString() },
-          { id: '4', authorUsername: '@pedro_chef', text: 'El servicio fue un poco lento pero la comida compensó todo', sentiment: 'neutral', isReplied: false, aiReply: '', accountUsername: accounts[0]?.username, createdAt: new Date(Date.now() - 172800000).toISOString() },
-        ]);
-      });
+      .then((res: any) => {
+        setComments(res.data || []);
+        if (res.notice) toast.info(res.notice);
+      })
+      .catch(() => toast.error('No se pudieron cargar los comentarios.'));
   }, [activePlaceId, accounts, activeAccountFilter]);
+
+  // Load DM conversations when switching to that tab
+  useEffect(() => {
+    if (activeTab !== 'messages' || !activePlaceId || accounts.length === 0) return;
+    setIsLoadingConversations(true);
+    socialApi.getConversations(activePlaceId)
+      .then((res: any) => setConversations(res.data || []))
+      .catch(() => toast.error('No se pudieron cargar los mensajes directos.'))
+      .finally(() => setIsLoadingConversations(false));
+  }, [activeTab, activePlaceId, accounts]);
 
   // Load rules
   useEffect(() => {
@@ -88,30 +123,50 @@ export default function SocialPage() {
       .catch(() => {});
   }, [activePlaceId]);
 
-  const handleConnect = () => {
+  const handleConnect = async (platform: 'instagram' | 'facebook') => {
+    if (!activePlaceId) return;
+    setIsPickingPlatform(false);
     setIsConnecting(true);
-    // Simulate OAuth (in production, this opens a Facebook Login popup)
-    setTimeout(() => {
-      const newAccount: SocialAccountInfo = {
-        id: `demo-${Date.now()}`,
-        platform: 'instagram',
-        username: `@cuenta_${accounts.length + 1}`,
-        connectedAt: new Date().toISOString(),
-      };
-      setAccounts(prev => [...prev, newAccount]);
+    try {
+      const { authUrl } = await socialApi.getConnectUrl(activePlaceId, platform);
+      const popup = window.open(authUrl, 'zernio-connect', 'width=520,height=680');
+      if (!popup) {
+        toast.error('El navegador bloqueó la ventana emergente. Habilita los popups para este sitio.');
+        setIsConnecting(false);
+        return;
+      }
+      // No podemos confiar en window.opener/postMessage (Instagram/Zernio aíslan la ventana
+      // durante el OAuth), así que detectamos que terminó por el cierre del popup y refrescamos.
+      const countBefore = accounts.length;
+      const poll = setInterval(() => {
+        if (!popup.closed) return;
+        clearInterval(poll);
+        setIsConnecting(false);
+        socialApi.getAccounts(activePlaceId)
+          .then((res: any) => {
+            const newAccounts = res.accounts || [];
+            setAccounts(newAccounts);
+            if (newAccounts.length > countBefore) toast.success('Cuenta conectada correctamente.');
+          })
+          .catch(() => {});
+      }, 800);
+    } catch {
+      toast.error('No se pudo iniciar la conexión con Instagram/Facebook. Intenta de nuevo.');
       setIsConnecting(false);
-    }, 1500);
+    }
   };
 
-  const handleDisconnect = async (accountId: string) => {
-    if (!activePlaceId) return;
-    if (!confirm('¿Estás seguro de desvincular esta cuenta?')) return;
+  const handleDisconnect = async () => {
+    if (!activePlaceId || !accountPendingDisconnect) return;
+    setIsDisconnecting(true);
     try {
-      await socialApi.disconnect(activePlaceId, accountId);
-      setAccounts(prev => prev.filter(a => a.id !== accountId));
+      await socialApi.disconnect(activePlaceId, accountPendingDisconnect.id);
+      setAccounts(prev => prev.filter(a => a.id !== accountPendingDisconnect.id));
+      setAccountPendingDisconnect(null);
     } catch {
       toast.error('No se pudo desvincular la cuenta. Intenta de nuevo.');
     }
+    setIsDisconnecting(false);
   };
 
   const handleReply = async (commentId: string) => {
@@ -123,6 +178,35 @@ export default function SocialPage() {
     } catch {
       toast.error('No se pudo enviar la respuesta. Intenta de nuevo.');
     }
+  };
+
+  const openConversation = (conv: any) => {
+    if (!activePlaceId) return;
+    setActiveConversation(conv);
+    setMessages([]);
+    setIsLoadingMessages(true);
+    socialApi.getConversationMessages(activePlaceId, conv.id, conv.accountId)
+      .then((res: any) => setMessages(res.data || []))
+      .catch(() => toast.error('No se pudo cargar la conversación.'))
+      .finally(() => setIsLoadingMessages(false));
+  };
+
+  const handleSendMessage = async () => {
+    if (!activePlaceId || !activeConversation || !messageText.trim()) return;
+    setIsSendingMessage(true);
+    try {
+      await socialApi.sendMessage(activePlaceId, activeConversation.id, activeConversation.accountId, messageText);
+      setMessages(prev => [...prev, {
+        id: `local-${Date.now()}`,
+        message: messageText,
+        direction: 'outgoing',
+        createdAt: new Date().toISOString(),
+      }]);
+      setMessageText('');
+    } catch {
+      toast.error('No se pudo enviar el mensaje. Intenta de nuevo.');
+    }
+    setIsSendingMessage(false);
   };
 
   const handleSaveRules = async () => {
@@ -163,7 +247,7 @@ export default function SocialPage() {
           </p>
         </div>
         <button
-          onClick={handleConnect}
+          onClick={() => setIsPickingPlatform(true)}
           disabled={isConnecting}
           className="btn-primary px-8 py-4 rounded-2xl text-[10px] tracking-widest disabled:opacity-50 whitespace-nowrap"
         >
@@ -185,7 +269,7 @@ export default function SocialPage() {
              <p className="text-xs font-bold text-gray-400">Puedes vincular <span className="text-primary">múltiples cuentas</span> si tu negocio tiene varias sedes o marcas.</p>
           </div>
           <button 
-            onClick={handleConnect}
+            onClick={() => setIsPickingPlatform(true)}
             disabled={isConnecting}
             className="btn-primary px-12 py-5 rounded-2xl text-sm tracking-widest w-full max-w-sm mx-auto disabled:opacity-50"
           >
@@ -218,7 +302,7 @@ export default function SocialPage() {
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                     <button
-                      onClick={() => handleDisconnect(account.id)}
+                      onClick={() => setAccountPendingDisconnect(account)}
                       className="text-[9px] font-black text-red-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-600 ml-2"
                     >
                       ✕
@@ -229,7 +313,7 @@ export default function SocialPage() {
 
               {/* Add another account button */}
               <button
-                onClick={handleConnect}
+                onClick={() => setIsPickingPlatform(true)}
                 disabled={isConnecting}
                 className="px-6 py-4 rounded-2xl border-2 border-dashed border-primary text-primary font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all disabled:opacity-50 flex items-center gap-2"
               >
@@ -246,8 +330,25 @@ export default function SocialPage() {
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300 fill-mode-both">
             
-            {/* Left Column: Comments Feed */}
+            {/* Left Column: Comments / DMs */}
             <div className="lg:col-span-7 space-y-8">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('comments')}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${activeTab === 'comments' ? 'bg-text text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  Comentarios
+                </button>
+                <button
+                  onClick={() => setActiveTab('messages')}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${activeTab === 'messages' ? 'bg-text text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  Mensajes Directos
+                </button>
+              </div>
+
+              {activeTab === 'comments' ? (
+              <>
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-black text-text font-warike">
                   Comentarios {activeAccountFilter ? `de ${accounts.find(a => a.id === activeAccountFilter)?.username}` : 'de Todas las Cuentas'}
@@ -316,6 +417,89 @@ export default function SocialPage() {
                   ))
                 )}
               </div>
+              </>
+              ) : isLoadingConversations ? (
+              <SkeletonChat />
+              ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 h-[600px]">
+                {/* Conversation list */}
+                <div className="sm:col-span-2 bg-white rounded-[2rem] border border-border overflow-y-auto p-3 space-y-2">
+                  {conversations.length === 0 ? (
+                    <div className="p-8 text-center space-y-2">
+                      <div className="text-3xl">✉️</div>
+                      <p className="text-xs font-bold text-gray-400">Sin mensajes directos aún.</p>
+                    </div>
+                  ) : (
+                    conversations.map(conv => (
+                      <button
+                        key={conv.id}
+                        onClick={() => openConversation(conv)}
+                        className={`w-full text-left p-3 rounded-2xl transition-colors flex items-center gap-3 ${activeConversation?.id === conv.id ? 'bg-primary/10' : 'hover:bg-background'}`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-lg shrink-0">👤</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center gap-2">
+                            <p className="font-black text-xs text-text truncate">{conv.participantName || conv.participantUsername}</p>
+                            {!!conv.unreadCount && <span className="w-2 h-2 rounded-full bg-primary shrink-0" />}
+                          </div>
+                          <p className="text-[11px] font-bold text-gray-400 truncate">{conv.lastMessage}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Thread */}
+                <div className="sm:col-span-3 bg-white rounded-[2rem] border border-border flex flex-col overflow-hidden">
+                  {!activeConversation ? (
+                    <div className="flex-1 flex items-center justify-center text-xs font-bold text-gray-400 p-8 text-center">
+                      Selecciona una conversación para ver los mensajes.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4 border-b border-border">
+                        <p className="font-black text-sm text-text">{activeConversation.participantName || activeConversation.participantUsername}</p>
+                        <p className="text-[10px] font-bold text-gray-400">@{activeConversation.participantUsername}</p>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {isLoadingMessages ? (
+                          <div className="space-y-4 animate-pulse">
+                            <div className="h-10 bg-gray-100 rounded-2xl w-2/3"></div>
+                            <div className="h-10 bg-gray-100 rounded-2xl w-1/2 ml-auto"></div>
+                            <div className="h-10 bg-gray-100 rounded-2xl w-3/5"></div>
+                          </div>
+                        ) : (
+                          messages.map(m => (
+                            <div key={m.id} className={`flex ${m.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-xs font-bold ${m.direction === 'outgoing' ? 'bg-primary text-white' : 'bg-background text-text'}`}>
+                                {m.message}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-4 border-t border-border flex gap-2">
+                        <input
+                          type="text"
+                          value={messageText}
+                          onChange={(e) => setMessageText(e.target.value)}
+                          placeholder="Escribe un mensaje..."
+                          className="input-premium py-2 text-xs flex-1"
+                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                        />
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={isSendingMessage || !messageText.trim()}
+                          className="bg-text text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-colors disabled:opacity-50"
+                        >
+                          Enviar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              )}
             </div>
 
             {/* Right Column: AI Bot Settings */}
@@ -383,6 +567,72 @@ export default function SocialPage() {
 
           </div>
         </>
+      )}
+
+      {isPickingPlatform && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setIsPickingPlatform(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1">
+              <h3 className="font-black text-lg text-text">¿Qué plataforma quieres vincular?</h3>
+              <p className="text-xs font-bold text-text-muted">Vas a autorizar a Wuarike desde tu cuenta de empresa.</p>
+            </div>
+            <div className="space-y-3">
+              {(['instagram', 'facebook'] as const).map(platform => {
+                const connectedCount = accounts.filter(a => a.platform === platform).length;
+                return (
+                  <button
+                    key={platform}
+                    onClick={() => handleConnect(platform)}
+                    className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl border-2 border-border hover:border-primary transition-colors"
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg shrink-0 ${platform === 'instagram' ? 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600' : 'bg-blue-600'}`}>
+                      {platform === 'instagram' ? '📷' : 'f'}
+                    </div>
+                    <span className="font-black text-sm text-text flex-1 text-left capitalize">{platform}</span>
+                    {connectedCount > 0 && (
+                      <span className="flex items-center gap-1 text-[9px] font-black text-green-600 bg-green-50 px-2 py-1 rounded-full uppercase tracking-widest shrink-0">
+                        ✓ {connectedCount > 1 ? `${connectedCount} conectadas` : 'Conectado'}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setIsPickingPlatform(false)}
+              className="w-full text-[10px] font-black text-text-muted uppercase tracking-widest hover:text-text transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {accountPendingDisconnect && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAccountPendingDisconnect(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 space-y-6" onClick={(e) => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center text-2xl mx-auto">⚠️</div>
+            <div className="space-y-1 text-center">
+              <h3 className="font-black text-lg text-text">¿Desvincular {accountPendingDisconnect.username}?</h3>
+              <p className="text-xs font-bold text-text-muted">Dejará de leer y responder comentarios/mensajes de esta cuenta. Podrás volver a conectarla cuando quieras.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAccountPendingDisconnect(null)}
+                className="flex-1 px-5 py-3 rounded-2xl border-2 border-border font-black text-[10px] uppercase tracking-widest text-text-muted hover:border-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                className="flex-1 px-5 py-3 rounded-2xl bg-red-500 text-white font-black text-[10px] uppercase tracking-widest hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {isDisconnecting ? 'Desvinculando...' : 'Desvincular'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

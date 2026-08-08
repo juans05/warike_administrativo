@@ -36,15 +36,6 @@ type Template = {
   category: string;
 };
 
-type WaNumber = {
-  id: string;
-  phoneNumber: string;
-  phoneNumberId: string;
-  isActive: boolean;
-  verificationStatus: string;
-  createdAt: string;
-};
-
 export default function PlazbotSetupPage() {
   const { activePlaceId } = useRestaurant();
 
@@ -74,13 +65,6 @@ export default function PlazbotSetupPage() {
   const [campaignSending, setCampaignSending] = useState(false);
   const [campaignResult, setCampaignResult] = useState('');
 
-  // WhatsApp number registration
-  const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
-  const [waForm, setWaForm] = useState({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-  const [waRegistering, setWaRegistering] = useState(false);
-  const [waError, setWaError] = useState('');
-  const [waSuccess, setWaSuccess] = useState('');
-
   const loadMetricsAndTemplates = useCallback(async () => {
     const [m, t] = await Promise.allSettled([
       plazbotApi.getMetrics(),
@@ -89,14 +73,6 @@ export default function PlazbotSetupPage() {
     if (m.status === 'fulfilled' && m.value) setMetrics(m.value);
     if (t.status === 'fulfilled' && Array.isArray(t.value)) setTemplates(t.value);
   }, []);
-
-  const loadWaNumbers = useCallback(async () => {
-    if (!activePlaceId) return;
-    try {
-      const res = await businessApi.getWhatsappNumbers(activePlaceId);
-      setWaNumbers(res.data || []);
-    } catch { /* silencioso */ }
-  }, [activePlaceId]);
 
   useEffect(() => {
     const load = async () => {
@@ -123,8 +99,7 @@ export default function PlazbotSetupPage() {
       finally { setLoading(false); }
     };
     load();
-    loadWaNumbers();
-  }, [activePlaceId, loadMetricsAndTemplates, loadWaNumbers]);
+  }, [activePlaceId, loadMetricsAndTemplates]);
 
   const handleSuggestPrompt = async () => {
     if (!activePlaceId) return;
@@ -170,30 +145,6 @@ export default function PlazbotSetupPage() {
     } catch (err: any) {
       setSaveError(err.message || 'Error al guardar');
     } finally { setSaving(false); }
-  };
-
-  const handleRegisterWaNumber = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!waForm.phoneNumber || !waForm.phoneNumberId || !waForm.whatsappApiToken) {
-      setWaError('Completa todos los campos'); return;
-    }
-    setWaRegistering(true); setWaError(''); setWaSuccess('');
-    try {
-      await businessApi.createWhatsappNumber({ placeId: activePlaceId, ...waForm });
-      setWaForm({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-      setWaSuccess('✅ Número registrado. El webhook se configuró automáticamente en PlazBot.');
-      await loadWaNumbers();
-    } catch (err: any) {
-      setWaError(err.message || 'Error al registrar número');
-    } finally { setWaRegistering(false); }
-  };
-
-  const handleDeleteWaNumber = async (numberId: string) => {
-    if (!confirm('¿Eliminar este número?')) return;
-    try {
-      await businessApi.deleteWhatsappNumber(numberId);
-      setWaNumbers(waNumbers.filter(n => n.id !== numberId));
-    } catch { /* silencioso */ }
   };
 
   const handleLaunchCampaign = async (e: React.FormEvent) => {
@@ -258,99 +209,6 @@ export default function PlazbotSetupPage() {
         </div>
       </div>
       )}
-
-      {/* ─── REGISTRO NÚMERO WHATSAPP ─── */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-5">
-        <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">
-          📱 Número de WhatsApp
-        </h2>
-
-        {/* Números registrados */}
-        {waNumbers.length > 0 && (
-          <div className="space-y-2">
-            {waNumbers.map(num => (
-              <div key={num.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
-                <div>
-                  <p className="text-sm font-black text-gray-900">{num.phoneNumber}</p>
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">ID: {num.phoneNumberId}</p>
-                  <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                    num.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {num.isActive ? '🟢 Activo' : '⏳ Pendiente'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleDeleteWaNumber(num.id)}
-                  className="text-xs text-red-500 font-bold hover:text-red-700 transition-colors"
-                >
-                  Eliminar
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Formulario registro nuevo número */}
-        <form onSubmit={handleRegisterWaNumber} className="space-y-4">
-          <p className="text-xs text-gray-400">
-            Registra tu número de Gupshup/WhatsApp Business. El webhook se configurará automáticamente.
-          </p>
-
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-              Número de Teléfono
-            </label>
-            <input
-              type="tel"
-              placeholder="+51 947 196 047"
-              value={waForm.phoneNumber}
-              onChange={e => setWaForm(p => ({ ...p, phoneNumber: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-              Phone Number ID <span className="normal-case font-normal text-gray-400">(de Gupshup / Meta)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="1125526153979521"
-              value={waForm.phoneNumberId}
-              onChange={e => setWaForm(p => ({ ...p, phoneNumberId: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm font-mono"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-              API Token de WhatsApp <span className="normal-case font-normal text-gray-400">(de Gupshup)</span>
-            </label>
-            <input
-              type="password"
-              placeholder="103683••••••6105"
-              value={waForm.whatsappApiToken}
-              onChange={e => setWaForm(p => ({ ...p, whatsappApiToken: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm font-mono"
-            />
-          </div>
-
-          {waError && (
-            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl border border-red-200 text-sm">{waError}</div>
-          )}
-          {waSuccess && (
-            <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl border border-green-200 text-sm font-medium">{waSuccess}</div>
-          )}
-
-          <button
-            type="submit"
-            disabled={waRegistering}
-            className="w-full bg-gray-900 text-white py-3 rounded-xl font-black hover:opacity-90 transition-all disabled:opacity-50 text-sm"
-          >
-            {waRegistering ? '⏳ Registrando...' : '✅ Registrar Número'}
-          </button>
-        </form>
-      </div>
 
       {/* ─── PERSONALIZACIÓN DEL BOT ─── */}
       {plazbotConnected && (

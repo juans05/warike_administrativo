@@ -32,3 +32,13 @@ Thumbs.db
 
 # Turbo
 .turbo/
+.omc/state/agent-replay-b969f443-d519-46e7-a266-24ac6373819e.jsonl
+.omc/state/idle-notif-cooldown.json
+.omc/state/sessions/b969f443-d519-46e7-a266-24ac6373819e/pre-tool-advisory-throttle.json
+.omc/state/sessions/b969f443-d519-46e7-a266-24ac6373819e/subagent-tracking-state.json
+apps/dashboard/.omc/state/idle-notif-cooldown.json
+apps/dashboard/.omc/state/sessions/7b625abf-c9b5-49f6-9976-58450db4b58a/pre-tool-advisory-throttle.json
+apps/dashboard/.omc/state/sessions/7b625abf-c9b5-49f6-9976-58450db4b58a/subagent-tracking-state.json
+apps/dashboard/.omc/state/sessions/b969f443-d519-46e7-a266-24ac6373819e/pre-tool-advisory-throttle.json
+apps/dashboard/.omc/state/idle-notif-cooldown.json
+.omc/state/idle-notif-cooldown.json

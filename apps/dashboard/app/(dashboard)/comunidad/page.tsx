@@ -19,7 +19,8 @@ export default function ComunidadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [page] = useState(1);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<{ total: number; page: number; limit: number; totalPages: number } | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -31,15 +32,18 @@ export default function ComunidadPage() {
     try {
       const data = await adminApi.getUsers(page, search);
       setUsers(Array.isArray(data?.data) ? data.data : []);
+      setMeta(data?.meta ?? null);
     } catch (err: any) {
       setError(err?.message || 'Error al cargar usuarios');
       setUsers([]);
+      setMeta(null);
     } finally {
       setLoading(false);
     }
   }, [page, search]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+  useEffect(() => { setPage(1); }, [search]);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,6 +181,30 @@ export default function ComunidadPage() {
             </tbody>
           </table>
         </div>
+
+        {meta && meta.total > 0 && (
+          <div className="flex items-center justify-between px-8 py-5 border-t border-gray-50">
+            <p className="text-xs font-bold text-gray-400">
+              {meta.total} usuario{meta.total === 1 ? '' : 's'} · página {meta.page} de {meta.totalPages}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gray-50 text-gray-600 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                disabled={page >= meta.totalPages}
+                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gray-50 text-gray-600 disabled:opacity-40 hover:bg-gray-100 transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Modal */}

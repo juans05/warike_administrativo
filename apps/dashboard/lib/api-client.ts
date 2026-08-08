@@ -524,6 +524,19 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  // WhatsApp bot — configuración por local (superAdmin gestiona la de cualquier local)
+  getWhatsappNumbers: (placeId: string) =>
+    fetchWithAuth(`/admin/whatsapp-numbers/${placeId}`),
+  createWhatsappNumber: (data: WhatsappNumberPayload) =>
+    fetchWithAuth('/admin/whatsapp-numbers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteWhatsappNumber: (numberId: string) =>
+    fetchWithAuth(`/admin/whatsapp-numbers/${numberId}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Ubigeo API (Departamentos, Provincias, Distritos)
