@@ -31,6 +31,7 @@ export default function EquipoPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ email: '', fullName: '', role: 'agente' as Role, whatsappNumberIds: [] as string[] });
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -56,8 +57,15 @@ export default function EquipoPage() {
     if (!activePlaceId || !form.email || !form.fullName) return;
     setIsSaving(true);
     try {
-      await teamApi.create(activePlaceId, form);
-      toast.success('Agente agregado. Le llegó un correo con sus credenciales.');
+      const result = await teamApi.create(activePlaceId, form);
+      if (result.emailSent) {
+        toast.success('Agente agregado. Le llegó un correo con sus credenciales.');
+      } else if (result.temporaryPassword) {
+        toast.error('Agente agregado, pero no se pudo enviar el correo. Pasale la contraseña manualmente.');
+        setPendingCredentials({ email: form.email, password: result.temporaryPassword });
+      } else {
+        toast.success('Agente agregado (ya tenía cuenta en Wuarike, pero no le llegó el aviso por correo).');
+      }
       setForm({ email: '', fullName: '', role: 'agente', whatsappNumberIds: [] });
       setShowForm(false);
       await load();
@@ -106,6 +114,23 @@ export default function EquipoPage() {
           {showForm ? 'Cancelar' : '+ Agregar agente'}
         </button>
       </div>
+
+      {pendingCredentials && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-bold text-amber-800">No se pudo enviar el correo de credenciales</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Pasale esta contraseña temporal a <span className="font-bold">{pendingCredentials.email}</span> por otro medio:
+            </p>
+            <p className="mt-2 font-mono text-sm bg-white border border-amber-200 rounded-lg px-3 py-2 inline-block text-amber-900">
+              {pendingCredentials.password}
+            </p>
+          </div>
+          <button onClick={() => setPendingCredentials(null)} className="text-xs text-amber-600 font-bold hover:text-amber-800">
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4">
