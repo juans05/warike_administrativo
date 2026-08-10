@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { businessApi } from '../../../lib/api-client';
+import { businessApi, teamApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -57,12 +57,14 @@ export default function ChatPage() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [filter, setFilter] = useState<'unassigned' | 'mine' | 'all'>('unassigned');
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMessageCount, setNewMessageCount] = useState<Record<string, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const loadConversations = (placeId: string) => {
-    return businessApi.getConversations(placeId)
+    return businessApi.getConversations(placeId, 1, { filter })
       .then(res => {
         setConversations(res.data || []);
         return res.data || [];
@@ -76,6 +78,11 @@ export default function ChatPage() {
       .then(data => { if (data.length > 0) setSelectedConv(data[0]); })
       .catch(console.error)
       .finally(() => setIsLoading(false));
+  }, [activePlaceId, filter]);
+
+  useEffect(() => {
+    if (!activePlaceId) return;
+    teamApi.list(activePlaceId).then(res => setTeamMembers(res.data || [])).catch(() => setTeamMembers([]));
   }, [activePlaceId]);
 
   useEffect(() => {
@@ -185,6 +192,43 @@ export default function ChatPage() {
     }
   };
 
+  const handleClaim = async () => {
+    if (!selectedConv) return;
+    try {
+      const updated = await businessApi.claimConversation(selectedConv.id);
+      setSelectedConv(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+      toast.success('Conversación reclamada');
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo reclamar — puede que ya la haya tomado otro agente');
+      if (activePlaceId) loadConversations(activePlaceId).then(setConversations);
+    }
+  };
+
+  const handleClose = async () => {
+    if (!selectedConv) return;
+    try {
+      const updated = await businessApi.closeConversation(selectedConv.id);
+      setSelectedConv(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+      toast.success('Conversación cerrada');
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo cerrar la conversación');
+    }
+  };
+
+  const handleReassign = async (userId: string) => {
+    if (!selectedConv || !userId) return;
+    try {
+      const updated = await businessApi.reassignConversation(selectedConv.id, userId);
+      setSelectedConv(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+      toast.success('Conversación reasignada');
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo reasignar — necesitás ser Supervisor o Admin');
+    }
+  };
+
   const handleSendReply = async () => {
     if (!replyText.trim() || !selectedConv) return;
     setIsSending(true);
@@ -255,6 +299,19 @@ export default function ChatPage() {
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
             <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Conversaciones</p>
           </div>
+          <div className="flex gap-1 px-3 py-2 border-b border-gray-100">
+            {(['unassigned', 'mine', 'all'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  filter === f ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                }`}
+              >
+                {f === 'unassigned' ? 'Sin asignar' : f === 'mine' ? 'Mías' : 'Todas'}
+              </button>
+            ))}
+          </div>
           <div className="flex-1 overflow-y-auto">
             {conversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
@@ -293,9 +350,18 @@ export default function ChatPage() {
                           <p className="text-sm font-bold text-gray-800 truncate">{name}</p>
                           <p className="text-[10px] text-gray-400 flex-shrink-0 ml-1">{timeAgo(conv.lastMessageTime || conv.createdAt)}</p>
                         </div>
-                        <p className="text-[11px] text-gray-400 mb-1">
-                          {conv.mode === 'human' ? 'Agente humano' : 'Sin Agente Asignado'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                            conv.status === 'cerrado' ? 'bg-gray-100 text-gray-500' :
+                            conv.status === 'pendiente' ? 'bg-amber-100 text-amber-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {conv.status || 'abierto'}
+                          </span>
+                          <p className="text-[11px] text-gray-400">
+                            {conv.mode === 'human' ? 'Agente humano' : 'Sin Agente Asignado'}
+                          </p>
+                        </div>
                         <p className="text-xs text-gray-500 truncate">{conv.lastMessage || '—'}</p>
                         <div className="flex items-center gap-1 mt-1.5">
                           <span className="text-[10px]">🇵🇪</span>
@@ -335,13 +401,40 @@ export default function ChatPage() {
                         }`} />
                     </button>
                   </div>
-                  {/* Resolve button */}
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Solucionar
-                  </button>
+                  {selectedConv.status === 'cerrado' ? (
+                    <span className="text-xs font-bold text-gray-400">Cerrada</span>
+                  ) : !selectedConv.assignedToUserId ? (
+                    <button
+                      onClick={handleClaim}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Reclamar
+                    </button>
+                  ) : (
+                    <>
+                      {teamMembers.length > 1 && (
+                        <select
+                          onChange={e => handleReassign(e.target.value)}
+                          value=""
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600"
+                        >
+                          <option value="" disabled>Reasignar a...</option>
+                          {teamMembers.filter(m => m.userId !== selectedConv.assignedToUserId).map(m => (
+                            <option key={m.userId} value={m.userId}>{m.fullName}</option>
+                          ))}
+                        </select>
+                      )}
+                      <button
+                        onClick={handleClose}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-xs font-bold rounded-lg hover:bg-green-600 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Cerrar
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
