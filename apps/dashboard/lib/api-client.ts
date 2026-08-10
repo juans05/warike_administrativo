@@ -357,8 +357,23 @@ export const businessApi = {
     }),
 
   // Conversations & Messages
-  getConversations: (placeId: string, page: number = 1) =>
-    fetchWithAuth(`/business/conversations/${placeId}?page=${page}&limit=20`),
+  getConversations: (placeId: string, page: number = 1, opts?: { status?: string; filter?: 'mine' | 'unassigned' | 'all' }) => {
+    const params = new URLSearchParams({ page: String(page), limit: '20' });
+    if (opts?.status) params.set('status', opts.status);
+    if (opts?.filter) params.set('filter', opts.filter);
+    return fetchWithAuth(`/business/conversations/${placeId}?${params.toString()}`);
+  },
+  claimConversation: (conversationId: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/claim`, { method: 'POST' }),
+  releaseConversation: (conversationId: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/release`, { method: 'POST' }),
+  reassignConversation: (conversationId: string, userId: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/reassign`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+  closeConversation: (conversationId: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/close`, { method: 'POST' }),
   syncPlazbotConversations: (placeId: string) =>
     fetchWithAuth(`/business/conversations/sync-plazbot/${placeId}`, { method: 'POST' }),
   getConversationMessages: (conversationId: string) =>
@@ -604,4 +619,13 @@ export const plazbotApi = {
     fetchWithAuth('/plazbot-setup/send-template', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+export const teamApi = {
+  list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente'; whatsappNumberIds?: string[] }) =>
+    fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
+  update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
+    fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (placeId: string, memberId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'DELETE' }),
+};
 
