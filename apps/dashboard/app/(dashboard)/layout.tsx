@@ -24,7 +24,7 @@ import {
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
-import { subscriptionApi } from '../../lib/api-client';
+import { businessApi } from '../../lib/api-client';
 
 interface DashboardUser {
   id: string;
@@ -44,14 +44,16 @@ function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier)
   return ownedIndex !== -1 && ownedIndex >= requiredIndex;
 }
 
-function useSubscriptionTier(enabled: boolean) {
+// El plan es de la SEDE activa (lo paga su dueño), no del usuario logueado — un
+// Agente/Supervisor de esa sede lo hereda igual, sin tener suscripción propia.
+function useSubscriptionTier(placeId: string | null) {
   const [tier, setTier] = useState<string | null>(null);
   useEffect(() => {
-    if (!enabled) return;
-    subscriptionApi.getMy()
-      .then((sub) => setTier(sub?.status === 'active' ? sub.tier : null))
+    if (!placeId) { setTier(null); return; }
+    businessApi.getSubscriptionTier(placeId)
+      .then((res) => setTier(res?.tier ?? null))
       .catch(() => setTier(null));
-  }, [enabled]);
+  }, [placeId]);
   return tier;
 }
 
@@ -97,8 +99,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: DashboardUser | null; handleLogout: () => void }) {
   const pathname = usePathname();
-  const { places, isLoading: contextLoading, refreshPlaces } = useRestaurant();
-  const tier = useSubscriptionTier(user?.role === 'business');
+  const { places, activePlaceId, isLoading: contextLoading, refreshPlaces } = useRestaurant();
+  const tier = useSubscriptionTier(user?.role === 'business' ? activePlaceId : null);
 
   const hasSavedPlace = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
   const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business' && !hasSavedPlace;
