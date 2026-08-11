@@ -619,6 +619,13 @@ export const plazbotApi = {
     fetchWithAuth('/plazbot-setup/send-template', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+export const authApi = {
+  forgotPassword: (email: string) =>
+    fetchPublic('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (email: string, code: string, password: string) =>
+    fetchPublic('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, code, password }) }),
+};
+
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
   create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente'; whatsappNumberIds?: string[] }) =>
