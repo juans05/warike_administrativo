@@ -62,7 +62,13 @@ export default function EquipoPage() {
     try {
       const result = await teamApi.create(activePlaceId, form);
       if (result.emailSent) {
-        toast.success('Agente agregado. Le llegó un correo con sus credenciales.');
+        toast.success(
+          result.isExistingAccount
+            ? 'Agente agregado. Ya tenía cuenta, le mandamos un código para restablecer su contraseña.'
+            : 'Agente agregado. Le llegó un correo con sus credenciales.',
+        );
+      } else if (result.isExistingAccount) {
+        toast.error('Agente agregado, pero no se pudo enviar el correo. Decile que entre con su cuenta existente o use "Olvidé mi contraseña".');
       } else {
         toast.error('Agente agregado, pero no se pudo enviar el correo. Pasale la contraseña manualmente.');
         setPendingCredentials({ email: form.email, password: result.temporaryPassword });
