@@ -183,7 +183,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           {user?.role === 'business' && !noPlaces && (
             <SidebarItem href="/suscripcion" icon={CreditCard} label="Suscripción" active={pathname === '/suscripcion'} />
           )}
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
+          <Link href="/mi-cuenta" className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
               {user?.fullName?.charAt(0) || 'A'}
             </div>
@@ -191,7 +191,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'Administrador'}</p>
               <p className="text-xs text-gray-500 uppercase tracking-widest font-medium">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 duration-200"

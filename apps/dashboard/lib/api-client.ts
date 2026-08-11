@@ -624,6 +624,8 @@ export const authApi = {
     fetchPublic('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (email: string, code: string, password: string) =>
     fetchPublic('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, code, password }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    fetchWithAuth('/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) }),
 };
 
 export const teamApi = {
