@@ -18,6 +18,9 @@ interface SubscriptionRecord {
     fullName: string;
     email: string;
   };
+  place: {
+    name: string;
+  };
 }
 
 interface Stats {
@@ -117,7 +120,8 @@ export default function SuscripcionesPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#F7F8FA] border-b border-gray-100">
-                    <th className="px-10 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Usuario</th>
+                    <th className="px-10 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sede</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Usuario</th>
                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tarjeta</th>
                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Próximo cobro</th>
@@ -127,7 +131,7 @@ export default function SuscripcionesPage() {
                 <tbody className="divide-y divide-gray-50">
                   {subs.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-10 py-16 text-center text-gray-400 font-medium text-sm">
+                      <td colSpan={6} className="px-10 py-16 text-center text-gray-400 font-medium text-sm">
                         No hay suscripciones registradas aún.
                       </td>
                     </tr>
@@ -137,6 +141,9 @@ export default function SuscripcionesPage() {
                     return (
                       <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-10 py-5">
+                          <p className="font-bold text-[#1A1A1A] text-sm">{sub.place?.name || '—'}</p>
+                        </td>
+                        <td className="px-6 py-5">
                           <p className="font-bold text-[#1A1A1A] text-sm">{sub.user?.fullName || '—'}</p>
                           <p className="text-xs text-gray-400 font-medium">{sub.user?.email || '—'}</p>
                         </td>

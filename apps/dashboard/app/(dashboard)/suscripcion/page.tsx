@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Script from 'next/script';
-import { subscriptionApi } from '../../../lib/api-client';
+import { subscriptionApi, placeSubscriptionApi } from '../../../lib/api-client';
+import { useRestaurant } from '../../../context/RestaurantContext';
 import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 
@@ -50,6 +51,8 @@ interface PlanInfo {
 const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || 'pk_live_xxxxxxxxxxxxxxxx';
 
 export default function SuscripcionPage() {
+  const { activePlaceId, places } = useRestaurant();
+  const activePlace = places.find((p) => p.id === activePlaceId);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
@@ -59,10 +62,11 @@ export default function SuscripcionPage() {
   const [culqiReady, setCulqiReady] = useState(false);
 
   const load = useCallback(async () => {
+    if (!activePlaceId) { setLoading(false); return; }
     setLoading(true);
     try {
       const [subData, plansData] = await Promise.all([
-        subscriptionApi.getMy().catch(() => null),
+        placeSubscriptionApi.get(activePlaceId).catch(() => null),
         subscriptionApi.getPlans(),
       ]);
       setSubscription(subData);
@@ -72,7 +76,7 @@ export default function SuscripcionPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activePlaceId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -92,10 +96,11 @@ export default function SuscripcionPage() {
 
     window.culqi = async () => {
       if (window.Culqi.token) {
+        if (!activePlaceId) return;
         const token = window.Culqi.token.id;
         setPaying(true);
         try {
-          await subscriptionApi.subscribe(token, selectedPlan.tier);
+          await placeSubscriptionApi.subscribe(activePlaceId, token, selectedPlan.tier);
           window.Culqi.close();
           await load();
         } catch (err: any) {
@@ -107,7 +112,7 @@ export default function SuscripcionPage() {
         // handle order flow if needed
       }
     };
-  }, [selectedPlan, load]);
+  }, [selectedPlan, load, activePlaceId]);
 
   useEffect(() => {
     if (culqiReady && selectedPlan) initCulqi();
@@ -122,10 +127,11 @@ export default function SuscripcionPage() {
   const planName = (tier: string) => plans.find((p) => p.tier === tier)?.name || tier;
 
   const handleCancel = async () => {
-    if (!confirm('¿Cancelar tu suscripción? Perderás acceso al finalizar el período actual.')) return;
+    if (!activePlaceId) return;
+    if (!confirm('¿Cancelar la suscripción de esta sede? Perderá acceso al finalizar el período actual.')) return;
     setCanceling(true);
     try {
-      await subscriptionApi.cancel();
+      await placeSubscriptionApi.cancel(activePlaceId);
       await load();
     } catch (err: any) {
       toast.error(err.message || 'Error al cancelar');
@@ -155,8 +161,10 @@ export default function SuscripcionPage() {
 
       <div className="space-y-10 pb-20 max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-700">
         <header>
-          <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Mi Suscripción</h1>
-          <p className="text-[#6B7280] font-medium">Gestiona tu plan Wuarike Pro y tu historial de pagos.</p>
+          <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">
+            Suscripción{activePlace ? ` — ${activePlace.name}` : ''}
+          </h1>
+          <p className="text-[#6B7280] font-medium">Gestiona el plan Wuarike Pro y el historial de pagos de esta sede.</p>
         </header>
 
         {/* Estado de suscripción activa */}

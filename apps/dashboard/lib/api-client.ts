@@ -497,15 +497,21 @@ export const publicApi = {
 
 export const subscriptionApi = {
   getPlans: () => fetchWithAuth('/subscriptions/plans'),
-  getMy: () => fetchWithAuth('/subscriptions/my'),
-  getMyPayments: () => fetchWithAuth('/subscriptions/my/payments'),
-  subscribe: (token: string, tier: string) => fetchWithAuth('/subscriptions/subscribe', {
-    method: 'POST',
-    body: JSON.stringify({ token, tier }),
-  }),
-  cancel: () => fetchWithAuth('/subscriptions/my', { method: 'DELETE' }),
   adminGetAll: (page = 1) => fetchWithAuth(`/subscriptions/admin/all?page=${page}`),
   adminGetStats: () => fetchWithAuth('/subscriptions/admin/stats'),
+};
+
+// La suscripción es de la sede, no de la cuenta que llama — solo un Admin de
+// esa sede la gestiona.
+export const placeSubscriptionApi = {
+  get: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription`),
+  getPayments: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription/payments`),
+  subscribe: (placeId: string, token: string, tier: string) =>
+    fetchWithAuth(`/business/places/${placeId}/subscription/subscribe`, {
+      method: 'POST',
+      body: JSON.stringify({ token, tier }),
+    }),
+  cancel: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription`, { method: 'DELETE' }),
 };
 
 export const adminApi = {
