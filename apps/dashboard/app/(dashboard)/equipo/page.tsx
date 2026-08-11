@@ -63,11 +63,9 @@ export default function EquipoPage() {
       const result = await teamApi.create(activePlaceId, form);
       if (result.emailSent) {
         toast.success('Agente agregado. Le llegó un correo con sus credenciales.');
-      } else if (result.temporaryPassword) {
+      } else {
         toast.error('Agente agregado, pero no se pudo enviar el correo. Pasale la contraseña manualmente.');
         setPendingCredentials({ email: form.email, password: result.temporaryPassword });
-      } else {
-        toast.success('Agente agregado (ya tenía cuenta en Wuarike, pero no le llegó el aviso por correo).');
       }
       setForm({ email: '', fullName: '', role: 'agente', whatsappNumberIds: [] });
       setShowForm(false);
