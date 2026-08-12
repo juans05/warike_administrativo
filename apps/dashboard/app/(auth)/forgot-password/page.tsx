@@ -1,14 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '../../../lib/api-client';
 
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordContent() {
   const router = useRouter();
-  const [step, setStep] = useState<'request' | 'reset'>('request');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const searchParams = useSearchParams();
+  const urlEmail = searchParams.get('email') || '';
+  const urlCode = searchParams.get('code') || '';
+  const [step, setStep] = useState<'request' | 'reset'>(urlEmail && urlCode ? 'reset' : 'request');
+  const [email, setEmail] = useState(urlEmail);
+  const [code, setCode] = useState(urlCode);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

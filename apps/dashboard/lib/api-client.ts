@@ -64,6 +64,7 @@ export interface EmailCampaignPayload {
   subject: string;
   bodyHtml: string;
   scheduledAt?: string;
+  audienceSources?: ('feedback' | 'contacts')[];
 }
 
 export interface AdminUserPayload {
@@ -149,6 +150,28 @@ export async function uploadContactsFile(placeId: string, file: File) {
   fd.append('file', file);
 
   const response = await fetch(`${API_BASE_URL}/api/business/contacts/import?placeId=${placeId}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    let error: any = {};
+    try { error = text ? JSON.parse(text) : {}; } catch { /* empty body */ }
+    throw new Error(error.message || `Error ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function sendConversationFile(conversationId: string, file: File, caption?: string) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const fd = new FormData();
+  fd.append('file', file);
+  if (caption) fd.append('caption', caption);
+
+  const response = await fetch(`${API_BASE_URL}/api/business/conversations/${conversationId}/messages/file`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: fd,
@@ -389,6 +412,8 @@ export const businessApi = {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
+  sendManualFile: (conversationId: string, file: File, caption?: string) =>
+    sendConversationFile(conversationId, file, caption),
 
   // Broadcasts (WhatsApp)
   getBroadcasts: (placeId: string) =>
@@ -406,14 +431,14 @@ export const businessApi = {
   // Email Campaigns
   getEmailCampaigns: (placeId: string) =>
     fetchWithAuth(`/business/email-campaigns/place/${placeId}`),
-  getEmailAudienceCount: (placeId: string) =>
-    fetchWithAuth(`/business/email-campaigns/place/${placeId}/audience-count`),
+  getEmailAudienceCount: (placeId: string, sources?: ('feedback' | 'contacts')[]) =>
+    fetchWithAuth(`/business/email-campaigns/place/${placeId}/audience-count${sources?.length ? `?sources=${sources.join(',')}` : ''}`),
   createEmailCampaign: (data: EmailCampaignPayload) =>
     fetchWithAuth('/business/email-campaigns', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateEmailCampaign: (campaignId: string, data: Partial<Pick<EmailCampaignPayload, 'campaignName' | 'subject' | 'bodyHtml'>>) =>
+  updateEmailCampaign: (campaignId: string, data: Partial<Pick<EmailCampaignPayload, 'campaignName' | 'subject' | 'bodyHtml' | 'audienceSources'>>) =>
     fetchWithAuth(`/business/email-campaigns/${campaignId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -596,8 +621,22 @@ export const plazbotApi = {
   getStatus: () => fetchWithAuth('/plazbot-setup/status'),
 
   getConfig: (placeId: string) => fetchWithAuth(`/plazbot-setup/config?placeId=${placeId}`),
-  configure: (data: { placeId: string; botName?: string; restaurantName?: string; systemPrompt?: string; tone?: string }) =>
+  configure: (data: {
+    placeId: string;
+    botName?: string;
+    restaurantName?: string;
+    systemPrompt?: string;
+    tone?: string;
+    responseMode?: 'ai' | 'menu';
+  }) =>
     fetchWithAuth('/plazbot-setup/configure', { method: 'POST', body: JSON.stringify(data) }),
+
+  getMenuOptions: (placeId: string) => fetchWithAuth(`/plazbot-setup/menu-options?placeId=${placeId}`),
+  saveMenuOptions: (data: {
+    placeId: string;
+    options: { label: string; actionType: 'file' | 'text' | 'human'; actionValue?: string }[];
+  }) =>
+    fetchWithAuth('/plazbot-setup/menu-options', { method: 'POST', body: JSON.stringify(data) }),
 
   demoChat: (data: { placeId: string; message: string; history?: { role: 'user' | 'assistant'; content: string }[] }) =>
     fetchWithAuth('/plazbot-setup/demo-chat', { method: 'POST', body: JSON.stringify(data) }),
@@ -643,5 +682,10 @@ export const teamApi = {
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (placeId: string, memberId: string) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'DELETE' }),
+};
+
+export const reportsApi = {
+  get: (placeId: string, from: string, to: string) =>
+    fetchWithAuth(`/business/reports/place/${placeId}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
 };
 

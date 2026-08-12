@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import { EmailCampaignFormData } from '../../hooks/useEmailCampaigns';
+import { EmailCampaignFormData, AudienceSource } from '../../hooks/useEmailCampaigns';
 import { EMAIL_TEMPLATES, EmailTemplateOption } from '../../lib/email-templates';
 
 interface EmailCampaignModalProps {
@@ -77,6 +77,15 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
 
   const previewHtml = (form.bodyHtml || '<p style="color:#9ca3af;padding:16px;">Escribe el contenido del correo para ver la vista previa aquí.</p>')
     .replace(/\{nombre\}/g, 'Juan');
+
+  const toggleAudienceSource = (source: AudienceSource) => {
+    onChange(p => ({
+      ...p,
+      audienceSources: p.audienceSources.includes(source)
+        ? p.audienceSources.filter(s => s !== source)
+        : [...p.audienceSources, source],
+    }));
+  };
 
   const toggleLink = () => {
     if (!editor) return;
@@ -181,11 +190,40 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
             <p className="text-[10px] text-gray-400 mt-1.5">Así se verá aproximadamente en la bandeja de entrada de tu cliente.</p>
           </div>
 
+          <div>
+            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">¿A quién le llega?</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.audienceSources.includes('feedback')}
+                  onChange={() => toggleAudienceSource('feedback')}
+                  className="w-4 h-4"
+                />
+                Fidelización
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.audienceSources.includes('contacts')}
+                  onChange={() => toggleAudienceSource('contacts')}
+                  className="w-4 h-4"
+                />
+                Contactos
+              </label>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1.5">
+              Fidelización: clientes que dejaron su email y aceptaron promociones al dejar una reseña. Contactos: tu agenda de WhatsApp/importados con email y consentimiento. Si marcas los dos, se manda a la unión de ambos (sin duplicados).
+            </p>
+          </div>
+
           <div className={`rounded-xl px-4 py-3 border ${audienceCount > 0 ? 'bg-orange-50 border-orange-100' : 'bg-amber-50 border-amber-200'}`}>
-            {audienceCount > 0 ? (
-              <p className="text-xs font-bold text-orange-700">📬 Esta campaña llegará a <strong>{audienceCount}</strong> cliente{audienceCount === 1 ? '' : 's'} que aceptaron recibir promociones por email.</p>
+            {form.audienceSources.length === 0 ? (
+              <p className="text-xs font-bold text-red-600">⚠️ Elegí al menos una fuente de destinatarios arriba.</p>
+            ) : audienceCount > 0 ? (
+              <p className="text-xs font-bold text-orange-700">📬 Esta campaña llegará a <strong>{audienceCount}</strong> cliente{audienceCount === 1 ? '' : 's'}.</p>
             ) : (
-              <p className="text-xs font-bold text-amber-700">⚠️ Ningún cliente ha aceptado recibir promociones por email todavía. Aun así puedes guardar el borrador.</p>
+              <p className="text-xs font-bold text-amber-700">⚠️ Nadie en esa(s) fuente(s) aceptó recibir promociones por email todavía. Aun así puedes guardar el borrador.</p>
             )}
           </div>
 

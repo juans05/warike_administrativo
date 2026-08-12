@@ -47,6 +47,13 @@ function avatar(name: string) {
   return (name || '?')[0].toUpperCase();
 }
 
+function sortConversations(list: any[]) {
+  return [...list].sort((a, b) => {
+    if (!!a.awaitingReply !== !!b.awaitingReply) return a.awaitingReply ? -1 : 1;
+    return new Date(b.lastMessageTime || b.createdAt).getTime() - new Date(a.lastMessageTime || a.createdAt).getTime();
+  });
+}
+
 export default function ChatPage() {
   const { activePlaceId } = useRestaurant();
   const [conversations, setConversations] = useState<any[]>([]);
@@ -56,12 +63,14 @@ export default function ChatPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isSendingFile, setIsSendingFile] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [filter, setFilter] = useState<'unassigned' | 'mine' | 'all'>('unassigned');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMessageCount, setNewMessageCount] = useState<Record<string, number>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadConversations = (placeId: string) => {
     return businessApi.getConversations(placeId, 1, { filter })
@@ -101,13 +110,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!activePlaceId) return;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
 
     const controller = new AbortController();
     let retryTimeout: ReturnType<typeof setTimeout>;
 
     const connectSSE = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return;
+
       try {
         const response = await fetch(
           `${API_BASE_URL}/api/business/conversations/stream/${activePlaceId}?token=${encodeURIComponent(token)}`,
@@ -136,14 +146,21 @@ export default function ChatPage() {
               setConversations(prev => {
                 const exists = prev.some(c => c.id === data.conversationId);
                 const updated = prev.map(c =>
-                  c.id === data.conversationId ? { ...c, lastMessage: data.messageBody } : c
+                  c.id === data.conversationId
+                    ? {
+                        ...c,
+                        lastMessage: data.messageBody,
+                        lastMessageTime: new Date().toISOString(),
+                        awaitingReply: data.messageType === 'INCOMING',
+                      }
+                    : c
                 );
                 // Si es conversación nueva, recargar lista completa
                 if (!exists && activePlaceId) {
                   businessApi.getConversations(activePlaceId)
                     .then(res => setConversations(res.data || []));
                 }
-                return updated;
+                return sortConversations(updated);
               });
               const current = selectedConvRef.current;
               if (current?.id === data.conversationId) {
@@ -234,13 +251,46 @@ export default function ChatPage() {
     setIsSending(true);
     try {
       await businessApi.sendManualMessage(selectedConv.id, replyText);
+      const sentText = replyText;
       setReplyText('');
       const res = await businessApi.getConversationMessages(selectedConv.id);
       setMessages(res.data || []);
+      setConversations(prev => sortConversations(prev.map(c =>
+        c.id === selectedConv.id
+          ? { ...c, lastMessage: sentText, lastMessageTime: new Date().toISOString(), awaitingReply: false }
+          : c
+      )));
     } catch {
       toast.error('Error al enviar el mensaje');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo después
+    if (!file || !selectedConv) return;
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error('El archivo supera los 16MB permitidos');
+      return;
+    }
+    setIsSendingFile(true);
+    try {
+      const caption = replyText.trim() || undefined;
+      await businessApi.sendManualFile(selectedConv.id, file, caption);
+      setReplyText('');
+      const res = await businessApi.getConversationMessages(selectedConv.id);
+      setMessages(res.data || []);
+      setConversations(prev => sortConversations(prev.map(c =>
+        c.id === selectedConv.id
+          ? { ...c, lastMessage: caption || '📎 Adjunto', lastMessageTime: new Date().toISOString(), awaitingReply: false }
+          : c
+      )));
+    } catch (err: any) {
+      toast.error(err.message || 'Error al enviar el archivo');
+    } finally {
+      setIsSendingFile(false);
     }
   };
 
@@ -332,7 +382,11 @@ export default function ChatPage() {
                   <button
                     key={conv.id}
                     onClick={() => setSelectedConv(conv)}
-                    className={`w-full text-left border-b border-gray-50 transition-all relative ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-gray-50'
+                    className={`w-full text-left border-b border-gray-50 transition-all relative ${isSelected
+                        ? 'bg-blue-50 border-l-2 border-l-blue-500'
+                        : conv.awaitingReply
+                          ? 'bg-amber-50 border-l-2 border-l-amber-400 hover:bg-amber-100/60'
+                          : 'hover:bg-gray-50'
                       }`}
                   >
                     <div className="px-3 py-3 flex gap-3 items-start">
@@ -358,6 +412,11 @@ export default function ChatPage() {
                           }`}>
                             {conv.status || 'abierto'}
                           </span>
+                          {conv.awaitingReply && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase bg-amber-400 text-amber-900">
+                              Esperando respuesta
+                            </span>
+                          )}
                           <p className="text-[11px] text-gray-400">
                             {conv.mode === 'human' ? 'Agente humano' : 'Sin Agente Asignado'}
                           </p>
@@ -465,6 +524,23 @@ export default function ChatPage() {
                             ? 'bg-white text-gray-800 border border-gray-100 shadow-sm'
                             : 'bg-[#054640] text-white'
                           }`}>
+                          {msg.mediaUrl && (
+                            msg.mediaType?.startsWith('image/') ? (
+                              <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
+                                <img src={msg.mediaUrl} alt="Adjunto" className="rounded-lg max-w-full mb-1.5" />
+                              </a>
+                            ) : (
+                              <a
+                                href={msg.mediaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-2 mb-1.5 px-3 py-2 rounded-lg text-xs font-bold underline ${isIncoming ? 'bg-gray-50' : 'bg-white/10'
+                                  }`}
+                              >
+                                📎 Ver adjunto
+                              </a>
+                            )
+                          )}
                           {msg.messageBody}
                           {msg.isFromAi && (
                             <span className="ml-2 text-[10px] opacity-60">🤖</span>
@@ -481,6 +557,31 @@ export default function ChatPage() {
               <div className="border-t border-gray-100 bg-white px-4 py-3">
                 {selectedConv.mode === 'human' ? (
                   <div className="flex gap-3 items-center">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,application/pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={handleFileSelected}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSendingFile}
+                      title="Adjuntar imagen o PDF"
+                      className="p-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors flex-shrink-0"
+                    >
+                      {isSendingFile ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                        </svg>
+                      )}
+                    </button>
                     <input
                       ref={inputRef}
                       type="text"

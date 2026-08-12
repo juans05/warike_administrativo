@@ -64,7 +64,7 @@ export default function EquipoPage() {
       if (result.emailSent) {
         toast.success(
           result.isExistingAccount
-            ? 'Agente agregado. Ya tenía cuenta, le mandamos un código para restablecer su contraseña.'
+            ? 'Agente agregado. Ya tenía cuenta, le mandamos un correo con el link para cambiar su contraseña.'
             : 'Agente agregado. Le llegó un correo con sus credenciales.',
         );
       } else if (result.isExistingAccount) {

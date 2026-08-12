@@ -13,6 +13,16 @@ const TONE_LABELS: Record<Tone, string> = {
   friendly: 'Amistoso',
 };
 
+type ResponseMode = 'ai' | 'menu';
+type MenuActionType = 'file' | 'text' | 'human';
+type MenuOptionForm = { label: string; actionType: MenuActionType; actionValue: string };
+
+const ACTION_TYPE_LABELS: Record<MenuActionType, string> = {
+  file: 'Mandar un archivo',
+  text: 'Responder con un texto',
+  human: 'Hablar con una persona',
+};
+
 type BotConfig = {
   placeId: string;
   botName: string | null;
@@ -20,6 +30,7 @@ type BotConfig = {
   systemPrompt: string | null;
   tone: Tone;
   isActive: boolean;
+  responseMode: ResponseMode;
 };
 
 type Metrics = {
@@ -44,11 +55,22 @@ export default function PlazbotSetupPage() {
   const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
   // Bot config form
-  const [formData, setFormData] = useState({ botName: '', restaurantName: '', systemPrompt: '', tone: 'professional' as Tone });
+  const [formData, setFormData] = useState({
+    botName: '',
+    restaurantName: '',
+    systemPrompt: '',
+    tone: 'professional' as Tone,
+    responseMode: 'ai' as ResponseMode,
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
+
+  // Menú de botones (opciones dinámicas)
+  const [menuOptions, setMenuOptions] = useState<MenuOptionForm[]>([]);
+  const [savingMenu, setSavingMenu] = useState(false);
+  const [uploadingOptionIndex, setUploadingOptionIndex] = useState<number | null>(null);
 
   // Demo chat
   type DemoMessage = { role: 'user' | 'bot'; text: string };
@@ -87,7 +109,16 @@ export default function PlazbotSetupPage() {
             restaurantName: config?.restaurantName || '',
             systemPrompt: config?.systemPrompt || '',
             tone: (config?.tone as Tone) || 'professional',
+            responseMode: (config?.responseMode as ResponseMode) || 'ai',
           });
+          const menuRes = await plazbotApi.getMenuOptions(activePlaceId);
+          setMenuOptions(
+            (menuRes?.data || []).map((o: any) => ({
+              label: o.label,
+              actionType: o.actionType as MenuActionType,
+              actionValue: o.actionValue || '',
+            })),
+          );
           await loadMetricsAndTemplates();
         }
       } catch (err: any) {
@@ -112,6 +143,55 @@ export default function PlazbotSetupPage() {
       toast.error('Error al generar las instrucciones');
     } finally {
       setGeneratingPrompt(false);
+    }
+  };
+
+  const addMenuOption = () => setMenuOptions(prev => [...prev, { label: '', actionType: 'text', actionValue: '' }]);
+  const removeMenuOption = (i: number) => setMenuOptions(prev => prev.filter((_, idx) => idx !== i));
+  const updateMenuOption = (i: number, patch: Partial<MenuOptionForm>) =>
+    setMenuOptions(prev => prev.map((o, idx) => (idx === i ? { ...o, ...patch } : o)));
+
+  const handleOptionFileUpload = async (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingOptionIndex(i);
+    try {
+      const token = localStorage.getItem('token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const endpoint = file.type.startsWith('video/') ? 'video' : 'document';
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/upload/${endpoint}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Error al subir el archivo');
+      const data = await res.json();
+      updateMenuOption(i, { actionValue: data.url });
+      toast.success('Archivo subido');
+    } catch {
+      toast.error('No se pudo subir el archivo');
+    } finally {
+      setUploadingOptionIndex(null);
+    }
+  };
+
+  const handleSaveMenuOptions = async () => {
+    if (!activePlaceId) return;
+    setSavingMenu(true);
+    try {
+      await plazbotApi.saveMenuOptions({
+        placeId: activePlaceId,
+        options: menuOptions
+          .filter(o => o.label.trim())
+          .map(o => ({ label: o.label.trim(), actionType: o.actionType, actionValue: o.actionValue || undefined })),
+      });
+      toast.success('Menú guardado');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al guardar el menú');
+    } finally {
+      setSavingMenu(false);
     }
   };
 
@@ -258,6 +338,125 @@ export default function PlazbotSetupPage() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                Modo de respuesta
+              </label>
+              <select
+                value={formData.responseMode}
+                onChange={e => setFormData(p => ({ ...p, responseMode: e.target.value as ResponseMode }))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+              >
+                <option value="ai">Respuestas con IA</option>
+                <option value="menu">Menú de botones (sin IA)</option>
+              </select>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                {formData.responseMode === 'menu'
+                  ? 'El bot manda un menú de texto numerado con las opciones de abajo, en vez de responder con IA.'
+                  : 'El bot responde con IA usando la carta digital y las instrucciones de abajo.'}
+              </p>
+            </div>
+
+            {formData.responseMode === 'menu' && (
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-3">
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest">
+                  Opciones del menú
+                </label>
+
+                {menuOptions.length === 0 && (
+                  <p className="text-xs text-gray-400">Todavía no agregaste ninguna opción.</p>
+                )}
+
+                {menuOptions.map((opt, i) => (
+                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-gray-400 flex-shrink-0">{i + 1}.</span>
+                      <input
+                        type="text"
+                        value={opt.label}
+                        onChange={e => updateMenuOption(i, { label: e.target.value })}
+                        placeholder="Ej: Ver catálogo"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMenuOption(i)}
+                        className="text-xs text-red-500 font-bold hover:text-red-700 flex-shrink-0"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+
+                    <select
+                      value={opt.actionType}
+                      onChange={e => updateMenuOption(i, { actionType: e.target.value as MenuActionType, actionValue: '' })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
+                    >
+                      {(Object.entries(ACTION_TYPE_LABELS) as [MenuActionType, string][]).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+
+                    {opt.actionType === 'file' && (
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/3gpp"
+                          onChange={e => handleOptionFileUpload(i, e)}
+                          disabled={uploadingOptionIndex === i}
+                          className="w-full text-xs"
+                        />
+                        {uploadingOptionIndex === i && <p className="text-[11px] text-gray-400 mt-1">Subiendo...</p>}
+                        {opt.actionValue && uploadingOptionIndex !== i && (
+                          <a href={opt.actionValue} target="_blank" rel="noopener noreferrer" className="text-[11px] text-green-700 font-bold hover:underline mt-1 block">
+                            ✓ Archivo cargado — ver
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {opt.actionType === 'text' && (
+                      <textarea
+                        value={opt.actionValue}
+                        onChange={e => updateMenuOption(i, { actionValue: e.target.value })}
+                        placeholder="Texto que le va a responder el bot al elegir esta opción"
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none resize-none"
+                      />
+                    )}
+
+                    {opt.actionType === 'human' && (
+                      <input
+                        type="text"
+                        value={opt.actionValue}
+                        onChange={e => updateMenuOption(i, { actionValue: e.target.value })}
+                        placeholder="Mensaje de confirmación (opcional) — ej: Ya te atiende alguien del equipo"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={addMenuOption}
+                    className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-black"
+                  >
+                    + Agregar opción
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveMenuOptions}
+                    disabled={savingMenu}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-black disabled:opacity-50"
+                  >
+                    {savingMenu ? 'Guardando...' : 'Guardar menú'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-2">

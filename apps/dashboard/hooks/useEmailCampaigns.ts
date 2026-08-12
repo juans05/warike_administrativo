@@ -16,7 +16,10 @@ export interface EmailCampaign {
   totalRecipients: number;
   scheduledAt: string | null;
   createdAt: string;
+  audienceSources: ('feedback' | 'contacts')[] | null;
 }
+
+export type AudienceSource = 'feedback' | 'contacts';
 
 export interface EmailCampaignFormData {
   campaignName: string;
@@ -24,6 +27,7 @@ export interface EmailCampaignFormData {
   bodyHtml: string;
   sendMode: SendMode;
   scheduledAt: string;
+  audienceSources: AudienceSource[];
 }
 
 const makeEmptyCampaign = (): EmailCampaignFormData => ({
@@ -32,6 +36,7 @@ const makeEmptyCampaign = (): EmailCampaignFormData => ({
   bodyHtml: '',
   sendMode: 'now',
   scheduledAt: '',
+  audienceSources: ['feedback'],
 });
 
 export function useEmailCampaigns() {
@@ -51,7 +56,7 @@ export function useEmailCampaigns() {
   const loadCampaigns = useCallback(async (placeId: string) => {
     const [cs, audience] = await Promise.allSettled([
       businessApi.getEmailCampaigns(placeId),
-      businessApi.getEmailAudienceCount(placeId),
+      businessApi.getEmailAudienceCount(placeId, ['feedback']),
     ]);
     if (cs.status === 'fulfilled') {
       setCampaigns(cs.value || []);
@@ -59,6 +64,14 @@ export function useEmailCampaigns() {
       setSubscriptionBlocked(cs.reason.message);
     }
     if (audience.status === 'fulfilled') setAudienceCount(audience.value?.audienceCount || 0);
+  }, []);
+
+  // Recalcula el contador de audiencia cuando cambian las fuentes elegidas en el modal
+  const refreshAudienceCount = useCallback(async (placeId: string, sources: AudienceSource[]) => {
+    try {
+      const res = await businessApi.getEmailAudienceCount(placeId, sources.length ? sources : ['feedback']);
+      setAudienceCount(res?.audienceCount || 0);
+    } catch { /* se mantiene el último valor conocido */ }
   }, []);
 
   const openCreateModal = () => {
@@ -75,6 +88,7 @@ export function useEmailCampaigns() {
       bodyHtml: campaign.bodyHtml,
       sendMode: 'now',
       scheduledAt: '',
+      audienceSources: campaign.audienceSources?.length ? campaign.audienceSources : ['feedback'],
     });
     setShowCampaignModal(true);
   };
@@ -89,6 +103,7 @@ export function useEmailCampaigns() {
     if (!campaignForm.campaignName.trim()) { toast.warning('Escribe un nombre para la campaña'); return; }
     if (!campaignForm.subject.trim()) { toast.warning('Escribe un asunto para el correo'); return; }
     if (!campaignForm.bodyHtml.trim()) { toast.warning('Escribe el contenido del correo'); return; }
+    if (campaignForm.audienceSources.length === 0) { toast.warning('Elige al menos una fuente de destinatarios (Fidelización o Contactos)'); return; }
 
     if (editingCampaignId) {
       setCreatingCampaign(true);
@@ -97,6 +112,7 @@ export function useEmailCampaigns() {
           campaignName: campaignForm.campaignName,
           subject: campaignForm.subject,
           bodyHtml: campaignForm.bodyHtml,
+          audienceSources: campaignForm.audienceSources,
         });
         setCampaigns(prev => prev.map(c => c.id === editingCampaignId ? { ...c, ...updated } : c));
         toast.success('Campaña actualizada');
@@ -124,6 +140,7 @@ export function useEmailCampaigns() {
         campaignName: campaignForm.campaignName,
         subject: campaignForm.subject,
         bodyHtml: campaignForm.bodyHtml,
+        audienceSources: campaignForm.audienceSources,
         ...(scheduledAtIso ? { scheduledAt: scheduledAtIso } : {}),
       };
       let created = await businessApi.createEmailCampaign(payload);
@@ -206,6 +223,7 @@ export function useEmailCampaigns() {
   return {
     campaigns,
     audienceCount,
+    refreshAudienceCount,
     showCampaignModal,
     campaignForm,
     setCampaignForm,

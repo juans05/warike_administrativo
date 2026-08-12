@@ -19,6 +19,7 @@ import {
   Shield,
   LogOut,
   UserPlus,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
@@ -157,6 +158,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                     <SidebarLabel>WhatsApp & IA</SidebarLabel>
                     <SidebarItem href="/plazbot" icon={Bot} label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
                     <SidebarItem href="/chat" icon={MessagesSquare} label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
+                    <SidebarItem href="/reportes" icon={BarChart3} label="Reportes" badge="NEW" active={pathname === '/reportes'} />
                     <SidebarItem href="/equipo" icon={UserPlus} label="Equipo" badge="NEW" active={pathname === '/equipo'} />
                     <SidebarItem href="/broadcasts" icon={Megaphone} label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
                     <SidebarItem href="/ia" icon={Brain} label="Base de IA" badge="NEW" active={pathname === '/ia'} />
@@ -214,6 +216,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
             {canIaTotal && (
               <>
                 <MobileNavItem href="/chat" icon={MessagesSquare} label="Chat" badge="NEW" active={pathname === '/chat'} />
+                <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes" badge="NEW" active={pathname === '/reportes'} />
                 <MobileNavItem href="/equipo" icon={UserPlus} label="Equipo" badge="NEW" active={pathname === '/equipo'} />
                 <MobileNavItem href="/broadcasts" icon={Megaphone} label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
                 <MobileNavItem href="/email-marketing" icon={Mail} label="Email" badge="NEW" active={pathname === '/email-marketing'} />

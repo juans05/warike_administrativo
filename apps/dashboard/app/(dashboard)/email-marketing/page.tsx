@@ -11,7 +11,7 @@ export default function EmailMarketingPage() {
   const [loading, setLoading] = useState(true);
 
   const {
-    campaigns, audienceCount,
+    campaigns, audienceCount, refreshAudienceCount,
     showCampaignModal,
     campaignForm, setCampaignForm, editingCampaignId,
     creatingCampaign, sendingId, completingId, unschedulingId, deletingId,
@@ -25,6 +25,12 @@ export default function EmailMarketingPage() {
     setLoading(true);
     loadCampaigns(activePlaceId).finally(() => setLoading(false));
   }, [activePlaceId]);
+
+  // Recalcula "a cuántos les llega" cada vez que cambian los checkboxes de audiencia en el modal
+  useEffect(() => {
+    if (!activePlaceId || !showCampaignModal) return;
+    refreshAudienceCount(activePlaceId, campaignForm.audienceSources);
+  }, [activePlaceId, showCampaignModal, campaignForm.audienceSources, refreshAudienceCount]);
 
   if (loading) {
     return (
