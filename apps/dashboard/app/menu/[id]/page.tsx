@@ -25,6 +25,7 @@ type Place = {
   id: string;
   name: string;
   coverImageUrl: string | null;
+  menuImageUrl: string | null;
 };
 
 export default function PublicMenuPage() {
@@ -95,10 +96,20 @@ export default function PublicMenuPage() {
       </div>
 
       {!hasMenu ? (
-        <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-          <p className="text-4xl mb-3">📋</p>
-          <p className="text-gray-500 text-sm">La carta aún no está disponible.</p>
-        </div>
+        place.menuImageUrl ? (
+          <div className="px-4 py-4 max-w-2xl mx-auto pb-16">
+            <img
+              src={place.menuImageUrl}
+              alt={`Carta de ${place.name}`}
+              className="w-full rounded-2xl shadow-sm border border-gray-100"
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+            <p className="text-4xl mb-3">📋</p>
+            <p className="text-gray-500 text-sm">La carta aún no está disponible.</p>
+          </div>
+        )
       ) : (
         <>
           {/* Category tabs */}

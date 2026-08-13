@@ -41,6 +41,10 @@ export default function CartaPage() {
 
   const totalDishes = categories.reduce((acc, c) => acc + (c.dishes?.length || 0), 0);
 
+  const publicMenuLink = typeof window !== 'undefined' && activePlaceId
+    ? `${window.location.origin}/menu/${activePlaceId}`
+    : '';
+
   const loadMenu = async () => {
     if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
@@ -270,6 +274,39 @@ export default function CartaPage() {
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* ── Compartir carta ── */}
+      <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-black text-orange-900 uppercase tracking-widest mb-1">📱 Así ve tu carta el comensal</p>
+          <p className="text-orange-700 text-xs font-bold break-all">{publicMenuLink}</p>
+          {menuType === 'photo' && (
+            <p className="text-amber-600 text-[11px] font-bold mt-1">⚠️ Estás en modo "Foto" — asegurate de guardar la imagen abajo para que este enlace muestre algo.</p>
+          )}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => { navigator.clipboard.writeText(publicMenuLink); toast.success('Enlace copiado'); }}
+            className="px-4 py-2.5 bg-[#F26122] text-white rounded-xl text-xs font-black hover:bg-orange-600 transition-all"
+          >
+            Copiar enlace
+          </button>
+          <button
+            onClick={() => {
+              const text = `Mirá nuestra carta: ${publicMenuLink}`;
+              if (navigator.share) {
+                navigator.share({ title: 'Carta digital', url: publicMenuLink, text });
+              } else {
+                navigator.clipboard.writeText(text);
+                toast.success('Mensaje copiado');
+              }
+            }}
+            className="px-4 py-2.5 bg-white border border-orange-200 text-orange-600 rounded-xl text-xs font-black hover:bg-orange-100 transition-all"
+          >
+            Compartir
+          </button>
         </div>
       </div>
 
