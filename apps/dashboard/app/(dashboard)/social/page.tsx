@@ -74,6 +74,7 @@ export default function SocialPage() {
   // Bot Rules
   const [rules, setRules] = useState({
     isActive: true,
+    dmBotEnabled: false,
     replyToQuestions: true,
     replyToCompliments: true,
     redirectComplaints: true,
@@ -518,10 +519,16 @@ export default function SocialPage() {
 
                  <div className="space-y-6 pt-4">
                    <ToggleSetting
-                     title="Respuestas Automáticas"
+                     title="Respuestas Automáticas (Comentarios)"
                      desc="Permite que el bot responda comentarios solo. Si lo apagás, tenés que responder todo a mano."
                      checked={rules.isActive}
                      onChange={(v) => setRules({...rules, isActive: v})}
+                   />
+                   <ToggleSetting
+                     title="Respuestas Automáticas (Mensajes Directos)"
+                     desc="Permite que el bot responda los DM del inbox. Por defecto apagado — el inbox es más personal que los comentarios."
+                     checked={rules.dmBotEnabled}
+                     onChange={(v) => setRules({...rules, dmBotEnabled: v})}
                    />
                    <ToggleSetting
                      title="Preguntas Frecuentes"
