@@ -68,7 +68,10 @@ export default function ChatPage() {
   const [filter, setFilter] = useState<'unassigned' | 'mine' | 'all'>('unassigned');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMessageCount, setNewMessageCount] = useState<Record<string, number>>({});
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,11 +101,31 @@ export default function ChatPage() {
     if (!selectedConv) return;
     setIsLoadingMessages(true);
     businessApi.getConversationMessages(selectedConv.id)
-      .then(res => setMessages(res.data || []))
+      .then(res => { setMessages(res.data || []); setHasMoreMessages(!!res.hasMore); })
       .catch(console.error)
       .finally(() => setIsLoadingMessages(false));
     setNewMessageCount(prev => ({ ...prev, [selectedConv.id]: 0 }));
   }, [selectedConv?.id]);
+
+  const handleLoadMoreMessages = async () => {
+    if (!selectedConv || messages.length === 0 || isLoadingMore) return;
+    setIsLoadingMore(true);
+    const oldest = messages[0].createdAt;
+    const container = messagesContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight || 0;
+    try {
+      const res = await businessApi.getConversationMessages(selectedConv.id, oldest);
+      setMessages(prev => [...(res.data || []), ...prev]);
+      setHasMoreMessages(!!res.hasMore);
+      requestAnimationFrame(() => {
+        if (container) container.scrollTop = container.scrollHeight - prevScrollHeight;
+      });
+    } catch {
+      toast.error('Error al cargar más mensajes');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // Ref para leer selectedConv sin agregarlo como dependencia del SSE
   const selectedConvRef = useRef(selectedConv);
@@ -165,7 +188,7 @@ export default function ChatPage() {
               const current = selectedConvRef.current;
               if (current?.id === data.conversationId) {
                 businessApi.getConversationMessages(current.id)
-                  .then(res => setMessages(res.data || []));
+                  .then(res => { setMessages(res.data || []); setHasMoreMessages(!!res.hasMore); });
                 if (document.hidden) playNotificationSound();
               } else {
                 playNotificationSound();
@@ -498,13 +521,25 @@ export default function ChatPage() {
               </div>
 
               {/* Messages area */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-gray-50/30">
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-gray-50/30">
                 {isLoadingMessages ? (
                   <div className="text-center text-gray-400 text-sm py-8">Cargando mensajes...</div>
                 ) : messages.length === 0 ? (
                   <div className="text-center text-gray-400 text-sm py-8">Sin mensajes aún</div>
                 ) : (
-                  messages.map((msg, i) => {
+                  <>
+                    {hasMoreMessages && (
+                      <div className="flex justify-center pb-2">
+                        <button
+                          onClick={handleLoadMoreMessages}
+                          disabled={isLoadingMore}
+                          className="px-4 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          {isLoadingMore ? 'Cargando...' : 'Cargar más'}
+                        </button>
+                      </div>
+                    )}
+                    {messages.map((msg, i) => {
                     const isIncoming = msg.messageType === 'INCOMING';
                     const senderName = isIncoming
                       ? (selectedConv.customerName || selectedConv.customerPhone)
@@ -548,7 +583,8 @@ export default function ChatPage() {
                         </div>
                       </div>
                     );
-                  })
+                    })}
+                  </>
                 )}
                 <div ref={messagesEndRef} />
               </div>

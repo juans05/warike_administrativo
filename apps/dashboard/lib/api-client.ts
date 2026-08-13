@@ -400,8 +400,8 @@ export const businessApi = {
     fetchWithAuth(`/business/conversations/${conversationId}/close`, { method: 'POST' }),
   syncPlazbotConversations: (placeId: string) =>
     fetchWithAuth(`/business/conversations/sync-plazbot/${placeId}`, { method: 'POST' }),
-  getConversationMessages: (conversationId: string) =>
-    fetchWithAuth(`/business/conversations/${conversationId}/messages?limit=100`),
+  getConversationMessages: (conversationId: string, before?: string) =>
+    fetchWithAuth(`/business/conversations/${conversationId}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`),
   setConversationMode: (conversationId: string, mode: 'bot' | 'human') =>
     fetchWithAuth(`/business/conversations/${conversationId}/mode`, {
       method: 'PATCH',

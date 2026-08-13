@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd \\\"C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\bundled-skills\\\\2.1.227\\\\cbacec82b31058608fd70178e5ed65a8\\\\dataviz\\\" && node scripts/validate_palette.js \\\"#2a78d6,#eb6834,#1baf7a,#eda100...",
+  "error": "Exit code 1\n\nPalette (light, surface #fcfcfb, categorical): 4 slots\n  [PASS] Lightness band         all 4 inside L 0.43–0.77\n  [PASS] Chroma floor           all 4 >= 0.1\n  [PASS] CVD separation         worst adjacent #eda100↔#1baf7a ΔE 9.1 (protan) · tritan 27.0\n  [PASS] Normal-vision floor    worst adjacent #eda100↔#1baf7a ΔE 22.9 (normal)\n  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [[\"#1baf7a\",2.74],[\"#eda100\",2.11]]\n\n  → ALL CHECKS PASS  (CVD in...",
+  "timestamp": "2026-08-12T20:57:25.850Z",
+  "retry_count": 2
+}
