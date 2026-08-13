@@ -687,7 +687,11 @@ export const teamApi = {
 };
 
 export const reportsApi = {
-  get: (placeId: string, from: string, to: string) =>
-    fetchWithAuth(`/business/reports/place/${placeId}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  get: (placeId: string, from: string, to: string, statuses?: string[], agentId?: string) => {
+    const params = new URLSearchParams({ from, to });
+    if (statuses?.length) params.set('statuses', statuses.join(','));
+    if (agentId) params.set('agentId', agentId);
+    return fetchWithAuth(`/business/reports/place/${placeId}?${params.toString()}`);
+  },
 };
 

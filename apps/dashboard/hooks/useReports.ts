@@ -62,6 +62,8 @@ export function useReports() {
   const [preset, setPreset] = useState<DateRangePreset>('last30');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ConversationBucket[]>([]);
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,27 +71,34 @@ export function useReports() {
   const range = useMemo(() => computeRangeForPreset(preset, customFrom, customTo), [preset, customFrom, customTo]);
   const fromIso = range.from.toISOString();
   const toIso = range.to.toISOString();
+  const statusKey = statusFilter.join(',');
 
   const load = useCallback(async () => {
     if (!activePlaceId) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
-      const res = await reportsApi.get(activePlaceId, fromIso, toIso);
+      const res = await reportsApi.get(activePlaceId, fromIso, toIso, statusFilter, agentFilter || undefined);
       setData(res);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al cargar el reporte');
     } finally {
       setLoading(false);
     }
-  }, [activePlaceId, fromIso, toIso]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlaceId, fromIso, toIso, statusKey, agentFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const clearFilters = () => { setStatusFilter([]); setAgentFilter(null); };
 
   return {
     preset, setPreset,
     customFrom, setCustomFrom,
     customTo, setCustomTo,
+    statusFilter, setStatusFilter,
+    agentFilter, setAgentFilter,
+    clearFilters,
     range,
     data, loading, error,
     refresh: load,

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, MessagesSquare, UserCheck, UserX, Clock, CheckCircle2, Download, RefreshCw, Timer, Gauge } from 'lucide-react';
 import { useReports } from '../../../hooks/useReports';
-import type { ConversationBucket } from '../../../hooks/useReports';
+import { useRestaurant } from '../../../context/RestaurantContext';
+import { teamApi } from '../../../lib/api-client';
 import { DateRangeSelector } from '../../../components/reports/DateRangeSelector';
 import { StatTile, StatTileSkeleton } from '../../../components/reports/StatTile';
 import { ConversationsByDayChart } from '../../../components/reports/ConversationsByDayChart';
@@ -21,17 +22,20 @@ function pct(value: number) {
 }
 
 export default function ReportesPage() {
+  const { activePlaceId } = useRestaurant();
   const {
     preset, setPreset, customFrom, setCustomFrom, customTo, setCustomTo,
+    statusFilter, setStatusFilter, agentFilter, setAgentFilter, clearFilters,
     range, data, loading, error, refresh,
   } = useReports();
-  const [statusFilter, setStatusFilter] = useState<ConversationBucket[]>([]);
+  const [agents, setAgents] = useState<{ userId: string; fullName: string }[]>([]);
 
-  const filteredPhoneRows = useMemo(() => {
-    if (!data) return [];
-    if (statusFilter.length === 0) return data.conversationsByPhone;
-    return data.conversationsByPhone.filter(r => statusFilter.includes(r.status));
-  }, [data, statusFilter]);
+  useEffect(() => {
+    if (!activePlaceId) return;
+    teamApi.list(activePlaceId)
+      .then(res => setAgents((res.data || []).map((m: any) => ({ userId: m.userId, fullName: m.fullName }))))
+      .catch(() => setAgents([]));
+  }, [activePlaceId]);
 
   return (
     <div className="max-w-7xl mx-auto p-6 pb-20 space-y-6">
@@ -77,7 +81,14 @@ export default function ReportesPage() {
         </div>
       )}
 
-      <FiltersPanel statusFilter={statusFilter} onChangeStatusFilter={setStatusFilter} />
+      <FiltersPanel
+        statusFilter={statusFilter}
+        onChangeStatusFilter={setStatusFilter}
+        agentFilter={agentFilter}
+        onChangeAgentFilter={setAgentFilter}
+        agents={agents}
+        onClear={clearFilters}
+      />
 
       {/* KPIs principales */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -153,7 +164,7 @@ export default function ReportesPage() {
       <ConversationsByHourChart data={data?.conversationsByHour || []} loading={loading} />
 
       {/* Conversaciones por teléfono */}
-      <ConversationsByPhoneTable data={filteredPhoneRows} loading={loading} />
+      <ConversationsByPhoneTable data={data?.conversationsByPhone || []} loading={loading} />
 
       {/* Rendimiento de atención */}
       <div>
