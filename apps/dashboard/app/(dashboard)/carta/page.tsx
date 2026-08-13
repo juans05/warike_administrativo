@@ -5,12 +5,16 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 
+type CategoryType = 'food' | 'drink' | 'dessert' | 'other';
+
 interface MenuItem {
   id: string;
   name: string;
   description?: string;
   price: number;
   imageUrl?: string;
+  videoUrl?: string;
+  isVegetarian?: boolean;
   categoryId: string;
 }
 
@@ -18,10 +22,18 @@ interface MenuCategory {
   id: string;
   name: string;
   displayOrder: number;
+  categoryType?: CategoryType;
   dishes: MenuItem[];
 }
 
 const DEFAULT_DISH_IMG = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80';
+
+const CATEGORY_TYPE_META: Record<CategoryType, { label: string; icon: string }> = {
+  food: { label: 'Platos', icon: '🍽️' },
+  drink: { label: 'Bebidas', icon: '🥤' },
+  dessert: { label: 'Postres', icon: '🍰' },
+  other: { label: 'Otro', icon: '✦' },
+};
 
 export default function CartaPage() {
   const { activePlaceId } = useRestaurant();
@@ -32,12 +44,17 @@ export default function CartaPage() {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [categoryName, setCategoryName] = useState('');
+  const [categoryType, setCategoryType] = useState<CategoryType>('food');
   const [isSaving, setIsSaving] = useState(false);
-  const [modalData, setModalData] = useState({ name: '', description: '', price: '', imageUrl: '', categoryId: '' });
+  const [modalData, setModalData] = useState({ name: '', description: '', price: '', imageUrl: '', videoUrl: '', isVegetarian: false, categoryId: '' });
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [menuType, setMenuType] = useState<'digital' | 'photo'>('digital');
   const [menuPhoto, setMenuPhoto] = useState('');
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+
+  const [logoUrl, setLogoUrl] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const totalDishes = categories.reduce((acc, c) => acc + (c.dishes?.length || 0), 0);
 
@@ -56,6 +73,7 @@ export default function CartaPage() {
         setMenuPhoto(profile.menuImageUrl);
         setMenuType('photo');
       }
+      setLogoUrl(profile.logoUrl || '');
     } catch (err) {
       console.error('Error loading menu:', err);
       toast.error('Error al cargar la carta');
@@ -82,10 +100,10 @@ export default function CartaPage() {
   const openModal = (item: MenuItem | null = null, catId: string = '') => {
     if (item) {
       setEditingItem(item);
-      setModalData({ name: item.name, description: item.description || '', price: String(item.price), imageUrl: item.imageUrl || '', categoryId: item.categoryId });
+      setModalData({ name: item.name, description: item.description || '', price: String(item.price), imageUrl: item.imageUrl || '', videoUrl: item.videoUrl || '', isVegetarian: item.isVegetarian || false, categoryId: item.categoryId });
     } else {
       setEditingItem(null);
-      setModalData({ name: '', description: '', price: '', imageUrl: '', categoryId: catId || (categories[0]?.id || '') });
+      setModalData({ name: '', description: '', price: '', imageUrl: '', videoUrl: '', isVegetarian: false, categoryId: catId || (categories[0]?.id || '') });
     }
     setShowModal(true);
   };
@@ -93,6 +111,7 @@ export default function CartaPage() {
   const openCategoryModal = (category: MenuCategory | null = null) => {
     setEditingCategory(category);
     setCategoryName(category?.name || '');
+    setCategoryType(category?.categoryType || 'food');
     setShowCategoryModal(true);
   };
 
@@ -101,9 +120,9 @@ export default function CartaPage() {
     setIsSaving(true);
     try {
       if (editingCategory) {
-        await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, displayOrder: editingCategory.displayOrder });
+        await businessApi.updateCategory(activePlaceId, editingCategory.id, { name: categoryName, displayOrder: editingCategory.displayOrder, categoryType });
       } else {
-        await businessApi.createCategory(activePlaceId, { name: categoryName, displayOrder: categories.length });
+        await businessApi.createCategory(activePlaceId, { name: categoryName, displayOrder: categories.length, categoryType });
       }
       setShowCategoryModal(false);
       toast.success(editingCategory ? 'Categoría actualizada' : 'Categoría creada');
@@ -112,6 +131,57 @@ export default function CartaPage() {
       toast.error('Error al guardar la categoría');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingVideo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/upload/video`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Error al subir el video');
+      const data = await res.json();
+      setModalData(prev => ({ ...prev, videoUrl: data.url }));
+      toast.success('Video subido');
+    } catch {
+      toast.error('No se pudo subir el video (máx. 16MB, formato MP4)');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !activePlaceId) return;
+    setUploadingLogo(true);
+    try {
+      const token = localStorage.getItem('token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/upload/image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Error al subir el logo');
+      const data = await res.json();
+      setLogoUrl(data.url);
+      await businessApi.updateProfile(activePlaceId, { logoUrl: data.url });
+      toast.success('Logo actualizado');
+    } catch {
+      toast.error('No se pudo subir el logo');
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -130,7 +200,7 @@ export default function CartaPage() {
     if (!activePlaceId || !modalData.name.trim()) return;
     setIsSaving(true);
     try {
-      const payload = { name: modalData.name, description: modalData.description, price: parseFloat(modalData.price) || 0, imageUrl: modalData.imageUrl, categoryId: modalData.categoryId };
+      const payload = { name: modalData.name, description: modalData.description, price: parseFloat(modalData.price) || 0, imageUrl: modalData.imageUrl, videoUrl: modalData.videoUrl, isVegetarian: modalData.isVegetarian, categoryId: modalData.categoryId };
       if (editingItem) {
         await businessApi.updateMenuItem(activePlaceId, editingItem.id, payload);
       } else {
@@ -310,6 +380,25 @@ export default function CartaPage() {
         </div>
       </div>
 
+      {/* ── Logo del negocio ── */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-5">
+        <div className="w-16 h-16 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden shrink-0 bg-gray-50">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-2xl">🏷️</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-gray-900">Logo del negocio</p>
+          <p className="text-gray-400 text-xs mt-0.5">Aparece centrado arriba de tu carta digital para que la reconozcan de un vistazo.</p>
+        </div>
+        <label className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black hover:bg-gray-800 transition-all cursor-pointer shrink-0">
+          {uploadingLogo ? 'Subiendo...' : logoUrl ? 'Cambiar' : 'Subir logo'}
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+        </label>
+      </div>
+
       {/* ── Digital Menu ── */}
       {menuType === 'digital' ? (
         categories.length === 0 ? (
@@ -337,8 +426,11 @@ export default function CartaPage() {
                 {/* Category Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-[#F26122]" />
+                    <span className="text-base">{CATEGORY_TYPE_META[category.categoryType || 'food'].icon}</span>
                     <h2 className="font-black text-gray-900 text-base uppercase tracking-wider">{category.name}</h2>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-100 px-2 py-1 rounded-full">
+                      {CATEGORY_TYPE_META[category.categoryType || 'food'].label}
+                    </span>
                     <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
                       {category.dishes?.length || 0} {(category.dishes?.length || 0) === 1 ? 'plato' : 'platos'}
                     </span>
@@ -382,17 +474,25 @@ export default function CartaPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-gray-100">
                     {category.dishes.map((item) => (
                       <div key={item.id} className="group bg-white hover:bg-gray-50 transition-colors relative">
-                        <div className="aspect-[4/3] overflow-hidden">
+                        <div className="aspect-[4/3] overflow-hidden relative">
                           <img
                             src={item.imageUrl || DEFAULT_DISH_IMG}
                             alt={item.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
+                          {item.videoUrl && (
+                            <span className="absolute bottom-2 right-2 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center text-white" title="Tiene video">
+                              <svg className="w-3.5 h-3.5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                            </span>
+                          )}
                         </div>
                         <div className="p-4">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-gray-900 text-sm leading-tight truncate">{item.name}</h4>
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="font-bold text-gray-900 text-sm leading-tight truncate">{item.name}</h4>
+                                {item.isVegetarian && <span title="Vegetariano" className="text-xs shrink-0">🌱</span>}
+                              </div>
                               {item.description && (
                                 <p className="text-gray-400 text-xs mt-0.5 line-clamp-2 leading-relaxed">{item.description}</p>
                               )}
@@ -530,6 +630,31 @@ export default function CartaPage() {
                   <img src={modalData.imageUrl} alt="preview" className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100" onError={(e) => (e.currentTarget.style.display = 'none')} />
                 )}
               </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                  Video del plato <span className="text-gray-300 normal-case font-normal">(opcional — preparación o resultado final)</span>
+                </label>
+                {modalData.videoUrl ? (
+                  <div className="flex items-center gap-2">
+                    <video src={modalData.videoUrl} className="w-20 h-14 object-cover rounded-lg border border-gray-100" muted />
+                    <button type="button" onClick={() => setModalData({ ...modalData, videoUrl: '' })} className="text-xs font-bold text-red-500 hover:underline">Quitar</button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-3 text-xs font-bold text-gray-400 hover:border-orange-300 hover:text-[#F26122] cursor-pointer transition-colors">
+                    {uploadingVideo ? 'Subiendo...' : '🎬 Subir video (MP4, máx. 16MB)'}
+                    <input type="file" accept="video/mp4,video/3gpp" className="hidden" onChange={handleVideoUpload} disabled={uploadingVideo} />
+                  </label>
+                )}
+              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={modalData.isVegetarian}
+                  onChange={(e) => setModalData({ ...modalData, isVegetarian: e.target.checked })}
+                  className="w-4 h-4 rounded accent-[#F26122]"
+                />
+                <span className="text-sm font-bold text-gray-700">🌱 Es un plato vegetariano</span>
+              </label>
             </div>
             <div className="px-6 py-4 bg-gray-50 flex gap-3">
               <button onClick={() => setShowModal(false)} className="flex-1 bg-white border border-gray-200 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
@@ -565,6 +690,21 @@ export default function CartaPage() {
                 autoFocus
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
               />
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 mt-4 block">Tipo</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(Object.entries(CATEGORY_TYPE_META) as [CategoryType, typeof CATEGORY_TYPE_META[CategoryType]][]).map(([type, meta]) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setCategoryType(type)}
+                    className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all ${categoryType === type ? 'border-[#F26122] bg-orange-50' : 'border-gray-100 hover:border-gray-200'}`}
+                  >
+                    <span className="text-lg">{meta.icon}</span>
+                    <span className="text-[10px] font-black text-gray-600">{meta.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-2">Define el color y el ícono con el que se destaca esta categoría en la carta.</p>
             </div>
             <div className="px-6 py-4 bg-gray-50 flex gap-3">
               <button onClick={() => setShowCategoryModal(false)} className="flex-1 bg-white border border-gray-200 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">

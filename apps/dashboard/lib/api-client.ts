@@ -31,7 +31,9 @@ export interface BotSettingsUpdate {
   isActive?: boolean;
 }
 
-export interface MenuCategoryPayload { name: string; description?: string; displayOrder?: number }
+export type MenuCategoryType = 'food' | 'drink' | 'dessert' | 'other';
+
+export interface MenuCategoryPayload { name: string; description?: string; displayOrder?: number; categoryType?: MenuCategoryType }
 export interface MenuCategoryUpdate extends Partial<MenuCategoryPayload> {}
 
 export interface MenuItemPayload {
@@ -40,6 +42,8 @@ export interface MenuItemPayload {
   price: number;
   categoryId: string;
   imageUrl?: string;
+  videoUrl?: string;
+  isVegetarian?: boolean;
   available?: boolean;
   displayOrder?: number;
 }
