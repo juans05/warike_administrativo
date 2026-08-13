@@ -10,6 +10,7 @@ export function useContacts() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lastImportResult, setLastImportResult] = useState<ContactImport | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const loadContacts = useCallback(async (placeId: string, page = 1, search = '') => {
     setLoadingContacts(true);
@@ -52,6 +53,21 @@ export function useContacts() {
     }
   };
 
+  const handleSync = async (placeId: string) => {
+    setSyncing(true);
+    try {
+      const result = await businessApi.syncContacts(placeId);
+      const total = result?.synced?.total ?? 0;
+      if (total > 0) toast.success(`${total} contactos sincronizados desde WhatsApp y reseñas`);
+      else toast.info('No hay contactos nuevos para sincronizar');
+      await loadContacts(placeId);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Error al sincronizar contactos');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return {
     contacts,
     meta,
@@ -62,8 +78,10 @@ export function useContacts() {
     uploading,
     lastImportResult,
     setLastImportResult,
+    syncing,
     loadContacts,
     loadImports,
     handleUploadFile,
+    handleSync,
   };
 }

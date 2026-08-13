@@ -16,16 +16,28 @@ interface ContactsListProps {
   loading: boolean;
   onPageChange: (page: number) => void;
   onNew: () => void;
+  onSync: () => void;
+  syncing: boolean;
 }
 
-export function ContactsList({ contacts, meta, loading, onPageChange, onNew }: ContactsListProps) {
+export function ContactsList({ contacts, meta, loading, onPageChange, onNew, onSync, syncing }: ContactsListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black text-gray-800">Contactos ({meta.total})</h2>
-        <button onClick={onNew} className="px-5 py-2.5 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
-          📤 Subir Clientes
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSync}
+            disabled={syncing}
+            title="Trae contactos nuevos desde tus conversaciones de WhatsApp y las reseñas con email/teléfono"
+            className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 text-xs font-black rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            {syncing ? 'Sincronizando...' : '🔄 Sincronizar'}
+          </button>
+          <button onClick={onNew} className="px-5 py-2.5 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
+            📤 Subir Clientes
+          </button>
+        </div>
       </div>
 
       {loading ? (

@@ -34,8 +34,8 @@ export default function ClientesPage() {
 
   const {
     contacts, meta: contactsMeta, loadingContacts,
-    showUploadModal, setShowUploadModal, uploading, lastImportResult, setLastImportResult,
-    loadContacts, loadImports, handleUploadFile,
+    showUploadModal, setShowUploadModal, uploading, lastImportResult, setLastImportResult, syncing,
+    loadContacts, loadImports, handleUploadFile, handleSync,
   } = useContacts();
   const [contactsPage, setContactsPage] = useState(1);
 
@@ -94,6 +94,8 @@ export default function ClientesPage() {
             loading={loadingContacts}
             onPageChange={setContactsPage}
             onNew={() => setShowUploadModal(true)}
+            onSync={() => activePlaceId && handleSync(activePlaceId)}
+            syncing={syncing}
           />
           <ContactsUploadModal
             open={showUploadModal}

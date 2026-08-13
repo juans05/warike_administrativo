@@ -466,6 +466,8 @@ export const businessApi = {
   getContactImports: (placeId: string) =>
     fetchWithAuth(`/business/contacts/imports/list?placeId=${placeId}`),
   uploadContacts: (placeId: string, file: File) => uploadContactsFile(placeId, file),
+  syncContacts: (placeId: string) =>
+    fetchWithAuth(`/business/contacts/sync?placeId=${placeId}`, { method: 'POST' }),
 };
 
 // Public API (NO requiere JWT — para clientes que escanean el NFC)
