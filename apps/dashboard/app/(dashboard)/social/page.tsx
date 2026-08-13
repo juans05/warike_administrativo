@@ -73,6 +73,7 @@ export default function SocialPage() {
 
   // Bot Rules
   const [rules, setRules] = useState({
+    isActive: true,
     replyToQuestions: true,
     replyToCompliments: true,
     redirectComplaints: true,
@@ -516,29 +517,39 @@ export default function SocialPage() {
                  </div>
 
                  <div className="space-y-6 pt-4">
-                   <ToggleSetting 
-                     title="Preguntas Frecuentes" 
-                     desc="Responde a dudas sobre horarios, ubicación y menú." 
+                   <ToggleSetting
+                     title="Respuestas Automáticas"
+                     desc="Permite que el bot responda comentarios solo. Si lo apagás, tenés que responder todo a mano."
+                     checked={rules.isActive}
+                     onChange={(v) => setRules({...rules, isActive: v})}
+                   />
+                   <ToggleSetting
+                     title="Preguntas Frecuentes"
+                     desc="Responde a dudas sobre horarios, ubicación y menú."
                      checked={rules.replyToQuestions}
                      onChange={(v) => setRules({...rules, replyToQuestions: v})}
+                     disabled={!rules.isActive}
                    />
-                   <ToggleSetting 
-                     title="Agradecimientos" 
-                     desc="Responde automáticamente a elogios y buenos comentarios." 
+                   <ToggleSetting
+                     title="Agradecimientos"
+                     desc="Responde automáticamente a elogios y buenos comentarios."
                      checked={rules.replyToCompliments}
                      onChange={(v) => setRules({...rules, replyToCompliments: v})}
+                     disabled={!rules.isActive}
                    />
-                   <ToggleSetting 
-                     title="Derivar Quejas" 
-                     desc="Pide que envíen un Mensaje Directo (DM) si el comentario es negativo." 
+                   <ToggleSetting
+                     title="Derivar Quejas"
+                     desc="Pide que envíen un Mensaje Directo (DM) si el comentario es negativo."
                      checked={rules.redirectComplaints}
                      onChange={(v) => setRules({...rules, redirectComplaints: v})}
+                     disabled={!rules.isActive}
                    />
-                   <ToggleSetting 
-                     title="Responder con Precios" 
-                     desc="Revelar precios de la carta en los comentarios si lo solicitan." 
+                   <ToggleSetting
+                     title="Responder con Precios"
+                     desc="Revelar precios de la carta en los comentarios si lo solicitan."
                      checked={rules.revealPrices}
                      onChange={(v) => setRules({...rules, revealPrices: v})}
+                     disabled={!rules.isActive}
                    />
                  </div>
 
@@ -638,9 +649,12 @@ export default function SocialPage() {
   );
 }
 
-function ToggleSetting({ title, desc, checked, onChange }: { title: string, desc: string, checked: boolean, onChange: (v: boolean) => void }) {
+function ToggleSetting({ title, desc, checked, onChange, disabled }: { title: string, desc: string, checked: boolean, onChange: (v: boolean) => void, disabled?: boolean }) {
   return (
-    <div className="flex justify-between items-center p-5 bg-background rounded-3xl border border-border cursor-pointer hover:border-gray-300 transition-colors" onClick={() => onChange(!checked)}>
+    <div
+      className={`flex justify-between items-center p-5 bg-background rounded-3xl border border-border transition-colors ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:border-gray-300'}`}
+      onClick={() => !disabled && onChange(!checked)}
+    >
       <div className="flex-1 pr-4">
         <p className="font-black text-text text-sm">{title}</p>
         <p className="text-[10px] font-bold text-text-muted mt-1">{desc}</p>
