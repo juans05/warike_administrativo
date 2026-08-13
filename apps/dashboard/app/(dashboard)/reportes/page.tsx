@@ -99,7 +99,7 @@ export default function ReportesPage() {
               value={data.kpis.conversations.value.toLocaleString('es-PE')}
               changePct={data.kpis.conversations.changePct}
               isPositive={data.kpis.conversations.isPositive}
-              tooltip="Total de conversaciones iniciadas en el período."
+              tooltip="Conversaciones con actividad (mensajes) en el período."
             />
             <StatTile
               icon={<UserCheck className="w-4 h-4" />}
