@@ -54,6 +54,24 @@ export interface DeviceUpdate extends Partial<DevicePayload> { isActive?: boolea
 
 export interface DeviceRequestPayload { tapType: 'generico' | 'personalizado'; quantity: number }
 
+export interface NewPlacePayload {
+  name: string;
+  categoryId: string;
+  district: string;
+  address?: string;
+  phone?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface AssignQrPayload {
+  placeId?: string;
+  newPlace?: NewPlacePayload;
+  destinationType: 'REPUTATION' | 'MENU' | 'CUSTOM_URL';
+  destinationUrl?: string;
+  reason?: string;
+}
+
 export interface BroadcastPayload {
   placeId: string;
   whatsappNumberId: string;
@@ -495,10 +513,12 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 
 export const publicApi = {
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
+  getCategories: () => fetchPublic('/places/categories'),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   recordScan: (data: { placeId: string; deviceId?: string; source?: 'nfc' | 'qr' | 'direct' }) =>
     fetchPublic('/public/scan', { method: 'POST', body: JSON.stringify(data) }),
   getDevice: (deviceId: string) => fetchPublic(`/public/device/${deviceId}`),
+  resolveQr: (token: string) => fetchPublic(`/qr/${token}/resolve`),
 
   submitFeedback: (data: {
     placeId: string;
@@ -590,6 +610,33 @@ export const adminApi = {
     fetchWithAuth(`/admin/whatsapp-numbers/${numberId}`, {
       method: 'DELETE',
     }),
+};
+
+// Banco de QR (SuperAdmin) — generar, asignar/reasignar, historial
+export const qrApi = {
+  getStats: () => fetchWithAuth('/admin/qr-codes/stats'),
+  list: (status?: string, search?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    const qs = params.toString();
+    return fetchWithAuth(`/admin/qr-codes${qs ? `?${qs}` : ''}`);
+  },
+  getOne: (id: string) => fetchWithAuth(`/admin/qr-codes/${id}`),
+  generateBatch: (count: number, physicalType?: 'QR' | 'NFC' | 'TABLET') =>
+    fetchWithAuth('/admin/qr-codes/batch', {
+      method: 'POST',
+      body: JSON.stringify({ count, physicalType }),
+    }),
+  assign: (id: string, data: AssignQrPayload) =>
+    fetchWithAuth(`/admin/qr-codes/${id}/assign`, { method: 'POST', body: JSON.stringify(data) }),
+  reassign: (id: string, data: AssignQrPayload) =>
+    fetchWithAuth(`/admin/qr-codes/${id}/reassign`, { method: 'POST', body: JSON.stringify(data) }),
+  unassign: (id: string, reason?: string) =>
+    fetchWithAuth(`/admin/qr-codes/${id}/unassign`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  suspend: (id: string) => fetchWithAuth(`/admin/qr-codes/${id}/suspend`, { method: 'PATCH' }),
+  disable: (id: string) => fetchWithAuth(`/admin/qr-codes/${id}/disable`, { method: 'PATCH' }),
+  activate: (id: string) => fetchWithAuth(`/admin/qr-codes/${id}/activate`, { method: 'PATCH' }),
 };
 
 // Ubigeo API (Departamentos, Provincias, Distritos)

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
@@ -42,10 +41,6 @@ export default function ReputacionPage() {
   const [placeIdCandidates, setPlaceIdCandidates] = useState<any[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
-
-  // Devices
-  const [devices, setDevices] = useState<any[]>([]);
-  const [isDeletingDevice, setIsDeletingDevice] = useState<string | null>(null);
 
   // Pedido de nuevos taps (genérico o personalizado)
   const [deviceRequests, setDeviceRequests] = useState<any[]>([]);
@@ -142,12 +137,9 @@ export default function ReputacionPage() {
     }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
-  // Cargar dispositivos y solicitudes de taps
+  // Cargar solicitudes de taps
   useEffect(() => {
     if (!activePlaceId) return;
-    businessApi.getDevices(activePlaceId)
-      .then(setDevices)
-      .catch(() => setDevices([]));
     businessApi.getDeviceRequests(activePlaceId)
       .then(setDeviceRequests)
       .catch(() => setDeviceRequests([]));
@@ -172,34 +164,15 @@ export default function ReputacionPage() {
     }
   };
 
-  // Manejar cambio de acción
-  const handleActionChange = async (deviceId: string, newAction: string) => {
-    if (!activePlaceId) return;
-    try {
-      await businessApi.updateDevice(activePlaceId, deviceId, { action: newAction });
-      const updated = await businessApi.getDevices(activePlaceId);
-      setDevices(updated);
-    } catch (err) {
-      toast.error('Error al actualizar dispositivo');
-    }
-  };
-
-  // Manejar eliminar dispositivo
-  const handleDeleteDevice = async (deviceId: string) => {
-    if (!activePlaceId) return;
-    setIsDeletingDevice(deviceId);
-    try {
-      await businessApi.deleteDevice(activePlaceId, deviceId);
-      const updated = await businessApi.getDevices(activePlaceId);
-      setDevices(updated);
-    } catch (err) {
-      toast.error('Error al eliminar dispositivo');
-    } finally {
-      setIsDeletingDevice(null);
-    }
-  };
-
-  const publicLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${activePlaceId}`;
+  // Primeros FREE_TAPS de por vida por local salen gratis — ver
+  // DevicesService.createRequest() en el backend, misma regla.
+  const FREE_TAPS = 2;
+  const tapsAlreadyUsed = deviceRequests
+    .filter((r: any) => r.status !== 'rejected')
+    .reduce((sum: number, r: any) => sum + r.quantity, 0);
+  const freeTapsRemaining = Math.max(0, FREE_TAPS - tapsAlreadyUsed);
+  const freeUnitsInRequest = Math.min(tapQuantity, freeTapsRemaining);
+  const paidUnitsInRequest = tapQuantity - freeUnitsInRequest;
 
   if (isLoading) return <SkeletonPage type="stats" />;
 
@@ -311,53 +284,13 @@ export default function ReputacionPage() {
       {/* FILA 3: DISPOSITIVOS + CONFIGURACIÓN             */}
       {/* ═══════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Device Management */}
+        {/* Taps físicos */}
         <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-border space-y-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">⚡</div>
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">🏷️</div>
             <div>
-              <h3 className="text-xl font-black text-text font-warike">Dispositivos Vinculados</h3>
-              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Tus stands físicos activos</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {devices.length === 0 ? (
-              <div className="text-center py-8 text-text-muted">
-                <p className="font-bold text-sm">Sin dispositivos aún</p>
-                <p className="text-xs">Agrega tu primer stand físico abajo</p>
-              </div>
-            ) : (
-              devices.map(device => (
-                <DeviceCard
-                  key={device.id}
-                  device={device}
-                  onActionChange={(action) => handleActionChange(device.id, action)}
-                  onDelete={() => handleDeleteDevice(device.id)}
-                  isDeleting={isDeletingDevice === device.id}
-                />
-              ))
-            )}
-          </div>
-
-          {/* QR & NFC URLs */}
-          <div className="space-y-3 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">📱 Tu Enlace Base</p>
-
-            <div>
-              <p className="text-[9px] font-bold text-gray-500 mb-1 uppercase">QR Genérico:</p>
-              <p className="text-xs font-mono text-text break-all bg-white p-2 rounded border border-gray-200">{publicLink}</p>
-              <button onClick={() => { navigator.clipboard.writeText(publicLink); toast.success('Copiado'); }} className="mt-2 px-3 py-1.5 text-[9px] bg-text text-white font-black rounded hover:bg-opacity-90 transition-all">
-                Copiar QR
-              </button>
-            </div>
-
-            <div>
-              <p className="text-[9px] font-bold text-gray-500 mb-1 uppercase">🏷️ Para Tags NFC:</p>
-              <p className="text-xs font-mono text-text break-all bg-white p-2 rounded border border-gray-200">{publicLink}?source=nfc</p>
-              <button onClick={() => { navigator.clipboard.writeText(`${publicLink}?source=nfc`); toast.success('Copiado'); }} className="mt-2 px-3 py-1.5 text-[9px] bg-text text-white font-black rounded hover:bg-opacity-90 transition-all">
-                Copiar NFC
-              </button>
+              <h3 className="text-xl font-black text-text font-warike">Taps Físicos</h3>
+              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Pide tarjetas NFC para tu local</p>
             </div>
           </div>
 
@@ -373,6 +306,12 @@ export default function ReputacionPage() {
             ) : (
               <>
                 <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">🏷️ Pedir Nuevos Taps</p>
+
+                {freeTapsRemaining > 0 && (
+                  <p className="text-xs font-bold text-green-600">
+                    🎁 Te quedan {freeTapsRemaining} tap{freeTapsRemaining === 1 ? '' : 's'} gratis de por vida
+                  </p>
+                )}
 
                 <div className="flex gap-3">
                   <button
@@ -403,7 +342,12 @@ export default function ReputacionPage() {
                 </div>
 
                 <p className="text-sm font-black text-text">
-                  Total: S/ {(TAP_PRICES[tapType] * tapQuantity).toFixed(2)}
+                  Total: S/ {(TAP_PRICES[tapType] * paidUnitsInRequest).toFixed(2)}
+                  {freeUnitsInRequest > 0 && (
+                    <span className="ml-2 text-xs font-bold text-green-600">
+                      ({freeUnitsInRequest} gratis)
+                    </span>
+                  )}
                 </p>
 
                 <div className="flex gap-3">
@@ -663,279 +607,6 @@ function KpiCard({ label, value, icon, color }: { label: string; value: any; ico
         <p className="text-2xl font-black text-text">{value}</p>
         <p className="text-[9px] font-black text-text-muted uppercase tracking-[0.15em] mt-1">{label}</p>
       </div>
-    </div>
-  );
-}
-
-function DeviceCard({
-  device,
-  onActionChange,
-  onDelete,
-  isDeleting,
-}: {
-  device: any;
-  onActionChange: (action: string) => void;
-  onDelete: () => void;
-  isDeleting?: boolean;
-}) {
-  const [showDelete, setShowDelete] = React.useState(false);
-  const [showQR, setShowQR] = React.useState(false);
-  const qrCanvasRef = React.useRef<HTMLDivElement>(null);
-  const baseUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/l/${device.placeId}/device/${device.id}`;
-  // If device is NFC type, add source=nfc parameter so it registers correctly
-  const deviceQRUrl = device.deviceType === 'NFC' ? `${baseUrl}?source=nfc` : baseUrl;
-
-  const handleDownloadQR = async () => {
-    if (!qrCanvasRef.current) return;
-    const svg = qrCanvasRef.current.querySelector('svg') as SVGElement;
-    if (!svg) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const link = document.createElement('a');
-    link.href = 'data:image/svg+xml;base64,' + btoa(svgData);
-    link.download = `qr-${device.name.replace(/\s+/g, '-')}.svg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handlePrintQR = () => {
-    if (!qrCanvasRef.current) return;
-    const printWindow = window.open('', '', 'width=600,height=700');
-    if (!printWindow) return;
-
-    const svg = qrCanvasRef.current.querySelector('svg') as SVGElement;
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const qrImage = 'data:image/svg+xml;base64,' + btoa(svgData);
-    const safeDeviceName = device.name.replace(/[<>&"']/g, '');
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Imprimir QR - ${safeDeviceName}</title>
-          <style>
-            body { 
-              margin: 0; 
-              padding: 0; 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-              background-color: #f9fafb;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-            }
-            .card-wrapper {
-              background-color: #ffffff;
-              width: 420px;
-              border: 3px solid #111827;
-              border-radius: 32px;
-              padding: 35px;
-              box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-              text-align: center;
-              position: relative;
-              overflow: hidden;
-            }
-            .card-header-accent {
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              height: 12px;
-              background: linear-gradient(90deg, #ff4d4d, #ff9966);
-            }
-            .badge {
-              display: inline-block;
-              background: linear-gradient(135deg, #ff4d4d, #ff9966);
-              color: #ffffff;
-              font-size: 10px;
-              font-weight: 800;
-              text-transform: uppercase;
-              padding: 6px 16px;
-              border-radius: 50px;
-              letter-spacing: 1.5px;
-              margin-bottom: 20px;
-            }
-            h2 { 
-              margin: 0 0 8px 0; 
-              font-size: 26px; 
-              font-weight: 900; 
-              color: #111827;
-              letter-spacing: -0.5px;
-            }
-            .zone-label {
-              font-size: 12px;
-              font-weight: 700;
-              color: #6b7280;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 25px;
-            }
-            .qr-frame {
-              display: inline-block;
-              padding: 16px;
-              background-color: #ffffff;
-              border: 2px solid #e5e7eb;
-              border-radius: 24px;
-              box-shadow: 0 8px 20px rgba(0,0,0,0.03);
-              margin-bottom: 25px;
-            }
-            .qr-frame img { 
-              display: block;
-              border: none;
-            }
-            .instructions { 
-              font-size: 13px; 
-              color: #374151; 
-              line-height: 1.6;
-              margin: 0 0 25px 0;
-              padding: 0 10px;
-              font-weight: 500;
-            }
-            .steps {
-              display: flex;
-              justify-content: space-between;
-              background-color: #f3f4f6;
-              border-radius: 16px;
-              padding: 12px;
-              margin-bottom: 30px;
-            }
-            .step-item {
-              flex: 1;
-              font-size: 10px;
-              font-weight: 700;
-              color: #4b5563;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            .step-item span {
-              display: block;
-              font-size: 14px;
-              margin-bottom: 4px;
-            }
-            .footer-brand { 
-              font-size: 10px; 
-              font-weight: 800; 
-              color: #9ca3af; 
-              text-transform: uppercase;
-              letter-spacing: 1.5px;
-            }
-            @media print { 
-              body { background-color: #ffffff; }
-              .card-wrapper { 
-                border: 3px solid #111827; 
-                box-shadow: none; 
-                margin: 0 auto;
-                page-break-inside: avoid;
-              } 
-            }
-          </style>
-        </head>
-        <body>
-          <div class="card-wrapper">
-            <div class="card-header-accent"></div>
-            
-            <div class="badge">¿Nos dejas tu opinión?</div>
-            <h2>¡Tu experiencia cuenta!</h2>
-            <div class="zone-label">Zona: ${device.name}</div>
-            
-            <div class="qr-frame">
-              <img src="${qrImage}" alt="QR Code" width="240" height="240" />
-            </div>
-            
-            <p class="instructions">
-              Escanea el código QR con la cámara de tu celular para ver nuestra carta digital, dejarnos una sugerencia o valorarnos directamente. ¡Nos ayuda un montón!
-            </p>
-            
-            <div class="steps">
-              <div class="step-item"><span>📷</span>1. Abre Cámara</div>
-              <div style="width: 1px; background-color: #d1d5db; margin: 0 8px;"></div>
-              <div class="step-item"><span>🔍</span>2. Escanea QR</div>
-              <div style="width: 1px; background-color: #d1d5db; margin: 0 8px;"></div>
-              <div class="step-item"><span>⭐</span>3. Valóranos</div>
-            </div>
-            
-            <div class="footer-brand">Powered by Wuarike</div>
-          </div>
-          <script>
-            window.print();
-            window.addEventListener('afterprint', () => window.close());
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  return (
-    <div className={`flex items-center gap-4 p-4 bg-background rounded-2xl border border-border transition-all ${isDeleting ? 'opacity-50' : 'hover:border-primary'}`}>
-      {/* Dispositivo Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-black text-text text-sm truncate">{device.name}</p>
-          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${device.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-          <span className="text-[9px] font-bold text-gray-400 uppercase flex-shrink-0">{device.deviceType}</span>
-        </div>
-      </div>
-
-      {/* Acción Dropdown */}
-      <select
-        value={device.action}
-        onChange={(e) => onActionChange(e.target.value)}
-        className="py-2 px-3 text-[10px] font-bold rounded-lg border border-border hover:border-primary transition-all cursor-pointer"
-      >
-        <option value="reputation">⭐ Reseña</option>
-        <option value="raffle">🎁 Sorteo</option>
-        <option value="menu">🍽️ Menú</option>
-      </select>
-
-      {/* Ver QR Button */}
-      <button
-        onClick={() => setShowQR(!showQR)}
-        className="px-4 py-2 text-[10px] font-black text-primary uppercase rounded-lg border border-dashed border-primary hover:bg-primary/5 transition-all flex-shrink-0"
-      >
-        📲 QR
-      </button>
-
-      {/* QR Modal */}
-      {showQR && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full space-y-4 animate-in fade-in zoom-in">
-            <h3 className="font-black text-lg text-text">QR: {device.name}</h3>
-            <div className="flex justify-center p-6 bg-gray-50 rounded-2xl">
-              <div ref={qrCanvasRef}>
-                <QRCodeSVG
-                  value={deviceQRUrl}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                />
-              </div>
-            </div>
-            <p className="text-[9px] text-center text-gray-500 font-mono break-all">{deviceQRUrl}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownloadQR}
-                className="flex-1 py-2 text-[10px] font-black bg-primary text-white rounded-lg hover:bg-opacity-90"
-              >
-                ⬇️ Descargar
-              </button>
-              <button
-                onClick={handlePrintQR}
-                className="flex-1 py-2 text-[10px] font-black bg-accent text-white rounded-lg hover:bg-opacity-90"
-              >
-                🖨️ Imprimir
-              </button>
-            </div>
-            <button
-              onClick={() => setShowQR(false)}
-              className="w-full py-2 text-[10px] font-bold text-text-muted uppercase border border-border rounded-lg hover:bg-background"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   LogOut,
   UserPlus,
   BarChart3,
+  QrCode,
   type LucideIcon,
 } from 'lucide-react';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
@@ -175,6 +176,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                   <SidebarItem href="/comunidad" icon={Users} label="Gestión de Usuarios" active={pathname === '/comunidad'} />
                   <SidebarItem href="/suscripciones" icon={CreditCard} label="Suscripciones" active={pathname === '/suscripciones'} />
                   <SidebarItem href="/moderacion/whatsapp" icon={Bot} label="WhatsApp Bot" active={pathname === '/moderacion/whatsapp'} />
+                  <SidebarItem href="/moderacion/dispositivos" icon={QrCode} label="Códigos QR" active={pathname === '/moderacion/dispositivos'} />
                 </div>
               </>
             )}

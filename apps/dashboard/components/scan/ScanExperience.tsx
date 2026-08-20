@@ -15,7 +15,16 @@ const RATING_LABELS: Record<number, string> = {
   5: '¡Excelente! 🤩',
 };
 
-export default function ScanExperience({ placeId, deviceId }: { placeId: string; deviceId?: string }) {
+export default function ScanExperience({
+  placeId,
+  deviceId,
+  qrCodeId,
+}: {
+  placeId: string;
+  deviceId?: string;
+  /** Viene del resolver /q/[token] — ya registró el scan y ya resolvió que el destino es reputación, así que acá no hay que hacerlo de nuevo. */
+  qrCodeId?: string;
+}) {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loyaltyProgram, setLoyaltyProgram] = useState<any>(null);
@@ -36,13 +45,17 @@ export default function ScanExperience({ placeId, deviceId }: { placeId: string;
   useEffect(() => {
     if (!placeId) return;
 
-    const source = deviceId ? 'nfc' : (new URLSearchParams(window.location.search).get('source') as 'nfc' | 'qr') || 'qr';
-    publicApi.recordScan({ placeId, deviceId, source }).catch(() => {});
+    // El resolver /q/[token] ya registró el scan y ya decidió que el
+    // destino es reputación antes de llegar acá — no repetir.
+    if (!qrCodeId) {
+      const source = deviceId ? 'nfc' : (new URLSearchParams(window.location.search).get('source') as 'nfc' | 'qr') || 'qr';
+      publicApi.recordScan({ placeId, deviceId, source }).catch(() => {});
 
-    if (deviceId) {
-      publicApi.getDevice(deviceId).then(device => {
-        if (device?.action === 'menu') router.replace(`/menu/${placeId}`);
-      }).catch(() => {});
+      if (deviceId) {
+        publicApi.getDevice(deviceId).then(device => {
+          if (device?.action === 'menu') router.replace(`/menu/${placeId}`);
+        }).catch(() => {});
+      }
     }
 
     publicApi.getPlace(placeId)

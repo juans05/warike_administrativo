@@ -210,21 +210,12 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
   // ── CONNECTED — SHOW ALL REVIEWS ─────────────────────────────────────────
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-[var(--text)] font-warike italic">Reseñas de Google</h2>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-yellow-400 text-xl font-black">{rating > 0 ? rating.toFixed(1) : '—'} ⭐</span>
-            <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest">{total} reseñas totales</p>
-          </div>
+      <div>
+        <h2 className="text-3xl font-black text-[var(--text)] font-warike italic">Reseñas de Google</h2>
+        <div className="flex items-center gap-3 mt-2">
+          <span className="text-yellow-400 text-xl font-black">{rating > 0 ? rating.toFixed(1) : '—'} ⭐</span>
+          <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest">{total} reseñas totales</p>
         </div>
-        <button
-          onClick={fetchAllReviews}
-          disabled={isBusy}
-          className="btn-primary px-8 py-3 rounded-2xl text-[10px] tracking-widest disabled:opacity-50 flex items-center gap-2"
-        >
-          {isBusy ? '⌛ Actualizando...' : '🔄 Actualizar reseñas'}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

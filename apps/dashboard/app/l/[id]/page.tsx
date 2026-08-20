@@ -1,9 +1,10 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import ScanExperience from '../../../components/scan/ScanExperience';
 
 export default function PublicScanPage() {
   const { id } = useParams();
-  return <ScanExperience placeId={id as string} />;
+  const qrCodeId = useSearchParams().get('qr') ?? undefined;
+  return <ScanExperience placeId={id as string} qrCodeId={qrCodeId} />;
 }
