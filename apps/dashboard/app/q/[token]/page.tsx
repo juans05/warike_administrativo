@@ -1,6 +1,11 @@
 import { redirect } from 'next/navigation';
 import { publicApi } from '../../../lib/api-client';
 
+// Crítico: este resolver tiene que reflejar la asignación activa en cada
+// escaneo. Sin esto, Next.js puede cachear la respuesta la primera vez que
+// alguien visita un token y seguir sirviéndola después de reasignar/activar.
+export const dynamic = 'force-dynamic';
+
 const ERROR_MESSAGES: Record<string, string> = {
   NOT_FOUND: 'Este QR no existe.',
   UNAVAILABLE: 'Este QR no está disponible actualmente.',
