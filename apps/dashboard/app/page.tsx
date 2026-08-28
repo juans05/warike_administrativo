@@ -19,7 +19,13 @@ import {
   Tag,
   Users,
   TrendingUp,
+  Instagram,
+  Facebook,
+  Twitter,
+  Music2,
+  type LucideIcon,
 } from 'lucide-react';
+import { publicApi } from '../lib/api-client';
 
 const WHATSAPP_NUMBER = '51902191948';
 const waLink = (message: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
@@ -431,7 +437,14 @@ function FAQSection() {
 
 // --- Pricing ---
 
+const PLAN_ICONS: Record<string, LucideIcon> = {
+  reputacion: ShieldCheck,
+  fidelizacion: Gift,
+  ia_total: Bot,
+};
+
 function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boolean }) {
+  const PlanIcon = PLAN_ICONS[plan.tier] || Sparkles;
   return (
     <div
       className={`relative rounded-[28px] p-8 flex flex-col transition-transform duration-300 ${
@@ -446,7 +459,10 @@ function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boole
           El más elegido
         </div>
       )}
-      <p className={`text-sm font-medium mb-3 ${highlighted ? 'text-[var(--primary)] font-semibold mt-2' : 'text-[var(--text-muted)]'}`}>{plan.name}</p>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${highlighted ? 'bg-[var(--primary)] text-white' : 'bg-[var(--background)] text-[var(--primary)]'}`}>
+        <PlanIcon size={22} strokeWidth={2.2} />
+      </div>
+      <p className={`text-sm font-medium mb-3 ${highlighted ? 'text-[var(--primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>{plan.name}</p>
       <div className="flex items-end gap-1 mb-7">
         <span className="text-4xl font-semibold text-[var(--text)] tracking-tight">S/. {plan.price}</span>
         <span className="text-sm text-[var(--text-muted)] mb-1">/mes</span>
@@ -615,13 +631,72 @@ function MobileStickyCTA() {
 
 // --- Footer ---
 
+interface PlatformSettingsInfo {
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactAddress: string | null;
+  socialInstagram: string | null;
+  socialFacebook: string | null;
+  socialTiktok: string | null;
+  socialX: string | null;
+}
+
+const DEFAULT_SETTINGS: PlatformSettingsInfo = {
+  contactEmail: 'consulta@wuarikes.com',
+  contactPhone: null,
+  contactAddress: 'Lima, Perú',
+  socialInstagram: null,
+  socialFacebook: null,
+  socialTiktok: null,
+  socialX: null,
+};
+
+const SOCIAL_ICONS: { key: keyof PlatformSettingsInfo; Icon: LucideIcon; label: string }[] = [
+  { key: 'socialInstagram', Icon: Instagram, label: 'Instagram' },
+  { key: 'socialFacebook', Icon: Facebook, label: 'Facebook' },
+  { key: 'socialTiktok', Icon: Music2, label: 'TikTok' },
+  { key: 'socialX', Icon: Twitter, label: 'X (Twitter)' },
+];
+
 function Footer() {
+  const [settings, setSettings] = useState<PlatformSettingsInfo>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    publicApi.getPlatformSettings()
+      .then((data: PlatformSettingsInfo) => setSettings({ ...DEFAULT_SETTINGS, ...data }))
+      .catch(() => { /* keep defaults */ });
+  }, []);
+
+  const activeSocials = SOCIAL_ICONS.filter((s) => settings[s.key]);
+
   return (
     <footer className="bg-[var(--background)] border-t border-[var(--border)] py-16 px-6 md:px-8">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
         <div>
           <span className="text-3xl font-extrabold tracking-tight font-warike bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">Wuarike</span>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] mt-1">Reputación &amp; Sazón</p>
+          <p className="text-xs text-[var(--text-muted)] mt-2">
+            {settings.contactAddress}
+            {settings.contactEmail && (
+              <> · <a href={`mailto:${settings.contactEmail}`} className="hover:text-[var(--text)] transition-colors">{settings.contactEmail}</a></>
+            )}
+          </p>
+          {activeSocials.length > 0 && (
+            <div className="flex items-center gap-3 mt-3">
+              {activeSocials.map(({ key, Icon, label }) => (
+                <a
+                  key={key}
+                  href={settings[key] as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                >
+                  <Icon size={18} />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm font-medium text-[var(--text-muted)]">
           <a href="#plataforma" className="hover:text-[var(--text)] transition-colors">Plataforma</a>
@@ -638,8 +713,14 @@ function Footer() {
           Escríbenos por WhatsApp
         </a>
       </div>
-      <div className="max-w-6xl mx-auto mt-10 pt-8 border-t border-[var(--border)]">
+      <div className="max-w-6xl mx-auto mt-10 pt-8 border-t border-[var(--border)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <p className="text-xs text-[var(--text-muted)]">© {new Date().getFullYear()} Wuarike. Todos los derechos reservados.</p>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
+          <Link href="/terminos-y-condiciones" className="hover:text-[var(--text)] transition-colors">Términos y Condiciones</Link>
+          <Link href="/politica-de-privacidad" className="hover:text-[var(--text)] transition-colors">Política de Privacidad</Link>
+          <Link href="/politica-de-cambios-y-devoluciones" className="hover:text-[var(--text)] transition-colors">Política de Cambios y Devoluciones</Link>
+          <Link href="/libro-de-reclamaciones" className="hover:text-[var(--text)] transition-colors">Libro de Reclamaciones</Link>
+        </div>
       </div>
     </footer>
   );

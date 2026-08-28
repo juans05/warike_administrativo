@@ -512,6 +512,7 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 }
 
 export const publicApi = {
+  getPlatformSettings: () => fetchPublic('/platform-settings'),
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
   getCategories: () => fetchPublic('/places/categories'),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
@@ -529,6 +530,24 @@ export const publicApi = {
     deviceId?: string;
     marketingConsent?: boolean;
   }) => fetchPublic('/public/feedback', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  // Libro de Reclamaciones — público, sin JWT
+  submitComplaint: (data: {
+    type: 'reclamo' | 'queja';
+    consumerFullName: string;
+    consumerDocumentType: 'DNI' | 'CE' | 'Pasaporte' | 'RUC';
+    consumerDocumentNumber: string;
+    consumerAddress: string;
+    consumerEmail: string;
+    consumerPhone?: string;
+    contractedGood: string;
+    claimedAmount?: number;
+    detail: string;
+    consumerRequest: string;
+  }) => fetchPublic('/complaint-book', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -576,6 +595,27 @@ export const adminApi = {
 
   getPendingClaims: () => fetchWithAuth('/admin/claims'),
   verifyClaim: (id: string) => fetchWithAuth(`/admin/claims/${id}/verify`, { method: 'POST' }),
+  rejectClaim: (id: string) => fetchWithAuth(`/admin/claims/${id}/reject`, { method: 'POST' }),
+
+  getComplaints: () => fetchWithAuth('/admin/complaints'),
+  resolveComplaint: (id: string, response: string) => fetchWithAuth(`/admin/complaints/${id}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ response }),
+  }),
+
+  getPlatformSettings: () => fetchWithAuth('/platform-settings'),
+  updatePlatformSettings: (data: {
+    contactEmail?: string;
+    contactPhone?: string;
+    contactAddress?: string;
+    socialInstagram?: string;
+    socialFacebook?: string;
+    socialTiktok?: string;
+    socialX?: string;
+  }) => fetchWithAuth('/platform-settings', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
 
   getUsers: (page = 1, search = '') => fetchWithAuth(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`),
   createUser: (data: AdminUserPayload) => fetchWithAuth('/admin/users', {

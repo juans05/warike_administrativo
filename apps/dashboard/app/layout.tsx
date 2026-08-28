@@ -7,10 +7,29 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora' });
 const caveat = Caveat({ subsets: ['latin'], variable: '--font-caveat' });
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+interface PlatformSettingsInfo {
+  socialInstagram: string | null;
+  socialFacebook: string | null;
+  socialTiktok: string | null;
+  socialX: string | null;
+}
+
+async function getPlatformSettings(): Promise<PlatformSettingsInfo | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/platform-settings`, { next: { revalidate: 300 } });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://warique.com'),
-  title: 'Wuarike | Aumenta tus Reseñas en Google Maps con NFC para Restaurantes',
-  description: 'Aumenta las reseñas positivas de tu restaurante en Google Maps y bloquea las negativas en privado. Placas y Stands NFC premium para huariques.',
+  title: 'Wuarike | SaaS de Reseñas en Google Maps con NFC para Restaurantes',
+  description: 'Wuarike es un software como servicio (SaaS) por suscripción mensual que aumenta las reseñas positivas de tu restaurante en Google Maps y bloquea las negativas en privado. Incluye placas y stands NFC premium para huariques.',
   keywords: ['aumentar reseñas google', 'nfc para restaurantes', 'reputacion google maps', 'software restaurantes', 'mejorar reseñas google', 'marketing gastronomico'],
   openGraph: {
     title: 'Wuarike | Aumenta tus Reseñas en Google Maps con NFC',
@@ -27,11 +46,19 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const settings = await getPlatformSettings();
+  const sameAs = [
+    settings?.socialInstagram,
+    settings?.socialFacebook,
+    settings?.socialTiktok,
+    settings?.socialX,
+  ].filter((url): url is string => Boolean(url));
+
   const schemaMarkup = {
     "@context": "https://schema.org",
     "@graph": [
@@ -40,22 +67,21 @@ export default function RootLayout({
         "name": "Wuarike",
         "url": "https://warique.com",
         "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "SaaS",
         "operatingSystem": "Web, iOS, Android",
-        "description": "Software y hardware NFC para restaurantes que incrementa reseñas positivas en Google Maps y filtra quejas internamente.",
-        "offers": {
-          "@type": "Offer",
-          "price": "99",
-          "priceCurrency": "PEN"
-        }
+        "description": "Software como servicio (SaaS) por suscripción mensual para restaurantes: gestión de reputación en Google Maps, fidelización de clientes y asistente de WhatsApp con IA. Incluye venta complementaria de hardware NFC.",
+        "offers": [
+          { "@type": "Offer", "name": "Wuarike Reputación", "price": "79", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "79", "priceCurrency": "PEN", "unitText": "mes" } },
+          { "@type": "Offer", "name": "Wuarike Fidelización+", "price": "149", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "149", "priceCurrency": "PEN", "unitText": "mes" } },
+          { "@type": "Offer", "name": "Wuarike IA Total", "price": "249", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "249", "priceCurrency": "PEN", "unitText": "mes" } }
+        ]
       },
       {
         "@type": "Organization",
         "name": "Wuarike",
         "url": "https://warique.com",
         "logo": "https://warique.com/images/hero.png",
-        "sameAs": [
-          "https://instagram.com/warique_app"
-        ]
+        ...(sameAs.length > 0 ? { sameAs } : {})
       }
     ]
   };
