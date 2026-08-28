@@ -11,6 +11,8 @@ export interface ProfileUpdate {
   website?: string;
   coverImageUrl?: string;
   menuImageUrl?: string;
+  logoUrl?: string;
+  showLogoOnQr?: boolean;
   categoryId?: string;
   districtId?: string | null;
   amenityIds?: string[];

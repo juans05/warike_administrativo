@@ -55,6 +55,7 @@ export default function CartaPage() {
 
   const [logoUrl, setLogoUrl] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showLogoOnQr, setShowLogoOnQr] = useState(true);
 
   const totalDishes = categories.reduce((acc, c) => acc + (c.dishes?.length || 0), 0);
 
@@ -74,6 +75,7 @@ export default function CartaPage() {
         setMenuType('photo');
       }
       setLogoUrl(profile.logoUrl || '');
+      setShowLogoOnQr(profile.showLogoOnQr ?? true);
     } catch (err) {
       console.error('Error loading menu:', err);
       toast.error('Error al cargar la carta');
@@ -182,6 +184,18 @@ export default function CartaPage() {
       toast.error('No se pudo subir el logo');
     } finally {
       setUploadingLogo(false);
+    }
+  };
+
+  const handleToggleShowLogoOnQr = async () => {
+    if (!activePlaceId) return;
+    const next = !showLogoOnQr;
+    setShowLogoOnQr(next);
+    try {
+      await businessApi.updateProfile(activePlaceId, { showLogoOnQr: next });
+    } catch {
+      setShowLogoOnQr(!next);
+      toast.error('No se pudo guardar la preferencia');
     }
   };
 
@@ -398,6 +412,23 @@ export default function CartaPage() {
           <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
         </label>
       </div>
+
+      {logoUrl && (
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 flex items-center gap-5">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black text-gray-900">Mostrar mi logo en el QR de reseñas</p>
+            <p className="text-gray-400 text-xs mt-0.5">Cuando imprimas o descargues tu QR de Google, aparecerá con tu logo incluido.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleShowLogoOnQr}
+            aria-pressed={showLogoOnQr}
+            className={`w-12 h-7 rounded-full transition-all shrink-0 relative ${showLogoOnQr ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-gray-300'}`}
+          >
+            <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform ${showLogoOnQr ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </button>
+        </div>
+      )}
 
       {/* ── Digital Menu ── */}
       {menuType === 'digital' ? (

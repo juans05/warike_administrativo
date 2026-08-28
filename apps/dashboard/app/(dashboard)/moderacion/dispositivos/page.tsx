@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Download, Link2, Unlink, PauseCircle, PlayCircle, History, MoreVertical, type LucideIcon } from 'lucide-react';
 import { adminApi, qrApi, publicApi, AssignQrPayload } from '../../../../lib/api-client';
-import { copyQrUrls, downloadQrPng, openPrintSheet } from '../../../../lib/qrImage';
+import { copyQrUrls, downloadQrPng, openPrintSheet, TEMPLATES, TemplateId } from '../../../../lib/qrImage';
 import { toast } from 'sonner';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,6 +36,7 @@ export default function DispositivosPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
+  const [template, setTemplate] = useState<TemplateId>('white');
   const [showGenerate, setShowGenerate] = useState(false);
   const [assignTarget, setAssignTarget] = useState<any>(null); // el QrCode que se está (re)asignando
   const [historyTarget, setHistoryTarget] = useState<any>(null); // { qrCode, history }
@@ -99,7 +100,7 @@ export default function DispositivosPage() {
       toast.success(`${count} códigos generados`);
       setShowGenerate(false);
       loadQr();
-      if (physicalType === 'QR') openPrintSheet(created);
+      if (physicalType === 'QR') openPrintSheet(created, template);
     } catch (err: any) {
       toast.error(err?.message || 'Error generando el lote');
     }
@@ -107,7 +108,7 @@ export default function DispositivosPage() {
 
   const handleDownload = async (qr: any) => {
     try {
-      await downloadQrPng(qr);
+      await downloadQrPng(qr, template);
     } catch (err: any) {
       toast.error('Error generando la imagen del QR');
     }
@@ -135,7 +136,7 @@ export default function DispositivosPage() {
   const handlePrintAll = async () => {
     if (filteredQr.length === 0) return;
     try {
-      await openPrintSheet(filteredQr);
+      await openPrintSheet(filteredQr, template);
     } catch (err: any) {
       toast.error('No se pudo generar la hoja imprimible');
     }
@@ -241,6 +242,15 @@ export default function DispositivosPage() {
               <option value="">Todos los estados</option>
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value as TemplateId)}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              {Object.entries(TEMPLATES).map(([id, t]) => (
+                <option key={id} value={id}>{t.label}</option>
               ))}
             </select>
             <button
