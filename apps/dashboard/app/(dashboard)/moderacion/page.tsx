@@ -100,6 +100,7 @@ export default function ModeracionPage() {
       setClaims(claimsData);
     } catch (err) {
       console.error('Error loading admin data:', err);
+      toast.error(err instanceof Error ? err.message : 'Error cargando datos de moderación');
     } finally {
       setLoading(false);
     }
