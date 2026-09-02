@@ -26,6 +26,10 @@ export default function FidelizacionPage() {
   const [newRewardStamps, setNewRewardStamps] = useState(10);
   const [isAddingReward, setIsAddingReward] = useState(false);
 
+  const [campaignHeader, setCampaignHeader] = useState('');
+  const [campaignBody, setCampaignBody] = useState('');
+  const [isSendingCampaign, setIsSendingCampaign] = useState(false);
+
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
     Promise.all([
@@ -84,6 +88,21 @@ export default function FidelizacionPage() {
     if (!activePlaceId) return;
     await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards/${rewardId}`, { method: 'DELETE' });
     setRewards(prev => prev.filter(r => r.id !== rewardId));
+  };
+
+  const handleSendCampaign = async () => {
+    if (!activePlaceId || !campaignHeader || !campaignBody) return;
+    setIsSendingCampaign(true);
+    try {
+      const res = await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/wallet-campaign`, {
+        method: 'POST',
+        body: JSON.stringify({ header: campaignHeader, body: campaignBody }),
+      });
+      toast.success(`Enviado a ${res.totalQueued} clientes`);
+      setCampaignHeader('');
+      setCampaignBody('');
+    } catch (err: any) { toast.error(err?.message || 'Error al enviar la campaña'); }
+    setIsSendingCampaign(false);
   };
 
   const publicCardLink = typeof window !== 'undefined'
@@ -348,6 +367,39 @@ export default function FidelizacionPage() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Campaña — notificación masiva por Wallet */}
+          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
+            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
+              Notificar a mis clientes
+            </h2>
+            <p className="text-xs font-bold text-text-muted leading-relaxed">
+              Manda un aviso a la tarjeta de todos los que ya la guardaron en su Wallet (ej. "Hoy 2x1"). Solo llega a quien tenga Google Wallet activo.
+            </p>
+            <input
+              value={campaignHeader}
+              onChange={(e) => setCampaignHeader(e.target.value)}
+              placeholder="Título (ej. Promo de hoy)"
+              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold"
+              maxLength={60}
+            />
+            <textarea
+              value={campaignBody}
+              onChange={(e) => setCampaignBody(e.target.value)}
+              placeholder="Mensaje (ej. 2x1 en postres hasta las 8pm)"
+              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold resize-none"
+              rows={2}
+              maxLength={200}
+            />
+            <button
+              onClick={handleSendCampaign}
+              disabled={isSendingCampaign || !campaignHeader || !campaignBody}
+              className="w-full bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
+            >
+              {isSendingCampaign ? 'Enviando...' : 'Enviar notificación'}
+            </button>
           </section>
 
           {/* Tarjeta digital del cliente */}
