@@ -105,8 +105,11 @@ export default function FidelizacionPage() {
     setIsSendingCampaign(false);
   };
 
+  // Points at the scan/loyalty entry flow (/l/[id]), which collects the customer's
+  // phone and only then builds the real card URL (/tarjeta/[placeId]/[phone]).
+  // Linking straight to /tarjeta/[placeId] 404s — that route requires the phone segment.
   const publicCardLink = typeof window !== 'undefined'
-    ? `${window.location.origin}/tarjeta/${activePlaceId}`
+    ? `${window.location.origin}/l/${activePlaceId}`
     : '';
 
   if (isLoading) return <SkeletonPage type="default" />;
@@ -413,8 +416,8 @@ export default function FidelizacionPage() {
             </p>
 
             <div className="bg-white rounded-xl border border-orange-100 p-3">
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">URL base</p>
-              <p className="font-black text-orange-600 text-xs break-all">{publicCardLink}/[teléfono]</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Enlace</p>
+              <p className="font-black text-orange-600 text-xs break-all">{publicCardLink}</p>
             </div>
 
             <div className="flex gap-2">
