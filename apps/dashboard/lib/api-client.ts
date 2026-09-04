@@ -627,6 +627,17 @@ export const adminApi = {
   banUser: (id: string) => fetchWithAuth(`/admin/users/${id}/ban`, { method: 'PATCH' }),
   activateUser: (id: string) => fetchWithAuth(`/admin/users/${id}/activate`, { method: 'PATCH' }),
 
+  getOpportunities: (status?: string) => fetchWithAuth(`/admin/opportunities${status ? `?status=${status}` : ''}`),
+  updateOpportunityStatus: (placeId: string, status: string) => fetchWithAuth(`/admin/opportunities/${placeId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+  getWuarikesHereRequests: (status?: string) => fetchWithAuth(`/admin/wuarikes-here-requests${status ? `?status=${status}` : ''}`),
+  updateWuarikesHereRequestStatus: (id: string, status: string) => fetchWithAuth(`/admin/wuarikes-here-requests/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+
   getPlaces: (page = 1, search = '') => fetchWithAuth(`/admin/places?page=${page}&search=${encodeURIComponent(search)}`),
   updatePlace: (id: string, data: AdminPlaceUpdate) => fetchWithAuth(`/admin/places/${id}`, {
     method: 'PATCH',

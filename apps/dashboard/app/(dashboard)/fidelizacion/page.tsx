@@ -21,6 +21,8 @@ export default function FidelizacionPage() {
   const [rewardTitle, setRewardTitle] = useState('');
   const [rewardDescription, setRewardDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [winbackEnabled, setWinbackEnabled] = useState(false);
+  const [winbackMessage, setWinbackMessage] = useState('');
 
   const [newRewardTitle, setNewRewardTitle] = useState('');
   const [newRewardStamps, setNewRewardStamps] = useState(10);
@@ -50,6 +52,8 @@ export default function FidelizacionPage() {
         setRewardTitle(prog.rewardTitle || '');
         setRewardDescription(prog.rewardDescription || '');
         setIsActive(prog.isActive ?? true);
+        setWinbackEnabled(prog.winbackEnabled ?? false);
+        setWinbackMessage(prog.winbackMessage || '');
       }
       setRewards(Array.isArray(rwds) ? rwds : []);
     }).finally(() => setIsLoading(false));
@@ -61,7 +65,7 @@ export default function FidelizacionPage() {
     try {
       const saved = await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`, {
         method: 'PUT',
-        body: JSON.stringify({ type, stampsToReward, pointsPerVisit, minHoursBetweenVisits, rewardTitle, rewardDescription, isActive }),
+        body: JSON.stringify({ type, stampsToReward, pointsPerVisit, minHoursBetweenVisits, rewardTitle, rewardDescription, isActive, winbackEnabled, winbackMessage }),
       });
       setProgram(saved);
       toast.success('Programa guardado');
@@ -403,6 +407,35 @@ export default function FidelizacionPage() {
             >
               {isSendingCampaign ? 'Enviando...' : 'Enviar notificación'}
             </button>
+          </section>
+
+          {/* Campaña automática por inactividad */}
+          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
+            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
+              Traer de vuelta a quien no vuelve
+            </h2>
+            <p className="text-xs font-bold text-text-muted leading-relaxed">
+              Si un cliente no hace check-in en 30 días, le mandamos este mensaje por WhatsApp solos, una sola vez por cliente.
+            </p>
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={winbackEnabled}
+                onChange={(e) => setWinbackEnabled(e.target.checked)}
+                className="w-5 h-5 accent-primary"
+              />
+              <span className="text-sm font-bold text-text">Activar mensaje de reactivación</span>
+            </label>
+            <textarea
+              value={winbackMessage}
+              onChange={(e) => setWinbackMessage(e.target.value)}
+              placeholder="Ej. ¡Te extrañamos! Vuelve por tu sello y no pierdas tu progreso 🍽️"
+              disabled={!winbackEnabled}
+              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold resize-none disabled:opacity-50"
+              rows={2}
+              maxLength={300}
+            />
           </section>
 
           {/* Tarjeta digital del cliente */}

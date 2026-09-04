@@ -22,6 +22,7 @@ import {
   BarChart3,
   QrCode,
   FileWarning,
+  Flame,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -180,6 +181,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                   <SidebarItem href="/moderacion/whatsapp" icon={Bot} label="WhatsApp Bot" active={pathname === '/moderacion/whatsapp'} />
                   <SidebarItem href="/moderacion/dispositivos" icon={QrCode} label="Códigos QR" active={pathname === '/moderacion/dispositivos'} />
                   <SidebarItem href="/moderacion/reclamaciones" icon={FileWarning} label="Libro de Reclamaciones" active={pathname === '/moderacion/reclamaciones'} />
+                  <SidebarItem href="/moderacion/oportunidades" icon={Flame} label="Oportunidades" active={pathname === '/moderacion/oportunidades'} />
                   <SidebarItem href="/configuracion" icon={Settings} label="Configuración del Sitio" active={pathname === '/configuracion'} />
                 </div>
               </>
