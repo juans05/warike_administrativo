@@ -279,6 +279,8 @@ export default function RestaurantePage() {
     checkinsThisMonth: number;
     bestDayOfWeek: string | null;
     topDish: { dishName: string; orders: number } | null;
+    newCustomersThisMonth: number;
+    returningCustomersThisMonth: number;
   } | null>(null);
 
   useEffect(() => {
@@ -363,22 +365,35 @@ export default function RestaurantePage() {
       )}
 
       {checkinStats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
-            <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisWeek}</p>
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins esta semana</p>
+        <div className="space-y-4">
+          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm">
+            <p className="text-lg font-bold text-text">
+              👋 Este mes, <span className="text-primary font-black">{checkinStats.newCustomersThisMonth} personas nuevas</span> te descubrieron
+              {checkinStats.returningCustomersThisMonth > 0 && (
+                <> y <span className="text-primary font-black">{checkinStats.returningCustomersThisMonth}</span> volvieron</>
+              )}.
+              {checkinStats.bestDayOfWeek && <> Tu mejor día fue <span className="font-black">{checkinStats.bestDayOfWeek}</span>.</>}
+              {checkinStats.topDish && <> Lo más pedido: <span className="font-black">{checkinStats.topDish.dishName}</span>.</>}
+            </p>
           </div>
-          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
-            <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisMonth}</p>
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins este mes</p>
-          </div>
-          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
-            <p className="text-3xl font-black text-primary">{checkinStats.bestDayOfWeek || '—'}</p>
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu mejor día este mes</p>
-          </div>
-          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
-            <p className="text-lg font-black text-primary truncate">{checkinStats.topDish?.dishName || '—'}</p>
-            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu plato más pedido</p>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+              <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisWeek}</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins esta semana</p>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+              <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisMonth}</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins este mes</p>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+              <p className="text-3xl font-black text-primary">{checkinStats.bestDayOfWeek || '—'}</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu mejor día este mes</p>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+              <p className="text-lg font-black text-primary truncate">{checkinStats.topDish?.dishName || '—'}</p>
+              <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu plato más pedido</p>
+            </div>
           </div>
         </div>
       )}
