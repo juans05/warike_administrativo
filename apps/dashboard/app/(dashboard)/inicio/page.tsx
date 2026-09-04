@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { businessApi } from '../../../lib/api-client';
+import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import { SkeletonPage } from '../../../components/SkeletonLoader';
 
@@ -274,6 +274,20 @@ export default function RestaurantePage() {
       }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
+  const [checkinStats, setCheckinStats] = useState<{
+    checkinsThisWeek: number;
+    checkinsThisMonth: number;
+    bestDayOfWeek: string | null;
+    topDish: { dishName: string; orders: number } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!activePlaceId) return;
+    fetchWithAuth(`/checkins/business/places/${activePlaceId}/stats`)
+      .then(setCheckinStats)
+      .catch(() => setCheckinStats(null));
+  }, [activePlaceId]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -345,6 +359,27 @@ export default function RestaurantePage() {
       {error && (
         <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2rem] flex items-center gap-4 text-red-600 font-black text-sm animate-pulse">
           <span className="text-2xl">⚠️</span> {error}
+        </div>
+      )}
+
+      {checkinStats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+            <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisWeek}</p>
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins esta semana</p>
+          </div>
+          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+            <p className="text-3xl font-black text-primary">{checkinStats.checkinsThisMonth}</p>
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Check-ins este mes</p>
+          </div>
+          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+            <p className="text-3xl font-black text-primary">{checkinStats.bestDayOfWeek || '—'}</p>
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu mejor día este mes</p>
+          </div>
+          <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm text-center">
+            <p className="text-lg font-black text-primary truncate">{checkinStats.topDish?.dishName || '—'}</p>
+            <p className="text-[10px] font-black text-text-muted uppercase tracking-wider mt-1">Tu plato más pedido</p>
+          </div>
         </div>
       )}
 
