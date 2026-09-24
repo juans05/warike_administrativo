@@ -5,9 +5,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useRestaurant } from '../context/RestaurantContext';
 import { businessApi } from '../lib/api-client';
 import { toast } from 'sonner';
+import { copyText } from '../lib/clipboard';
 
 type Step = 'loading' | 'not_connected' | 'pick_location' | 'connected' | 'error';
 type Filter = 'all' | 'unanswered' | 'negative';
+
+// Leer/responder todas las reseñas usa la API de Google Business Profile, que requiere
+// aprobación de Google. Hasta entonces se usa Places API (5 reseñas) y el dueño publica
+// su respuesta pegándola en Google. Encender con NEXT_PUBLIC_GBP_API_ENABLED=true.
+const GBP_API_ENABLED = process.env.NEXT_PUBLIC_GBP_API_ENABLED === 'true';
+const GOOGLE_REVIEWS_URL = 'https://business.google.com/reviews';
 
 const STARS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
@@ -52,7 +59,7 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
       toast.error(ERROR_TEXT[oauthError] || 'No se pudo conectar con Google.');
       router.replace('/reputacion');
     }
-    if (searchParams.get('connected') === 'true') {
+    if (GBP_API_ENABLED && searchParams.get('connected') === 'true') {
       router.replace('/reputacion');
       loadLocations();
     } else {
@@ -69,9 +76,9 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
     setStep('loading');
     try {
       const profile = await businessApi.getProfile(activePlaceId!);
-      if (profile.googleLocationName) {
+      if (GBP_API_ENABLED && profile.googleLocationName) {
         await fetchAllReviews(profile);
-      } else if (profile.googleConnected) {
+      } else if (GBP_API_ENABLED && profile.googleConnected) {
         await loadLocations();
       } else if (profile.googlePlaceId) {
         await fetchPersistedReviews(profile);
@@ -215,6 +222,21 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
   );
 
   // ── NOT CONNECTED ────────────────────────────────────────────────────────
+  if (step === 'not_connected' && !GBP_API_ENABLED) return (
+    <div className="space-y-8">
+      {header(<p className="text-[var(--text-muted)] font-bold text-sm mt-1">Mira y responde tus reseñas de Google con ayuda de la IA</p>)}
+      <div className="bg-blue-50 border border-blue-100 rounded-[2rem] p-8 space-y-3">
+        <p className="font-black text-blue-800 text-sm">Configura tu Google Place ID</p>
+        <ol className="text-blue-700 font-bold text-xs leading-loose list-decimal pl-4">
+          <li>Arriba, en <b>Google Place ID</b>, pulsa <b>Buscar</b> y elige tu local</li>
+          <li>Guarda y pulsa <b>Sincronizar reseñas</b></li>
+          <li>Tus reseñas aparecerán aquí para responderlas</li>
+        </ol>
+      </div>
+    </div>
+  );
+
+  // ── NOT CONNECTED ────────────────────────────────────────────────────────
   if (step === 'not_connected') return (
     <div className="space-y-8">
       {header(<p className="text-[var(--text-muted)] font-bold text-sm mt-1">Conecta tu cuenta para ver y responder todas tus reseñas</p>)}
@@ -307,10 +329,14 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
         </div>
       ) : reviews.length > 0 && (
         <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-bold text-blue-700">Ves solo las últimas reseñas. Conecta Google Business para ver todas y responderlas.</p>
-          <button onClick={handleConnect} disabled={isBusy} className="text-[10px] font-black text-blue-700 uppercase tracking-widest hover:underline">
-            {isBusy ? 'Redirigiendo...' : 'Conectar →'}
-          </button>
+          <p className="text-xs font-bold text-blue-700">
+            Estas son las reseñas más relevantes de Google. Pulsa <b>Responder</b>: la IA te sugiere el texto, lo copiamos y abrimos Google para que lo pegues.
+          </p>
+          {GBP_API_ENABLED && (
+            <button onClick={handleConnect} disabled={isBusy} className="text-[10px] font-black text-blue-700 uppercase tracking-widest hover:underline">
+              {isBusy ? 'Redirigiendo...' : 'Conectar →'}
+            </button>
+          )}
         </div>
       )}
 
@@ -359,6 +385,19 @@ function ReviewCard({ review, placeId, onReplied }: {
       toast.error(e?.message || 'No se pudo generar la sugerencia');
     }
     setBusy(null);
+  };
+
+  // Sin API: copiar en el mismo clic y luego abrir Google (el foco cambia de pestaña).
+  const copyAndOpen = () => {
+    const text = draft.trim();
+    const ok = copyText(text);
+    window.open(GOOGLE_REVIEWS_URL, '_blank', 'noopener,noreferrer');
+    if (ok) {
+      toast.success(`Respuesta copiada. En Google busca la reseña de ${review.reviewer?.displayName || 'tu cliente'}, toca Responder y pega.`, { duration: 8000 });
+    } else {
+      toast.error('No pudimos copiar el texto. Selecciónalo y cópialo manualmente.');
+    }
+    setEditing(false);
   };
 
   const publish = async () => {
@@ -428,11 +467,11 @@ function ReviewCard({ review, placeId, onReplied }: {
               {busy === 'suggest' ? 'Pensando...' : '✨ Sugerir con IA'}
             </button>
             <button
-              onClick={publish}
+              onClick={review.name ? publish : copyAndOpen}
               disabled={busy !== null || !draft.trim()}
               className="px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest bg-primary text-white disabled:opacity-50"
             >
-              {busy === 'publish' ? 'Publicando...' : 'Publicar en Google'}
+              {busy === 'publish' ? 'Publicando...' : review.name ? 'Publicar en Google' : '📋 Copiar y abrir Google'}
             </button>
             <button
               onClick={() => setEditing(false)}
@@ -449,7 +488,7 @@ function ReviewCard({ review, placeId, onReplied }: {
         <span className="text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest bg-blue-50 text-blue-600">
           Google Maps
         </span>
-        {review.name && !editing && (
+        {!editing && (
           <button onClick={startEditing} className="text-[11px] font-black text-primary uppercase tracking-widest hover:underline">
             {review.reviewReply ? 'Editar respuesta' : 'Responder'}
           </button>

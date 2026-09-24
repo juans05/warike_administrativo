@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { publicApi } from '../../lib/api-client';
 import { toast } from 'sonner';
+import { copyText } from '../../lib/clipboard';
 
 type Step = 'welcome' | 'rating' | 'detail' | 'google' | 'loyalty' | 'result';
 
@@ -37,6 +38,7 @@ export default function ScanExperience({
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [googleLink, setGoogleLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [phone, setPhone] = useState('');
   const [loyaltyResult, setLoyaltyResult] = useState<any>(null);
@@ -88,9 +90,7 @@ export default function ScanExperience({
 
   const handleSubmitDetail = async () => {
     // Copiar ANTES del await — el gesto del usuario se pierde si esperamos primero
-    if (feedback && navigator.clipboard) {
-      navigator.clipboard.writeText(feedback).catch(() => {});
-    }
+    setCopied(copyText(feedback.trim()));
     setIsSending(true);
     try {
       await publicApi.submitFeedback({
@@ -141,6 +141,7 @@ export default function ScanExperience({
     setCustomerContact('');
     setMarketingConsent(false);
     setGoogleLink(null);
+    setCopied(false);
     setPhone('');
     setLoyaltyResult(null);
   };
@@ -270,10 +271,21 @@ export default function ScanExperience({
             </p>
           </div>
 
-          {feedback && (
-            <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-3 flex items-center gap-3">
-              <span className="text-green-500 text-lg">📋</span>
-              <p className="text-green-700 font-bold text-xs">Tu reseña fue copiada al portapapeles</p>
+          {feedback.trim() && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 text-left space-y-2">
+              <p className="text-green-700 font-black text-xs flex items-center gap-2">
+                <span className="text-lg">📋</span> {copied ? 'Tu reseña ya está copiada' : 'Copia tu reseña para pegarla en Google'}
+              </p>
+              <ol className="text-green-700 font-bold text-[11px] leading-relaxed list-decimal pl-5">
+                <li>En Google, marca tus estrellas ⭐</li>
+                <li>Mantén presionado el cuadro de texto y elige <b>Pegar</b></li>
+                <li>Toca <b>Publicar</b></li>
+              </ol>
+              {!copied && (
+                <button type="button" onClick={() => setCopied(copyText(feedback.trim()))} className="text-[11px] font-black text-green-700 underline">
+                  Copiar mi reseña
+                </button>
+              )}
             </div>
           )}
 
@@ -281,7 +293,10 @@ export default function ScanExperience({
             href={googleLink || '#'}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setTimeout(() => (loyaltyProgram?.isActive ? setStep('loyalty') : setStep('result')), 300)}
+            onClick={() => {
+              if (feedback.trim()) setCopied(copyText(feedback.trim()));
+              setTimeout(() => (loyaltyProgram?.isActive ? setStep('loyalty') : setStep('result')), 300);
+            }}
             className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3"
           >
             <span>⭐</span> Publicar en Google Maps
@@ -396,7 +411,7 @@ export default function ScanExperience({
           )}
 
           {!loyaltyResult && googleLink && (
-            <a href={googleLink} target="_blank" rel="noopener noreferrer" className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3">
+            <a href={googleLink} target="_blank" rel="noopener noreferrer" onClick={() => { if (feedback.trim()) copyText(feedback.trim()); }} className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3">
               <span>⭐</span> Publicar en Google Maps
             </a>
           )}
