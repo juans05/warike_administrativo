@@ -119,21 +119,8 @@ export default function ReputacionPage() {
         }));
       }).catch(() => { });
     }).catch(() => {
-      // Datos demo si backend no disponible
-      setStats({
-        totalTaps: 1240, nfcPercent: 65, qrPercent: 35, ratingAverage: 4.8,
-        totalComplaints: 12, pendingComplaints: 3, resolvedComplaints: 9,
-        totalAccounts: 2, totalComments: 47, aiReplied: 38, pendingReplies: 9,
-        disastersAvoided: 12, reviewsSentToGoogle: 85, conversionRate: 7,
-      });
-      setRecentComplaints([
-        { id: '1', rating: 2, comment: 'Esperamos mucho tiempo', customerName: 'María', status: 'pending', createdAt: new Date().toISOString() },
-        { id: '2', rating: 1, comment: 'Comida fría', customerName: 'Carlos', status: 'resolved', createdAt: new Date().toISOString() },
-      ]);
-      setSocialAccounts([
-        { id: '1', username: '@mi_huarique', platform: 'instagram' },
-        { id: '2', username: '@huarique_sede2', platform: 'instagram' },
-      ]);
+      // Sin datos inventados: el dueño no debe confundir cifras demo con las suyas.
+      toast.error('No se pudieron cargar tus métricas de reputación. Intenta de nuevo.');
     }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
 
@@ -475,7 +462,7 @@ export default function ReputacionPage() {
             </div>
 
             <p className="text-[10px] font-bold text-text-muted leading-relaxed italic">
-              * El filtrado inteligente está activado por defecto. Las valoraciones de 1 a 3 estrellas no verán el enlace de Google Maps y se les invitará a dejar una sugerencia privada.
+              * Todos los clientes ven el enlace a Google Maps (Google prohíbe filtrar reseñas por calificación). Quienes califican de 1 a 3 estrellas además pueden dejar un mensaje privado al equipo.
             </p>
 
             {/* Botón Google - sincronizar reseñas */}

@@ -160,7 +160,8 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     const text = await response.text().catch(() => '');
     let error: any = {};
     try { error = text ? JSON.parse(text) : {}; } catch { /* empty body */ }
-    throw new Error(error.message || `Error ${response.status}`);
+    // `code` lets screens react to specific backend errors (e.g. Google token_expired).
+    throw Object.assign(new Error(error.message || `Error ${response.status}`), { code: error.code });
   }
 
   const text = await response.text();
@@ -330,6 +331,16 @@ export const businessApi = {
       body: JSON.stringify({ locationName }),
     }),
   getAllGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/all-google-reviews`),
+  replyGoogleReview: (id: string, reviewName: string, comment: string) =>
+    fetchWithAuth(`/business/places/${id}/google-reviews/reply`, {
+      method: 'PUT',
+      body: JSON.stringify({ reviewName, comment }),
+    }),
+  suggestGoogleReply: (id: string, review: { comment?: string; stars: number; reviewerName?: string }) =>
+    fetchWithAuth(`/business/places/${id}/google-reviews/suggest-reply`, {
+      method: 'POST',
+      body: JSON.stringify(review),
+    }),
 
   // Devices Management
   getDevices: (placeId: string) =>

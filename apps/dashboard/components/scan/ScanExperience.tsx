@@ -67,8 +67,9 @@ export default function ScanExperience({
 
   // Ruta de la experiencia — se recalcula según la calificación y si hay programa de fidelización
   const stepsFlow = useMemo<Step[]>(() => {
-    const flow: Step[] = ['rating', 'detail'];
-    if (rating >= 4) flow.push('google');
+    // Google prohíbe el "review gating": el enlace público se ofrece a todos,
+    // sin importar la calificación. La nota privada es un canal adicional.
+    const flow: Step[] = ['rating', 'detail', 'google'];
     if (loyaltyProgram?.isActive) flow.push('loyalty');
     flow.push('result');
     return flow;
@@ -82,14 +83,12 @@ export default function ScanExperience({
   };
 
   const goAfterDetail = () => {
-    if (rating >= 4) setStep('google');
-    else if (loyaltyProgram?.isActive) setStep('loyalty');
-    else setStep('result');
+    setStep('google');
   };
 
   const handleSubmitDetail = async () => {
     // Copiar ANTES del await — el gesto del usuario se pierde si esperamos primero
-    if (rating >= 4 && feedback && navigator.clipboard) {
+    if (feedback && navigator.clipboard) {
       navigator.clipboard.writeText(feedback).catch(() => {});
     }
     setIsSending(true);
@@ -110,15 +109,13 @@ export default function ScanExperience({
     }
     setIsSending(false);
 
-    if (rating >= 4) {
-      const gPlaceId = profile?.googlePlaceId;
-      const validPlaceId = gPlaceId && gPlaceId.startsWith('ChIJ') && gPlaceId.length > 20;
-      setGoogleLink(
-        validPlaceId
-          ? `https://search.google.com/local/writereview?placeid=${gPlaceId}`
-          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile?.name || '')}`
-      );
-    }
+    const gPlaceId = profile?.googlePlaceId;
+    const validPlaceId = gPlaceId && gPlaceId.startsWith('ChIJ') && gPlaceId.length > 20;
+    setGoogleLink(
+      validPlaceId
+        ? `https://search.google.com/local/writereview?placeid=${gPlaceId}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile?.name || '')}`
+    );
     goAfterDetail();
   };
 
@@ -217,7 +214,7 @@ export default function ScanExperience({
           ) : (
             <>
               <h2 className="text-2xl font-black text-text font-warike text-balance">Gracias por tu honestidad</h2>
-              <p className="text-text-muted font-bold text-sm text-balance">Esto queda solo con el equipo. Queremos compensarte.</p>
+              <p className="text-text-muted font-bold text-sm text-balance">Este mensaje llega directo al equipo. Queremos compensarte.</p>
             </>
           )}
 
@@ -256,7 +253,7 @@ export default function ScanExperience({
             disabled={isSending}
             className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 disabled:opacity-50"
           >
-            {isSending ? 'Enviando...' : rating >= 4 ? 'Continuar →' : 'Enviar mi opinión privada'}
+            {isSending ? 'Enviando...' : rating >= 4 ? 'Continuar →' : 'Enviar al equipo →'}
           </button>
         </div>
       )}
@@ -265,8 +262,12 @@ export default function ScanExperience({
         <div className="bg-white p-10 rounded-[3.5rem] shadow-2xl border border-border text-center space-y-8 animate-in fade-in zoom-in duration-500">
           <div className="text-5xl">⭐</div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-text font-warike text-balance">Ayúdanos a llegar a más personas</h2>
-            <p className="text-text-muted font-bold text-sm text-balance">Ya copiamos tu texto — solo pégalo en Google Maps.</p>
+            <h2 className="text-2xl font-black text-text font-warike text-balance">
+              {rating >= 4 ? 'Ayúdanos a llegar a más personas' : '¿Quieres dejar también una reseña pública?'}
+            </h2>
+            <p className="text-text-muted font-bold text-sm text-balance">
+              {feedback ? 'Ya copiamos tu texto — solo pégalo en Google Maps.' : 'Tu opinión en Google ayuda a otros comensales.'}
+            </p>
           </div>
 
           {feedback && (
