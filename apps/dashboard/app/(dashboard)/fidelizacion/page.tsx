@@ -31,6 +31,8 @@ export default function FidelizacionPage() {
   const [campaignHeader, setCampaignHeader] = useState('');
   const [campaignBody, setCampaignBody] = useState('');
   const [isSendingCampaign, setIsSendingCampaign] = useState(false);
+  // { walletAudience, whatsappConfigured } — null mientras carga o si falla
+  const [notifStatus, setNotifStatus] = useState<{ walletAudience: number; whatsappConfigured: boolean } | null>(null);
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
@@ -42,7 +44,9 @@ export default function FidelizacionPage() {
         return null;
       }),
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards`).catch(() => []),
-    ]).then(([prog, rwds]) => {
+      fetchWithAuth(`/business/places/${activePlaceId}/loyalty/notifications-status`).catch(() => null),
+    ]).then(([prog, rwds, status]) => {
+      setNotifStatus(status);
       if (prog) {
         setProgram(prog);
         setType(prog.type || 'stamps');
@@ -383,8 +387,15 @@ export default function FidelizacionPage() {
               Notificar a mis clientes
             </h2>
             <p className="text-xs font-bold text-text-muted leading-relaxed">
-              Manda un aviso a la tarjeta de todos los que ya la guardaron en su Wallet (ej. "Hoy 2x1"). Solo llega a quien tenga Google Wallet activo.
+              Manda un aviso a la tarjeta de fidelización de tus clientes (ej. "Hoy 2x1"). Solo llega a quienes guardaron su tarjeta en <b>Google Wallet</b>; les aparece como notificación en el celular. Máximo 3 avisos por día.
             </p>
+            {notifStatus && (
+              <p className={`text-xs font-black rounded-xl px-4 py-2 ${notifStatus.walletAudience > 0 ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
+                {notifStatus.walletAudience > 0
+                  ? `📲 Llegará a ${notifStatus.walletAudience} cliente${notifStatus.walletAudience === 1 ? '' : 's'} con Google Wallet`
+                  : '📲 Aún ningún cliente guardó su tarjeta en Google Wallet. Invítalos desde la página de su tarjeta.'}
+              </p>
+            )}
             <input
               value={campaignHeader}
               onChange={(e) => setCampaignHeader(e.target.value)}
@@ -402,7 +413,7 @@ export default function FidelizacionPage() {
             />
             <button
               onClick={handleSendCampaign}
-              disabled={isSendingCampaign || !campaignHeader || !campaignBody}
+              disabled={isSendingCampaign || !campaignHeader || !campaignBody || notifStatus?.walletAudience === 0}
               className="w-full bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
             >
               {isSendingCampaign ? 'Enviando...' : 'Enviar notificación'}
@@ -416,8 +427,14 @@ export default function FidelizacionPage() {
               Traer de vuelta a quien no vuelve
             </h2>
             <p className="text-xs font-bold text-text-muted leading-relaxed">
-              Si un cliente no hace check-in en 30 días, le mandamos este mensaje por WhatsApp solos, una sola vez por cliente.
+              Si un cliente con tarjeta no vuelve en 30 días, le enviamos este mensaje por WhatsApp automáticamente a las 10:00 a. m. Si sigue sin volver, se lo reenviamos cada 30 días.
             </p>
+            {notifStatus && !notifStatus.whatsappConfigured && (
+              <p className="text-xs font-black text-amber-700 bg-amber-50 rounded-xl px-4 py-2">
+                ⚠️ Tu local no tiene un número de WhatsApp Business conectado, así que estos mensajes no se enviarán.{' '}
+                <a href="/whatsapp" className="underline">Conectar WhatsApp →</a>
+              </p>
+            )}
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
