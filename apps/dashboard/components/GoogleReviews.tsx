@@ -6,6 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { businessApi } from '../lib/api-client';
 import { toast } from 'sonner';
 import { copyText } from '../lib/clipboard';
+import WuarikesFeedbackList from './WuarikesFeedback';
 
 type Step = 'loading' | 'not_connected' | 'pick_location' | 'connected' | 'error';
 type Filter = 'all' | 'unanswered' | 'negative';
@@ -27,6 +28,9 @@ const ERROR_TEXT: Record<string, string> = {
 };
 // Errores que se resuelven volviendo a conectar la cuenta.
 const RECONNECT_CODES = new Set(['token_expired', 'not_connected', 'permission_denied']);
+// Google no está disponible para este local (sin aprobación de la API, sin permiso o sin
+// conexión): en vez de un error se muestran solo las opiniones de Wuarikes.
+const GOOGLE_UNAVAILABLE_CODES = new Set(['quota', 'permission_denied', 'not_connected', 'token_expired']);
 
 function numberToStarRating(n: number) {
   return ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][Math.min(Math.max(Math.round(n), 1), 5) - 1];
@@ -193,6 +197,11 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
     <div className="text-center py-10 font-bold text-gray-400">Cargando reseñas de Google...</div>
   );
 
+  // ── GOOGLE NO DISPONIBLE → SOLO OPINIONES DE WUARIKES ────────────────────
+  if (step === 'error' && GOOGLE_UNAVAILABLE_CODES.has(error?.code || '')) return (
+    <WuarikesFeedbackList placeId={activePlaceId!} />
+  );
+
   // ── ERROR ────────────────────────────────────────────────────────────────
   if (step === 'error') return (
     <div className="space-y-8">
@@ -221,19 +230,16 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
     </div>
   );
 
-  // ── NOT CONNECTED ────────────────────────────────────────────────────────
+  // ── SIN RESEÑAS DE GOOGLE (sin Place ID) → OPINIONES DE WUARIKES ──────────
   if (step === 'not_connected' && !GBP_API_ENABLED) return (
-    <div className="space-y-8">
-      {header(<p className="text-[var(--text-muted)] font-bold text-sm mt-1">Mira y responde tus reseñas de Google con ayuda de la IA</p>)}
-      <div className="bg-blue-50 border border-blue-100 rounded-[2rem] p-8 space-y-3">
-        <p className="font-black text-blue-800 text-sm">Configura tu Google Place ID</p>
-        <ol className="text-blue-700 font-bold text-xs leading-loose list-decimal pl-4">
-          <li>Arriba, en <b>Google Place ID</b>, pulsa <b>Buscar</b> y elige tu local</li>
-          <li>Guarda y pulsa <b>Sincronizar reseñas</b></li>
-          <li>Tus reseñas aparecerán aquí para responderlas</li>
-        </ol>
-      </div>
-    </div>
+    <WuarikesFeedbackList
+      placeId={activePlaceId!}
+      notice={
+        <p className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3">
+          ¿Quieres ver también tus reseñas de Google? Arriba, en <b>Google Place ID</b>, pulsa <b>Buscar</b>, guarda y luego <b>Sincronizar</b>.
+        </p>
+      }
+    />
   );
 
   // ── NOT CONNECTED ────────────────────────────────────────────────────────

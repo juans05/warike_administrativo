@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { SkeletonPage } from '../../../components/SkeletonLoader';
+import { FeedbackReply } from '../../../components/WuarikesFeedback';
+import { toast } from 'sonner';
 
 export default function FeedbackPage() {
   const { activePlaceId } = useRestaurant();
@@ -33,19 +35,14 @@ export default function FeedbackPage() {
         setReviews([]);
       }
 
-      // Complaints with fallback demo data
+      // Complaints
       if (complaintsRes.status === 'fulfilled') {
         setComplaints(complaintsRes.value?.data || []);
         setComplaintsMeta(complaintsRes.value?.meta || null);
       } else {
         console.error('Error fetching complaints:', complaintsRes.reason);
-        setComplaints([
-          { id: '1', rating: 2, comment: 'Esperamos más de 40 minutos para que nos atiendan. La comida estaba fría.', customerName: 'María García', customerContact: '+51 987654321', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-          { id: '2', rating: 1, comment: 'Encontré un cabello en mi plato. Muy decepcionante.', customerName: 'Carlos López', customerContact: 'carlos@email.com', status: 'pending', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
-          { id: '3', rating: 3, comment: 'La comida estaba bien pero el local estaba sucio.', customerName: null, customerContact: null, status: 'resolved', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
-          { id: '4', rating: 2, comment: 'Me cobraron de más y el mozo fue grosero cuando le reclamé.', customerName: 'Ana Torres', customerContact: '+51 912345678', status: 'contacted', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() },
-        ]);
-        setComplaintsMeta({ total: 4 });
+        setComplaints([]);
+        toast.error('No se pudieron cargar las quejas. Recarga la página.');
       }
     }).finally(() => setIsLoading(false));
   }, [activePlaceId]);
@@ -65,11 +62,13 @@ export default function FeedbackPage() {
     try {
       await businessApi.markComplaintResolved(activePlaceId, complaintId);
       setComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: 'resolved', resolvedAt: new Date().toISOString() } : c));
-    } catch (err) {
-      // Optimistic update even if backend fails
-      setComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: 'resolved' } : c));
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo marcar como resuelta');
     }
   };
+
+  const onReviewSaved = (updated: any) => setReviews(prev => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
+  const onComplaintSaved = (updated: any) => setComplaints(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
 
   const pendingCount = complaints.filter(c => c.status === 'pending').length;
   const resolvedCount = complaints.filter(c => c.status !== 'pending').length;
@@ -150,8 +149,9 @@ export default function FeedbackPage() {
                   </span>
                 </div>
                 {review.comment && (
-                  <p className="text-sm text-gray-700 leading-relaxed italic">"{review.comment}"</p>
+                  <p className="text-sm text-gray-700 leading-relaxed italic mb-4">"{review.comment}"</p>
                 )}
+                {activePlaceId && <FeedbackReply placeId={activePlaceId} feedback={review} onSaved={onReviewSaved} />}
               </div>
             ))
           )}
@@ -241,6 +241,13 @@ export default function FeedbackPage() {
                   {complaint.comment && (
                     <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-150">
                       <p className="text-sm text-gray-700 leading-relaxed">"{complaint.comment}"</p>
+                    </div>
+                  )}
+
+                  {/* Respuesta al cliente (IA o manual) */}
+                  {activePlaceId && (
+                    <div className="mb-4">
+                      <FeedbackReply placeId={activePlaceId} feedback={complaint} onSaved={onComplaintSaved} />
                     </div>
                   )}
 

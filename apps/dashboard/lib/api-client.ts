@@ -309,6 +309,20 @@ export const businessApi = {
   getReviews: (id: string, page = 1) =>
     fetchWithAuth(`/business/places/${id}/complaints?page=${page}&type=review`),
 
+  // Todas las opiniones del escaneo (reseñas + quejas), más recientes primero
+  getFeedback: (id: string, page = 1) =>
+    fetchWithAuth(`/business/places/${id}/complaints?page=${page}`),
+
+  suggestFeedbackReply: (id: string, feedbackId: string) =>
+    fetchWithAuth(`/business/places/${id}/feedback/${feedbackId}/suggest-reply`, { method: 'POST' }),
+
+  // Guarda la respuesta; la envía por correo o devuelve whatsappUrl para que la mande el dueño
+  replyFeedback: (id: string, feedbackId: string, reply: string) =>
+    fetchWithAuth(`/business/places/${id}/feedback/${feedbackId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply }),
+    }),
+
   markComplaintResolved: (id: string, complaintId: string) =>
     fetchWithAuth(`/business/places/${id}/complaints/${complaintId}/resolve`, {
       method: 'PATCH',
