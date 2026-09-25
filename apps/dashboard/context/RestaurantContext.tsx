@@ -7,6 +7,7 @@ interface Place {
   id: string;
   name: string;
   coverImageUrl?: string;
+  status?: 'active' | 'inactive' | 'pending';
 }
 
 interface RestaurantContextValue {

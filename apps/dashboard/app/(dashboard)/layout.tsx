@@ -214,6 +214,17 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
       </aside>
 
       <main className="flex-1 p-6 md:p-10 lg:p-16">
+        {user?.role === 'business' && places.find((p) => p.id === activePlaceId)?.status === 'pending' && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 flex items-start gap-3">
+            <span className="text-2xl">⏳</span>
+            <div>
+              <p className="font-black text-amber-800 text-sm">Tu local está en revisión</p>
+              <p className="text-amber-700 text-xs font-bold leading-relaxed">
+                Ya puedes configurar tu panel, pero tu local aparecerá en el mapa y en las búsquedas de Wuarikes en cuanto nuestro equipo lo apruebe.
+              </p>
+            </div>
+          </div>
+        )}
         {noPlaces ? <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} /> : children}
       </main>
 
