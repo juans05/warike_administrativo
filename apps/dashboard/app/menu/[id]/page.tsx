@@ -14,6 +14,7 @@ type Dish = {
   description: string | null;
   price: string | null;
   imageUrl: string | null;
+  images?: string[] | null;
   videoUrl: string | null;
   isVegetarian: boolean;
   displayOrder: number;
@@ -53,6 +54,35 @@ export default function PublicMenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [videoOpen, setVideoOpen] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chat, setChat] = useState<{ role: 'user' | 'assistant'; content: string; dishIds?: string[] }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+
+  const askAssistant = async (text: string) => {
+    if (!id || !text.trim() || chatBusy) return;
+    const history = chat.map(({ role, content }) => ({ role, content }));
+    setChat(prev => [...prev, { role: 'user', content: text }]);
+    setChatInput('');
+    setChatBusy(true);
+    try {
+      const res: { reply: string; dishIds: string[] } = await publicApi.recommendDish(id, text, history);
+      setChat(prev => [...prev, { role: 'assistant', content: res.reply, dishIds: res.dishIds }]);
+    } catch {
+      setChat(prev => [...prev, { role: 'assistant', content: 'Ahora mismo no puedo ayudarte, intenta de nuevo en un momento.' }]);
+    } finally {
+      setChatBusy(false);
+    }
+  };
+
+  // Al tocar una sugerencia, salta a la categoría del plato.
+  const goToDish = (dishId: string) => {
+    const cat = categories.find(c => c.dishes.some(d => d.id === dishId));
+    if (!cat) return;
+    setActiveCategory(cat.id);
+    setChatOpen(false);
+    setTimeout(() => document.getElementById(`dish-${dishId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -178,6 +208,7 @@ export default function PublicMenuPage() {
             {activeDishes.map(dish => (
               <div
                 key={dish.id}
+                id={`dish-${dish.id}`}
                 className="rounded-3xl overflow-hidden bg-[#FFFDF8] border shadow-sm"
                 style={{ borderColor: activeAccent.wash }}
               >
@@ -204,9 +235,18 @@ export default function PublicMenuPage() {
                   )}
                 </div>
 
-                {dish.imageUrl && (
+                {(dish.images?.length || dish.imageUrl) && (
                   <div className="relative">
-                    <img src={dish.imageUrl} alt={dish.name} className="w-full h-56 object-cover" />
+                    <div className="flex snap-x snap-mandatory overflow-x-auto scrollbar-none">
+                      {(dish.images?.length ? dish.images : [dish.imageUrl as string]).map((src, i) => (
+                        <img key={src + i} src={src} alt={`${dish.name} ${i + 1}`} className="w-full h-56 object-cover shrink-0 snap-center" />
+                      ))}
+                    </div>
+                    {(dish.images?.length ?? 0) > 1 && (
+                      <span className="absolute bottom-3 left-3 text-[11px] font-bold text-white bg-[#1E1610]/70 rounded-full px-2 py-0.5">
+                        1–{dish.images!.length} · desliza ›
+                      </span>
+                    )}
                     {dish.videoUrl && (
                       <button
                         onClick={() => setVideoOpen(dish.videoUrl)}
@@ -218,7 +258,7 @@ export default function PublicMenuPage() {
                     )}
                   </div>
                 )}
-                {!dish.imageUrl && dish.videoUrl && (
+                {!dish.images?.length && !dish.imageUrl && dish.videoUrl && (
                   <div className="px-5 pb-1">
                     <button
                       onClick={() => setVideoOpen(dish.videoUrl)}
@@ -254,6 +294,57 @@ export default function PublicMenuPage() {
           Carta digital con <span className="font-black text-[#A8431F]">Wuarike</span>
         </p>
       </div>
+
+      {/* Asistente IA */}
+      {hasMenu && !chatOpen && (
+        <button
+          onClick={() => setChatOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-[#A8431F] text-white pl-4 pr-5 py-3 text-sm font-bold shadow-xl"
+        >
+          ✨ ¿Qué me recomiendas?
+        </button>
+      )}
+      {chatOpen && (
+        <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-2xl rounded-t-3xl bg-[#FFFDF8] border border-[#E8DCC4] shadow-2xl flex flex-col max-h-[75vh]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#E8DCC4]">
+            <p className="font-bold text-[#2B2118]" style={{ fontFamily: 'var(--font-fraunces)' }}>✨ Te ayudo a elegir</p>
+            <button onClick={() => setChatOpen(false)} aria-label="Cerrar" className="text-2xl leading-none text-[#8A7A63]">×</button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            {chat.length === 0 && (
+              <div className="flex flex-wrap gap-2">
+                {['Algo vegetariano', 'Algo para compartir', 'Lo más pedido', 'Algo ligero y económico'].map(q => (
+                  <button key={q} onClick={() => askAssistant(q)} className="rounded-full border border-[#EFC9AE] bg-[#FBEEE3] px-3 py-1.5 text-xs font-bold text-[#A8431F]">{q}</button>
+                ))}
+              </div>
+            )}
+            {chat.map((m, i) => (
+              <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
+                <p className={`inline-block max-w-[85%] rounded-2xl px-4 py-2 text-sm text-left ${m.role === 'user' ? 'bg-[#A8431F] text-white' : 'bg-[#F5EEE1] text-[#2B2118]'}`}>{m.content}</p>
+                {m.dishIds?.map(did => {
+                  const dish = categories.flatMap(c => c.dishes).find(d => d.id === did);
+                  return dish && (
+                    <button key={did} onClick={() => goToDish(did)} className="mt-2 flex w-full items-center gap-3 rounded-xl border border-[#E8DCC4] bg-white p-2 text-left">
+                      {(dish.images?.[0] || dish.imageUrl) && <img src={dish.images?.[0] || dish.imageUrl!} alt="" className="h-12 w-12 rounded-lg object-cover" />}
+                      <span className="flex-1 text-sm font-bold text-[#2B2118]">{dish.name}</span>
+                      {dish.price && <span className="text-sm font-bold text-[#A8431F]">S/ {Number(dish.price).toFixed(0)}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            {chatBusy && <p className="text-xs text-[#8A7A63]">Pensando…</p>}
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); askAssistant(chatInput); }} className="flex gap-2 border-t border-[#E8DCC4] p-3">
+            <input
+              value={chatInput} onChange={(e) => setChatInput(e.target.value)} maxLength={300}
+              placeholder="Cuéntame qué se te antoja…"
+              className="flex-1 rounded-full border border-[#E8DCC4] bg-white px-4 py-2 text-sm outline-none"
+            />
+            <button disabled={chatBusy || !chatInput.trim()} className="rounded-full bg-[#A8431F] px-4 text-sm font-bold text-white disabled:opacity-50">Enviar</button>
+          </form>
+        </div>
+      )}
 
       {/* Video lightbox */}
       {videoOpen && (

@@ -15,6 +15,7 @@ type WaNumber = {
   id: string;
   phoneNumber: string;
   phoneNumberId: string;
+  provider?: 'meta' | 'plazbot';
   isActive: boolean;
   verificationStatus: string;
   createdAt: string;
@@ -27,6 +28,9 @@ export default function AdminWhatsappConfigPage() {
 
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [metaWebhookUrl, setMetaWebhookUrl] = useState('');
+  const [test, setTest] = useState({ to: '', text: 'Hola desde Wuarikes 👋', whatsappNumberId: '' });
+  const [testSending, setTestSending] = useState(false);
   const [waForm, setWaForm] = useState({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
   const [waRegistering, setWaRegistering] = useState(false);
   const [waError, setWaError] = useState('');
@@ -41,6 +45,7 @@ export default function AdminWhatsappConfigPage() {
       const res = await adminApi.getWhatsappNumbers(placeId);
       setWaNumbers(res.data || []);
       setWebhookUrl(res.webhookUrl || '');
+      setMetaWebhookUrl(res.metaWebhookUrl || '');
     } catch {
       setWaNumbers([]);
     }
@@ -79,6 +84,40 @@ export default function AdminWhatsappConfigPage() {
     } catch {
       toast.error('Error al eliminar el número');
     }
+  };
+
+  const handleSetProvider = async (num: WaNumber, provider: 'meta' | 'plazbot') => {
+    const label = provider === 'meta' ? 'la API de WhatsApp de Meta' : 'PlazBot';
+    if (!confirm(`¿Que ${num.phoneNumber} reciba y envíe mensajes por ${label}?`)) return;
+    try {
+      await adminApi.setWhatsappProvider(num.id, provider);
+      setWaNumbers(prev => prev.map(n => (n.id === num.id ? { ...n, provider } : n)));
+      toast.success(`Ahora usa ${label}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo cambiar el proveedor');
+    }
+  };
+
+  const handleSendTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestSending(true);
+    try {
+      const res = await adminApi.sendWhatsappTestMessage({
+        to: test.to,
+        text: test.text,
+        whatsappNumberId: test.whatsappNumberId || undefined,
+      });
+      toast.success(`Mensaje enviado a ${res.to} (id ${res.messageId ?? '—'})`);
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo enviar');
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const copyMetaWebhookUrl = () => {
+    navigator.clipboard.writeText(metaWebhookUrl);
+    toast.success('URL copiada');
   };
 
   const copyWebhookUrl = () => {
@@ -156,6 +195,22 @@ export default function AdminWhatsappConfigPage() {
                 </div>
               )}
 
+              {metaWebhookUrl && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+                  <p className="text-xs font-black text-blue-800 uppercase tracking-widest">API de WhatsApp de Meta</p>
+                  <p className="text-xs text-blue-700">
+                    Para los números en "API de Meta": en el panel de Meta (WhatsApp → Configuración → Webhook) pega esta URL y el token de verificación
+                    (<code className="font-mono">WHATSAPP_WEBHOOK_TOKEN</code>), y suscríbete al campo <code className="font-mono">messages</code>.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs font-mono bg-white border border-blue-200 rounded-lg px-3 py-2 truncate">{metaWebhookUrl}</code>
+                    <button onClick={copyMetaWebhookUrl} type="button" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-black hover:opacity-90 shrink-0">
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {waNumbers.length > 0 && (
                 <div className="space-y-2">
                   {waNumbers.map(num => (
@@ -168,13 +223,26 @@ export default function AdminWhatsappConfigPage() {
                         }`}>
                           {num.isActive ? '🟢 Activo' : '⏳ Pendiente'}
                         </span>
+                        <span className={`inline-block mt-1 ml-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                          num.provider === 'meta' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {num.provider === 'meta' ? 'API de Meta' : 'PlazBot'}
+                        </span>
                       </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <button
+                          onClick={() => handleSetProvider(num, num.provider === 'meta' ? 'plazbot' : 'meta')}
+                          className="text-xs text-blue-600 font-bold hover:text-blue-800 transition-colors"
+                        >
+                          {num.provider === 'meta' ? 'Volver a PlazBot' : 'Pasar a API de Meta'}
+                        </button>
                       <button
                         onClick={() => handleDeleteWaNumber(num.id)}
                         className="text-xs text-red-500 font-bold hover:text-red-700 transition-colors"
                       >
                         Eliminar
                       </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -246,6 +314,42 @@ export default function AdminWhatsappConfigPage() {
           )}
         </section>
       </div>
+
+      {/* Prueba de envío por la API de Meta */}
+      <section className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4 max-w-3xl">
+        <div>
+          <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">🧪 Probar la API de WhatsApp (Meta)</h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Envía un mensaje real a un WhatsApp por la API de Meta. Úsalo para comprobar la conexión y para grabar el video que Meta pide en la revisión de la app.
+          </p>
+        </div>
+        <form onSubmit={handleSendTest} className="grid gap-3 sm:grid-cols-2">
+          <select
+            value={test.whatsappNumberId}
+            onChange={e => setTest(p => ({ ...p, whatsappNumberId: e.target.value }))}
+            className="px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          >
+            <option value="">Número de prueba del servidor (WHATSAPP_PHONE_NUMBER_ID)</option>
+            {waNumbers.map(n => <option key={n.id} value={n.id}>{n.phoneNumber}</option>)}
+          </select>
+          <input
+            type="tel" required placeholder="Teléfono destino (51947196047)" value={test.to}
+            onChange={e => setTest(p => ({ ...p, to: e.target.value }))}
+            className="px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <input
+            type="text" required placeholder="Mensaje" value={test.text}
+            onChange={e => setTest(p => ({ ...p, text: e.target.value }))}
+            className="sm:col-span-2 px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <button
+            type="submit" disabled={testSending}
+            className="sm:col-span-2 bg-[#F26122] text-white py-3 rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-50"
+          >
+            {testSending ? 'Enviando…' : 'Enviar mensaje de prueba'}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import MenuBuilder from '../../../components/MenuBuilder';
 
 type CategoryType = 'food' | 'drink' | 'dessert' | 'other';
 
@@ -13,6 +14,7 @@ interface MenuItem {
   description?: string;
   price: number;
   imageUrl?: string;
+  images?: string[];
   videoUrl?: string;
   isVegetarian?: boolean;
   categoryId: string;
@@ -46,7 +48,8 @@ export default function CartaPage() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryType, setCategoryType] = useState<CategoryType>('food');
   const [isSaving, setIsSaving] = useState(false);
-  const [modalData, setModalData] = useState({ name: '', description: '', price: '', imageUrl: '', videoUrl: '', isVegetarian: false, categoryId: '' });
+  const [modalData, setModalData] = useState({ name: '', description: '', price: '', images: [] as string[], videoUrl: '', isVegetarian: false, categoryId: '' });
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [menuType, setMenuType] = useState<'digital' | 'photo'>('digital');
@@ -102,10 +105,10 @@ export default function CartaPage() {
   const openModal = (item: MenuItem | null = null, catId: string = '') => {
     if (item) {
       setEditingItem(item);
-      setModalData({ name: item.name, description: item.description || '', price: String(item.price), imageUrl: item.imageUrl || '', videoUrl: item.videoUrl || '', isVegetarian: item.isVegetarian || false, categoryId: item.categoryId });
+      setModalData({ name: item.name, description: item.description || '', price: String(item.price), images: item.images?.length ? item.images : (item.imageUrl ? [item.imageUrl] : []), videoUrl: item.videoUrl || '', isVegetarian: item.isVegetarian || false, categoryId: item.categoryId });
     } else {
       setEditingItem(null);
-      setModalData({ name: '', description: '', price: '', imageUrl: '', videoUrl: '', isVegetarian: false, categoryId: catId || (categories[0]?.id || '') });
+      setModalData({ name: '', description: '', price: '', images: [], videoUrl: '', isVegetarian: false, categoryId: catId || (categories[0]?.id || '') });
     }
     setShowModal(true);
   };
@@ -133,6 +136,32 @@ export default function CartaPage() {
       toast.error('Error al guardar la categoría');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (!files.length) return;
+    setUploadingImages(true);
+    try {
+      const token = localStorage.getItem('token');
+      const urls = await Promise.all(files.map(async (file) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/upload/image`, {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: fd,
+        });
+        if (!res.ok) throw new Error('Error al subir la foto');
+        return (await res.json()).url as string;
+      }));
+      setModalData(prev => ({ ...prev, images: [...prev.images, ...urls] }));
+    } catch {
+      toast.error('No se pudieron subir las fotos');
+    } finally {
+      setUploadingImages(false);
     }
   };
 
@@ -214,7 +243,7 @@ export default function CartaPage() {
     if (!activePlaceId || !modalData.name.trim()) return;
     setIsSaving(true);
     try {
-      const payload = { name: modalData.name, description: modalData.description, price: parseFloat(modalData.price) || 0, imageUrl: modalData.imageUrl, videoUrl: modalData.videoUrl, isVegetarian: modalData.isVegetarian, categoryId: modalData.categoryId };
+      const payload = { name: modalData.name, description: modalData.description, price: parseFloat(modalData.price) || 0, images: modalData.images, videoUrl: modalData.videoUrl, isVegetarian: modalData.isVegetarian, categoryId: modalData.categoryId };
       if (editingItem) {
         await businessApi.updateMenuItem(activePlaceId, editingItem.id, payload);
       } else {
@@ -433,22 +462,10 @@ export default function CartaPage() {
       {/* ── Digital Menu ── */}
       {menuType === 'digital' ? (
         categories.length === 0 ? (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-dashed border-gray-200 py-24 px-8 text-center">
-            <div className="w-20 h-20 bg-orange-50 rounded-2xl flex items-center justify-center mb-6">
-              <svg className="w-10 h-10 text-[#F26122]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Empieza tu carta digital</h3>
-            <p className="text-gray-400 text-sm mb-8 max-w-xs">Crea categorías como "Entradas", "Platos de fondo" y añade tus platos con fotos y precios.</p>
-            <button
-              onClick={() => openCategoryModal()}
-              className="px-8 py-3 bg-[#F26122] text-white rounded-xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transition-all"
-            >
-              Crear primera categoría
-            </button>
-          </div>
+          /* Empty State: ¿cómo quieres armar tu carta? */
+          activePlaceId && (
+            <MenuBuilder placeId={activePlaceId} onSaved={loadMenu} onManual={() => openCategoryModal()} />
+          )
         ) : (
           <div className="space-y-6">
             {categories.map((category) => (
@@ -651,15 +668,26 @@ export default function CartaPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">URL de imagen</label>
-                <input
-                  type="text" placeholder="https://..." value={modalData.imageUrl}
-                  onChange={(e) => setModalData({ ...modalData, imageUrl: e.target.value })}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm font-medium outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
-                />
-                {modalData.imageUrl && (
-                  <img src={modalData.imageUrl} alt="preview" className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                )}
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">
+                  Fotos del plato <span className="text-gray-300 normal-case font-normal">(la primera es la portada)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {modalData.images.map((url, i) => (
+                    <div key={url + i} className="relative w-20 h-20">
+                      <img src={url} alt={`foto ${i + 1}`} className="w-full h-full object-cover rounded-xl border border-gray-100" />
+                      {i === 0 && <span className="absolute bottom-1 left-1 text-[9px] font-black bg-[#F26122] text-white px-1.5 rounded-full">Portada</span>}
+                      <button
+                        type="button" aria-label="Quitar foto"
+                        onClick={() => setModalData(prev => ({ ...prev, images: prev.images.filter((_, j) => j !== i) }))}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-xs leading-5 text-center"
+                      >×</button>
+                    </div>
+                  ))}
+                  <label className="w-20 h-20 flex items-center justify-center text-center border-2 border-dashed border-gray-200 rounded-xl text-[11px] font-bold text-gray-400 hover:border-orange-300 hover:text-[#F26122] cursor-pointer transition-colors">
+                    {uploadingImages ? 'Subiendo…' : '+ Fotos'}
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImagesUpload} disabled={uploadingImages} />
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 block">

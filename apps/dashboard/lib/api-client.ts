@@ -289,6 +289,18 @@ export const businessApi = {
       method: 'DELETE',
     }),
 
+  // Importar carta: 1) lee foto/PDF con IA (vista previa, no guarda) 2) guarda en bloque lo revisado.
+  parseMenuFile: (id: string, fileUrl: string) =>
+    fetchWithAuth(`/business/places/${id}/menu/import/ai`, {
+      method: 'POST',
+      body: JSON.stringify({ fileUrl }),
+    }),
+  importMenu: (id: string, categories: unknown[]) =>
+    fetchWithAuth(`/business/places/${id}/menu/import`, {
+      method: 'POST',
+      body: JSON.stringify({ categories }),
+    }),
+
   // Analytics & Feedback
   getAnalytics: (id: string, range: string = 'month') =>
     fetchWithAuth(`/business/places/${id}/analytics?range=${range}`),
@@ -395,6 +407,22 @@ export const businessApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  // Conexión directa con Facebook (Embedded Signup): config para abrir el flujo y cierre con el código de Meta.
+  getWhatsappConnectConfig: () =>
+    fetchWithAuth('/business/whatsapp/connect/config') as Promise<{ configured: boolean; appId: string; configId: string; graphVersion: string }>,
+  // Checkbox por local: activa/desactiva el canal de Facebook. Mientras esté apagado todo sigue por PlazBot.
+  getWhatsappChannel: (placeId: string) =>
+    fetchWithAuth(`/business/whatsapp/connect/channel?placeId=${placeId}`) as Promise<{ metaEnabled: boolean }>,
+  setWhatsappChannel: (placeId: string, metaEnabled: boolean) =>
+    fetchWithAuth('/business/whatsapp/connect/channel', {
+      method: 'PATCH',
+      body: JSON.stringify({ placeId, metaEnabled }),
+    }) as Promise<{ metaEnabled: boolean }>,
+  completeWhatsappConnect: (data: { placeId: string; code: string; wabaId: string; phoneNumberId: string }) =>
+    fetchWithAuth('/business/whatsapp/connect/complete', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }) as Promise<{ id: string; phoneNumber: string; verifiedName: string | null }>,
   deleteWhatsappNumber: (numberId: string) =>
     fetchWithAuth(`/business/whatsapp-numbers/${numberId}`, {
       method: 'DELETE',
@@ -543,6 +571,8 @@ export const publicApi = {
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
   getCategories: () => fetchPublic('/places/categories'),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
+  recommendDish: (id: string, message: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
+    fetchPublic(`/places/${id}/menu/recommend`, { method: 'POST', body: JSON.stringify({ message, history }) }),
   recordScan: (data: { placeId: string; deviceId?: string; source?: 'nfc' | 'qr' | 'direct' }) =>
     fetchPublic('/public/scan', { method: 'POST', body: JSON.stringify(data) }),
   getDevice: (deviceId: string) => fetchPublic(`/public/device/${deviceId}`),
@@ -681,6 +711,18 @@ export const adminApi = {
     fetchWithAuth(`/admin/whatsapp-numbers/${placeId}`),
   createWhatsappNumber: (data: WhatsappNumberPayload) =>
     fetchWithAuth('/admin/whatsapp-numbers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  // Qué proveedor entrega los mensajes del número: API de WhatsApp Cloud (Meta) o PlazBot (legado).
+  setWhatsappProvider: (numberId: string, provider: 'meta' | 'plazbot') =>
+    fetchWithAuth(`/admin/whatsapp-numbers/${numberId}/provider`, {
+      method: 'PATCH',
+      body: JSON.stringify({ provider }),
+    }),
+  // Mensaje de prueba por la API de Meta (también sirve para el video de revisión de la app).
+  sendWhatsappTestMessage: (data: { to: string; text: string; whatsappNumberId?: string }) =>
+    fetchWithAuth('/admin/whatsapp-numbers/test-message', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

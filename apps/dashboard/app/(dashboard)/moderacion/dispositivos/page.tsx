@@ -39,6 +39,7 @@ export default function DispositivosPage() {
   const [template, setTemplate] = useState<TemplateId>('plaque-google-colors');
   const [showGenerate, setShowGenerate] = useState(false);
   const [personalize, setPersonalize] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignTarget, setAssignTarget] = useState<any>(null); // el QrCode que se está (re)asignando
   const [historyTarget, setHistoryTarget] = useState<any>(null); // { qrCode, history }
 
@@ -81,6 +82,26 @@ export default function DispositivosPage() {
   const filteredQr = search
     ? qrCodes.filter((q) => q.code.toLowerCase().includes(search.toLowerCase()))
     : qrCodes;
+
+  // Lo que se descarga/copia/imprime: los marcados (entre los que se ven) o, si no hay ninguno, todos los filtrados.
+  const selectedVisible = filteredQr.filter((q) => selected.has(q.id));
+  const targets = selectedVisible.length > 0 ? selectedVisible : filteredQr;
+  const allVisibleSelected = filteredQr.length > 0 && selectedVisible.length === filteredQr.length;
+
+  const toggleOne = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      filteredQr.forEach((q) => (allVisibleSelected ? next.delete(q.id) : next.add(q.id)));
+      return next;
+    });
 
   const placeName = (placeId: string) => places.find((p) => p.id === placeId)?.name || placeId;
 
@@ -127,20 +148,20 @@ export default function DispositivosPage() {
   };
 
   const handleCopyAllUrls = async () => {
-    if (filteredQr.length === 0) return;
+    if (targets.length === 0) return;
     try {
-      await copyQrUrls(filteredQr);
-      toast.success(`${filteredQr.length} URLs copiadas`);
+      await copyQrUrls(targets);
+      toast.success(`${targets.length} URLs copiadas`);
     } catch (err: any) {
       toast.error('No se pudo copiar');
     }
   };
 
   const handleDownloadPdf = async () => {
-    if (filteredQr.length === 0) return;
-    const toastId = toast.loading(`Generando PDF de ${filteredQr.length} placas…`);
+    if (targets.length === 0) return;
+    const toastId = toast.loading(`Generando PDF de ${targets.length} placas…`);
     try {
-      const logoFailed = await downloadPlaquePdf(filteredQr, template, personalize);
+      const logoFailed = await downloadPlaquePdf(targets, template, personalize);
       toast.success('PDF descargado', { id: toastId });
       if (logoFailed.length > 0) {
         const names = logoFailed.length > 5 ? `${logoFailed.slice(0, 5).join(', ')} y ${logoFailed.length - 5} más` : logoFailed.join(', ');
@@ -152,9 +173,9 @@ export default function DispositivosPage() {
   };
 
   const handlePrintAll = async () => {
-    if (filteredQr.length === 0) return;
+    if (targets.length === 0) return;
     try {
-      await openPrintSheet(filteredQr, template);
+      await openPrintSheet(targets, template);
     } catch (err: any) {
       toast.error('No se pudo generar la hoja imprimible');
     }
@@ -243,7 +264,15 @@ export default function DispositivosPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="shrink-0">
               <h2 className="text-xl font-black text-[#1A1A1A]">Banco de QR</h2>
-              <p className="text-sm text-gray-500 mt-1">{filteredQr.length} códigos</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {filteredQr.length} códigos
+                {selectedVisible.length > 0 && (
+                  <>
+                    {' · '}<span className="font-bold text-[#F26122]">{selectedVisible.length} seleccionados</span>
+                    {' · '}<button onClick={() => setSelected(new Set())} className="underline hover:text-gray-700">Limpiar</button>
+                  </>
+                )}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 pr-2 text-xs font-bold text-gray-500 cursor-pointer">
@@ -255,26 +284,26 @@ export default function DispositivosPage() {
                 title="PDF para imprimir: 2 placas de 12×12 cm por hoja A4"
                 className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors bg-[#F26122] text-white hover:bg-orange-600"
               >
-                <FileDown size={16} /> Descargar PDF
+                <FileDown size={16} /> Descargar PDF{selectedVisible.length > 0 ? ` (${selectedVisible.length})` : ''}
               </button>
               <button
-                onClick={() => downloadNfcCsv(filteredQr)}
+                onClick={() => downloadNfcCsv(targets)}
                 title="CSV con la URL de cada código, para grabar los chips NFC"
                 className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
               >
-                <FileSpreadsheet size={16} /> CSV para NFC
+                <FileSpreadsheet size={16} /> CSV para NFC{selectedVisible.length > 0 ? ` (${selectedVisible.length})` : ''}
               </button>
               <button
                 onClick={handleCopyAllUrls}
                 className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
               >
-                <Copy size={16} /> Copiar URLs
+                <Copy size={16} /> Copiar URLs{selectedVisible.length > 0 ? ` (${selectedVisible.length})` : ''}
               </button>
               <button
                 onClick={handlePrintAll}
                 className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
               >
-                <Printer size={16} /> Imprimir
+                <Printer size={16} /> Imprimir{selectedVisible.length > 0 ? ` (${selectedVisible.length})` : ''}
               </button>
             </div>
           </div>
@@ -321,6 +350,10 @@ export default function DispositivosPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
+            <label className="flex items-center gap-3 bg-gray-50/60 px-4 py-2.5 text-xs font-bold text-gray-500 cursor-pointer sm:px-6">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-4 w-4 accent-[#F26122]" />
+              Seleccionar todos los que se ven ({filteredQr.length})
+            </label>
             {filteredQr.map((qr) => {
               const actions: QrAction[] = [
                 { label: 'Copiar URL', icon: Copy, color: 'blue', onClick: () => handleCopyUrl(qr) },
@@ -343,7 +376,14 @@ export default function DispositivosPage() {
               actions.push({ label: 'Historial', icon: History, color: 'gray', onClick: () => openHistory(qr) });
 
               return (
-                <div key={qr.id} className="flex items-start justify-between gap-3 p-4 sm:p-6">
+                <div key={qr.id} className={`flex items-start justify-between gap-3 p-4 sm:p-6 ${selected.has(qr.id) ? 'bg-orange-50/40' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(qr.id)}
+                    onChange={() => toggleOne(qr.id)}
+                    aria-label={`Seleccionar ${qr.code}`}
+                    className="mt-1 h-4 w-4 shrink-0 accent-[#F26122]"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold text-[#1A1A1A]">{qr.code}</span>

@@ -525,8 +525,8 @@ export default function SocialPage() {
                      onChange={(v) => setRules({...rules, isActive: v})}
                    />
                    <ToggleSetting
-                     title="Respuestas Automáticas (Mensajes Directos)"
-                     desc="Permite que el bot responda los DM del inbox. Por defecto apagado — el inbox es más personal que los comentarios."
+                     title="Agente inteligente (Mensajes Directos)"
+                     desc="Responde los DM de Instagram como un asistente del local: conoce tu carta digital y tu base de conocimiento (los mismos datos del bot de WhatsApp) y recuerda lo que ya se habló en la conversación. Por defecto apagado — el inbox es más personal que los comentarios."
                      checked={rules.dmBotEnabled}
                      onChange={(v) => setRules({...rules, dmBotEnabled: v})}
                    />
