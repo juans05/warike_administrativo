@@ -33,6 +33,9 @@ interface TemplateConfig {
   // Solo en las placas del PDF A4: zona donde va el logo/nombre del
   // restaurante (se cubre el "G + Califícanos en Google" del arte y se
   // reescribe el titular debajo) y rectángulos extra a tapar.
+  // Si existe, el correlativo va en blanco sobre el borde de color de la placa
+  // (en vez de en una franja blanca añadida debajo): x derecha, y centro.
+  codeOnBorder?: { x: number; y: number };
   plaqueHeader?: { x: number; y: number; w: number; h: number; cover: { x: number; y: number; w: number; h: number }[] };
 }
 
@@ -66,6 +69,7 @@ export const TEMPLATES: Record<TemplateId, TemplateConfig> = {
     src: '/qr-templates/plaque-google-colors.jpeg',
     size: 1254,
     qrBox: { x: 726, y: 549, size: 314 },
+    codeOnBorder: { x: 1060, y: 1215 },
     plaqueHeader: {
       x: 180, y: 105, w: 905, h: 307,
       // El círculo gris de la "G" baja un poco más que el resto del encabezado.
@@ -77,6 +81,7 @@ export const TEMPLATES: Record<TemplateId, TemplateConfig> = {
     src: '/qr-templates/plaque-orange.jpeg',
     size: 1254,
     qrBox: { x: 726, y: 549, size: 314 },
+    codeOnBorder: { x: 1060, y: 1215 },
     plaqueHeader: {
       x: 180, y: 105, w: 905, h: 307,
       // El círculo gris de la "G" baja un poco más que el resto del encabezado.
@@ -144,7 +149,7 @@ function loadTemplateImage(src: string): Promise<HTMLImageElement> {
 async function renderTemplate(qr: QrWithPlace, templateId: TemplateId, includeRestaurantLogo: boolean): Promise<string> {
   const template = TEMPLATES[templateId];
   const showLogo = includeRestaurantLogo && !!qr.currentPlaceShowLogo && !!qr.currentPlaceLogoUrl;
-  const captionHeight = Math.round(template.size * CAPTION_RATIO);
+  const captionHeight = template.codeOnBorder ? 0 : Math.round(template.size * CAPTION_RATIO);
   const canvas = document.createElement('canvas');
   canvas.width = template.size;
   canvas.height = template.size + captionHeight;
@@ -191,11 +196,19 @@ async function renderTemplate(qr: QrWithPlace, templateId: TemplateId, includeRe
     ctx.restore();
   }
 
-  const fontSize = Math.round(template.size * 0.0127);
-  ctx.textAlign = 'center';
-  ctx.font = `600 ${fontSize}px "Courier New", monospace`;
-  ctx.fillStyle = '#6B7280';
-  ctx.fillText(qr.code, template.size / 2, template.size + captionHeight / 2 + fontSize * 0.35);
+  if (template.codeOnBorder) {
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(template.size * 0.016)}px "Courier New", monospace`;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(qr.code, template.codeOnBorder.x, template.codeOnBorder.y);
+  } else {
+    const fontSize = Math.round(template.size * 0.0127);
+    ctx.textAlign = 'center';
+    ctx.font = `600 ${fontSize}px "Courier New", monospace`;
+    ctx.fillStyle = '#6B7280';
+    ctx.fillText(qr.code, template.size / 2, template.size + captionHeight / 2 + fontSize * 0.35);
+  }
 
   return canvas.toDataURL('image/png');
 }
@@ -309,7 +322,8 @@ export async function downloadPlaquePdf(
   personalize = false,
 ): Promise<string[]> {
   const [{ jsPDF }, bg] = await Promise.all([import('jspdf'), fileToDataUrl(TEMPLATES[templateId].src)]);
-  const { size, qrBox, plaqueHeader } = TEMPLATES[templateId];
+  const template = TEMPLATES[templateId];
+  const { size, qrBox, plaqueHeader } = template;
   const mm = PLAQUE_MM / size;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const x0 = (A4.w - PLAQUE_MM) / 2;
@@ -381,12 +395,18 @@ export async function downloadPlaquePdf(
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.1);
     doc.rect(x0, y0, PLAQUE_MM, PLAQUE_MM);
-    // Correlativo bien chico en la esquina interior inferior de la placa, para
-    // identificar cuál es cuál una vez impresa y recortada.
-    doc.setFont('courier', 'normal');
+    // Correlativo bien chico sobre el borde de color de la placa (o, si la
+    // plantilla no tiene borde, en la esquina inferior), para identificar
+    // cuál es cuál una vez impresa y recortada.
+    doc.setFont('courier', template.codeOnBorder ? 'bold' : 'normal');
     doc.setFontSize(5.5);
-    doc.setTextColor(107, 114, 128);
-    doc.text(qr.code, x0 + size * 0.877 * mm, y0 + size * 0.925 * mm, { align: 'right' });
+    if (template.codeOnBorder) {
+      doc.setTextColor(255, 255, 255);
+      doc.text(qr.code, x0 + template.codeOnBorder.x * mm, y0 + template.codeOnBorder.y * mm, { align: 'right', baseline: 'middle' });
+    } else {
+      doc.setTextColor(107, 114, 128);
+      doc.text(qr.code, x0 + size * 0.877 * mm, y0 + size * 0.925 * mm, { align: 'right' });
+    }
   }
 
   doc.save('wuarikes-placas-12x12.pdf');
