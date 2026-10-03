@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Download, Link2, Unlink, PauseCircle, PlayCircle, History, MoreVertical, type LucideIcon } from 'lucide-react';
+import { Copy, Download, FileDown, FileSpreadsheet, Link2, Printer, Search, Unlink, PauseCircle, PlayCircle, History, MoreVertical, type LucideIcon } from 'lucide-react';
 import { adminApi, qrApi, publicApi, AssignQrPayload } from '../../../../lib/api-client';
 import { copyQrUrls, downloadNfcCsv, downloadPlaquePdf, downloadQrPng, openPrintSheet, TEMPLATES, TemplateId } from '../../../../lib/qrImage';
 import { toast } from 'sonner';
@@ -239,23 +239,62 @@ export default function DispositivosPage() {
 
       {/* Banco de QR */}
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-        <div className="p-4 sm:p-6 md:p-10 border-b border-gray-50 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-xl font-black text-[#1A1A1A]">Banco de QR</h2>
-            <p className="text-sm text-gray-500 mt-1">{filteredQr.length} códigos</p>
+        <div className="p-4 sm:p-6 md:p-8 border-b border-gray-100 space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="shrink-0">
+              <h2 className="text-xl font-black text-[#1A1A1A]">Banco de QR</h2>
+              <p className="text-sm text-gray-500 mt-1">{filteredQr.length} códigos</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 pr-2 text-xs font-bold text-gray-500 cursor-pointer">
+                <input type="checkbox" checked={personalize} onChange={(e) => setPersonalize(e.target.checked)} className="h-4 w-4 accent-[#F26122]" />
+                Con logo del restaurante
+              </label>
+              <button
+                onClick={handleDownloadPdf}
+                title="PDF para imprimir: 2 placas de 12×12 cm por hoja A4"
+                className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors bg-[#F26122] text-white hover:bg-orange-600"
+              >
+                <FileDown size={16} /> Descargar PDF
+              </button>
+              <button
+                onClick={() => downloadNfcCsv(filteredQr)}
+                title="CSV con la URL de cada código, para grabar los chips NFC"
+                className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                <FileSpreadsheet size={16} /> CSV para NFC
+              </button>
+              <button
+                onClick={handleCopyAllUrls}
+                className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                <Copy size={16} /> Copiar URLs
+              </button>
+              <button
+                onClick={handlePrintAll}
+                className="h-10 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-sm font-bold transition-colors border border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                <Printer size={16} /> Imprimir
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              placeholder="Buscar por código (QR-000042)"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por código (QR-000042)"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Filtrar por estado"
+              className="h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 sm:w-48"
             >
               <option value="">Todos los estados</option>
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -265,40 +304,13 @@ export default function DispositivosPage() {
             <select
               value={template}
               onChange={(e) => setTemplate(e.target.value as TemplateId)}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              aria-label="Plantilla de impresión"
+              className="h-10 rounded-xl border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 sm:w-72"
             >
               {Object.entries(TEMPLATES).map(([id, t]) => (
                 <option key={id} value={id}>{t.label}</option>
               ))}
             </select>
-            <button
-              onClick={handleCopyAllUrls}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50"
-            >
-              Copiar todas las URLs
-            </button>
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
-              <input type="checkbox" checked={personalize} onChange={(e) => setPersonalize(e.target.checked)} className="accent-[#F26122]" />
-              Con logo del restaurante
-            </label>
-            <button
-              onClick={handleDownloadPdf}
-              className="w-full sm:w-auto px-4 py-2 bg-[#F26122] text-white rounded-xl text-sm font-bold hover:bg-opacity-90"
-            >
-              Descargar PDF (A4 12×12)
-            </button>
-            <button
-              onClick={() => downloadNfcCsv(filteredQr)}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50"
-            >
-              CSV para NFC
-            </button>
-            <button
-              onClick={handlePrintAll}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50"
-            >
-              Imprimir todas
-            </button>
           </div>
         </div>
 

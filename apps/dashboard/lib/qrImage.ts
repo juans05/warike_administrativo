@@ -381,10 +381,12 @@ export async function downloadPlaquePdf(
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.1);
     doc.rect(x0, y0, PLAQUE_MM, PLAQUE_MM);
+    // Correlativo bien chico en la esquina interior inferior de la placa, para
+    // identificar cuál es cuál una vez impresa y recortada.
     doc.setFont('courier', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(5.5);
     doc.setTextColor(107, 114, 128);
-    doc.text(qr.code, A4.w / 2, y0 + PLAQUE_MM + 4.5, { align: 'center' });
+    doc.text(qr.code, x0 + size * 0.877 * mm, y0 + size * 0.925 * mm, { align: 'right' });
   }
 
   doc.save('wuarikes-placas-12x12.pdf');
