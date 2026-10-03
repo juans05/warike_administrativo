@@ -714,6 +714,12 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  // Conecta directo con Meta un número que ya existe en la API (con token de usuario del sistema).
+  connectExistingWhatsappNumber: (data: { placeId: string; phoneNumberId: string; wabaId: string; token: string }) =>
+    fetchWithAuth('/admin/whatsapp-numbers/connect-existing', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }) as Promise<{ id: string; phoneNumber: string; verifiedName: string | null }>,
   // Qué proveedor entrega los mensajes del número: API de WhatsApp Cloud (Meta) o PlazBot (legado).
   setWhatsappProvider: (numberId: string, provider: 'meta' | 'plazbot') =>
     fetchWithAuth(`/admin/whatsapp-numbers/${numberId}/provider`, {

@@ -116,12 +116,15 @@ export default function WhatsAppConfigPage() {
                 </div>
                 <p className="text-xs text-text-muted">Registrado el {new Date(num.createdAt).toLocaleDateString('es-PE')}</p>
               </div>
-              <button
-                onClick={() => handleDelete(num.id)}
-                className="ml-4 px-4 py-2 bg-red-100 text-red-700 rounded-xl font-black text-sm hover:bg-red-200 transition-all active:scale-95"
-              >
-                Desconectar
-              </button>
+              {/* Solo los números conectados con Facebook se pueden desconectar desde aquí; los demás los gestiona el administrador. */}
+              {num.provider === 'meta' && (
+                <button
+                  onClick={() => handleDelete(num.id)}
+                  className="ml-4 px-4 py-2 bg-red-100 text-red-700 rounded-xl font-black text-sm hover:bg-red-200 transition-all active:scale-95"
+                >
+                  Desconectar
+                </button>
+              )}
             </div>
           ))
         )}

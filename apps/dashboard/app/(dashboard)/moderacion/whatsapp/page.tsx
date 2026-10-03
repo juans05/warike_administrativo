@@ -31,6 +31,8 @@ export default function AdminWhatsappConfigPage() {
   const [metaWebhookUrl, setMetaWebhookUrl] = useState('');
   const [test, setTest] = useState({ to: '', text: 'Hola desde Wuarikes 👋', whatsappNumberId: '' });
   const [testSending, setTestSending] = useState(false);
+  const [existing, setExisting] = useState({ phoneNumberId: '', wabaId: '', token: '' });
+  const [existingSaving, setExistingSaving] = useState(false);
   const [waForm, setWaForm] = useState({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
   const [waRegistering, setWaRegistering] = useState(false);
   const [waError, setWaError] = useState('');
@@ -95,6 +97,22 @@ export default function AdminWhatsappConfigPage() {
       toast.success(`Ahora usa ${label}`);
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo cambiar el proveedor');
+    }
+  };
+
+  const handleConnectExisting = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlace) return;
+    setExistingSaving(true);
+    try {
+      const res = await adminApi.connectExistingWhatsappNumber({ placeId: selectedPlace.id, ...existing });
+      toast.success(`Conectado: +${res.phoneNumber}${res.verifiedName ? ` (${res.verifiedName})` : ''}`);
+      setExisting({ phoneNumberId: '', wabaId: '', token: '' });
+      await loadWaNumbers(selectedPlace.id);
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo conectar el número');
+    } finally {
+      setExistingSaving(false);
     }
   };
 
@@ -247,6 +265,34 @@ export default function AdminWhatsappConfigPage() {
                   ))}
                 </div>
               )}
+
+              <form onSubmit={handleConnectExisting} className="space-y-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                <p className="text-xs font-black text-blue-800 uppercase tracking-widest">Conectar número que ya existe en Meta</p>
+                <p className="text-xs text-blue-700">
+                  Para un número que ya está registrado en tu cuenta de WhatsApp Business de Meta: se valida el token, se suscribe la app y queda como conexión directa (sin PlazBot).
+                </p>
+                <input
+                  type="text" required placeholder="Phone Number ID (el del número, no el de la cuenta)" value={existing.phoneNumberId}
+                  onChange={e => setExisting(p => ({ ...p, phoneNumberId: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
+                />
+                <input
+                  type="text" required placeholder="ID de la cuenta de WhatsApp Business (WABA)" value={existing.wabaId}
+                  onChange={e => setExisting(p => ({ ...p, wabaId: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
+                />
+                <input
+                  type="password" required autoComplete="off" placeholder="Token de acceso (usuario del sistema)" value={existing.token}
+                  onChange={e => setExisting(p => ({ ...p, token: e.target.value }))}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
+                />
+                <button
+                  type="submit" disabled={existingSaving}
+                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-50"
+                >
+                  {existingSaving ? 'Conectando…' : 'Conectar directo con Meta'}
+                </button>
+              </form>
 
               <form onSubmit={handleRegisterWaNumber} className="space-y-4">
                 <p className="text-xs text-gray-400">
