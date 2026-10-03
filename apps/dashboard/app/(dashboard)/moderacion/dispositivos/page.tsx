@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Download, Link2, Unlink, PauseCircle, PlayCircle, History, MoreVertical, type LucideIcon } from 'lucide-react';
 import { adminApi, qrApi, publicApi, AssignQrPayload } from '../../../../lib/api-client';
-import { copyQrUrls, downloadQrPng, openPrintSheet, TEMPLATES, TemplateId } from '../../../../lib/qrImage';
+import { copyQrUrls, downloadNfcCsv, downloadPlaquePdf, downloadQrPng, openPrintSheet, TEMPLATES, TemplateId } from '../../../../lib/qrImage';
 import { toast } from 'sonner';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,8 +36,9 @@ export default function DispositivosPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
-  const [template, setTemplate] = useState<TemplateId>('white');
+  const [template, setTemplate] = useState<TemplateId>('plaque-google-colors');
   const [showGenerate, setShowGenerate] = useState(false);
+  const [personalize, setPersonalize] = useState(true);
   const [assignTarget, setAssignTarget] = useState<any>(null); // el QrCode que se está (re)asignando
   const [historyTarget, setHistoryTarget] = useState<any>(null); // { qrCode, history }
 
@@ -100,7 +101,9 @@ export default function DispositivosPage() {
       toast.success(`${count} códigos generados`);
       setShowGenerate(false);
       loadQr();
-      if (physicalType === 'QR') openPrintSheet(created, template);
+      // La placa 12×12 lleva "Toca" + "Escanea": el mismo PDF sirve para QR y NFC.
+      await downloadPlaquePdf(created, template);
+      if (physicalType === 'NFC') downloadNfcCsv(created);
     } catch (err: any) {
       toast.error(err?.message || 'Error generando el lote');
     }
@@ -130,6 +133,21 @@ export default function DispositivosPage() {
       toast.success(`${filteredQr.length} URLs copiadas`);
     } catch (err: any) {
       toast.error('No se pudo copiar');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (filteredQr.length === 0) return;
+    const toastId = toast.loading(`Generando PDF de ${filteredQr.length} placas…`);
+    try {
+      const logoFailed = await downloadPlaquePdf(filteredQr, template, personalize);
+      toast.success('PDF descargado', { id: toastId });
+      if (logoFailed.length > 0) {
+        const names = logoFailed.length > 5 ? `${logoFailed.slice(0, 5).join(', ')} y ${logoFailed.length - 5} más` : logoFailed.join(', ');
+        toast.warning(`${logoFailed.length} placa(s) salieron con el nombre en vez del logo porque no se pudo cargar: ${names}`, { duration: 15000 });
+      }
+    } catch {
+      toast.error('No se pudo generar el PDF', { id: toastId });
     }
   };
 
@@ -258,6 +276,22 @@ export default function DispositivosPage() {
               className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50"
             >
               Copiar todas las URLs
+            </button>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
+              <input type="checkbox" checked={personalize} onChange={(e) => setPersonalize(e.target.checked)} className="accent-[#F26122]" />
+              Con logo del restaurante
+            </label>
+            <button
+              onClick={handleDownloadPdf}
+              className="w-full sm:w-auto px-4 py-2 bg-[#F26122] text-white rounded-xl text-sm font-bold hover:bg-opacity-90"
+            >
+              Descargar PDF (A4 12×12)
+            </button>
+            <button
+              onClick={() => downloadNfcCsv(filteredQr)}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50"
+            >
+              CSV para NFC
             </button>
             <button
               onClick={handlePrintAll}
