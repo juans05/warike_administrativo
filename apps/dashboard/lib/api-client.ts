@@ -264,6 +264,11 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
+  // Promoción que se ofrece a cambio del WhatsApp en la pantalla de calificación
+  getScanPromo: (id: string) => fetchWithAuth(`/business/places/${id}/scan-promo`),
+  setScanPromo: (id: string, promo: { enabled: boolean; text: string }) =>
+    fetchWithAuth(`/business/places/${id}/scan-promo`, { method: 'PATCH', body: JSON.stringify(promo) }),
+
   // Diseño de la carta pública (colores y textos adicionales)
   getMenuTheme: (id: string) => fetchWithAuth(`/business/places/${id}/menu-theme`),
   setMenuTheme: (id: string, theme: unknown) =>
@@ -601,6 +606,7 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 export const publicApi = {
   getPlatformSettings: () => fetchPublic('/platform-settings'),
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
+  getScanPromo: (id: string) => fetchPublic(`/places/${id}/scan-promo`),
   getCategories: () => fetchPublic('/places/categories'),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   recommendDish: (id: string, message: string, history: { role: 'user' | 'assistant'; content: string }[]) =>

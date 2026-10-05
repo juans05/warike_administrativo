@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ScanPromoSettings from '../../../components/ScanPromoSettings';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
@@ -374,6 +375,8 @@ export default function ReputacionPage() {
             )}
           </div>
         </section>
+
+        {activePlaceId && <ScanPromoSettings placeId={activePlaceId} />}
 
         {/* Logic Configuration */}
         <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-border space-y-8">

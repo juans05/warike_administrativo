@@ -113,13 +113,6 @@ export default function FidelizacionPage() {
     setIsSendingCampaign(false);
   };
 
-  // Points at the scan/loyalty entry flow (/l/[id]), which collects the customer's
-  // phone and only then builds the real card URL (/tarjeta/[placeId]/[phone]).
-  // Linking straight to /tarjeta/[placeId] 404s — that route requires the phone segment.
-  const publicCardLink = typeof window !== 'undefined'
-    ? `${window.location.origin}/l/${activePlaceId}`
-    : '';
-
   if (isLoading) return <SkeletonPage type="default" />;
 
   if (subscriptionBlocked) {
@@ -453,47 +446,6 @@ export default function FidelizacionPage() {
               rows={2}
               maxLength={300}
             />
-          </section>
-
-          {/* Tarjeta digital del cliente */}
-          <section className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-[2rem] border border-orange-100 shadow-sm space-y-4">
-            <h2 className="font-black text-orange-900 font-warike text-base flex items-center gap-2">
-              📱 Tarjeta Digital del Cliente
-            </h2>
-
-            <p className="text-orange-700 font-bold text-xs leading-relaxed">
-              Comparte este enlace con tus clientes para que vean su progreso y sellen con su teléfono.
-            </p>
-
-            <div className="bg-white rounded-xl border border-orange-100 p-3">
-              <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Enlace</p>
-              <p className="font-black text-orange-600 text-xs break-all">{publicCardLink}</p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => { navigator.clipboard.writeText(publicCardLink); toast.success('Copiado'); }}
-                className="flex-1 bg-orange-500 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-orange-600 transition-all"
-              >
-                Copiar Enlace
-              </button>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    const text = `¡Únete a nuestro programa de fidelización! Acumula sellos y gana premios: ${publicCardLink}`;
-                    if (navigator.share) {
-                      navigator.share({ title: 'Programa de Fidelización', url: publicCardLink, text });
-                    } else {
-                      navigator.clipboard.writeText(text);
-                      toast.success('Mensaje copiado');
-                    }
-                  }
-                }}
-                className="flex-1 bg-white border border-orange-200 text-orange-600 font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-orange-50 transition-all"
-              >
-                Compartir
-              </button>
-            </div>
           </section>
 
           {/* Stats rápidas */}
