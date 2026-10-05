@@ -1,14 +1,18 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Bricolage_Grotesque, Figtree } from 'next/font/google';
 import { Image as ImageIcon, LayoutGrid, List, Play, Sparkles, X } from 'lucide-react';
 import { publicApi } from '../../../lib/api-client';
 import { buildPalette, type MenuTheme, type Palette } from '../../../lib/menuTheme';
 
-const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'], variable: '--font-display' });
-const body = Figtree({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-body' });
+// Las tipografías se piden desde el navegador (no con next/font): si Google Fonts falla durante el build del servidor,
+// el despliegue ya no se cae. Mientras cargan se ve una tipografía del sistema.
+const FONTS_CSS = "@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;500;600;700&display=swap');";
+const FONT_VARS = {
+  '--font-display': "'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif",
+  '--font-body': "Figtree, 'Segoe UI', system-ui, sans-serif",
+} as React.CSSProperties;
 
 type Dish = {
   id: string;
@@ -339,8 +343,8 @@ export default function PublicMenuPage() {
   }, [id]);
 
   // flex en columna: el pie queda abajo aunque la carta sea corta.
-  const shell = `${display.variable} ${body.variable} flex min-h-screen flex-col`;
-  const shellStyle = { background: C.bg, color: C.text, fontFamily: 'var(--font-body)' } as const;
+  const shell = 'flex min-h-screen flex-col';
+  const shellStyle = { ...FONT_VARS, background: C.bg, color: C.text, fontFamily: 'var(--font-body)' } as React.CSSProperties;
   const theme = place?.theme ?? {};
 
   if (loading) {
@@ -375,7 +379,7 @@ export default function PublicMenuPage() {
   return (
     <PalContext.Provider value={C}>
     <div className={shell} style={shellStyle}>
-      <style>{'.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>
+      <style>{FONTS_CSS + '.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>
       {/* Portada: el color del encabezado y el logo los define el restaurante */}
       <header className="relative" style={{ background: C.headerBg, color: C.headerText }}>
         {place.coverImageUrl ? (
