@@ -79,7 +79,15 @@ export interface BroadcastPayload {
   whatsappNumberId: string;
   campaignName: string;
   templateBody: string;
-  segmentFilter?: { type: string; templateId?: string };
+  /** Plantilla aprobada de WhatsApp: obligatoria para escribir fuera de las 24 h. */
+  templateName?: string;
+  templateLanguage?: string;
+  /** Valores de {{1}}, {{2}}…; admite {nombre}. */
+  bodyVariables?: string[];
+  segmentFilter?: { type: string; templateId?: string; levels?: string[]; days?: number };
+  /** Lista de Excel (importación) a la que se envía. */
+  csvImportId?: string;
+  useCsvMerge?: boolean;
 }
 
 export interface EmailCampaignPayload {
@@ -256,6 +264,11 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
+  // Diseño de la carta pública (colores y textos adicionales)
+  getMenuTheme: (id: string) => fetchWithAuth(`/business/places/${id}/menu-theme`),
+  setMenuTheme: (id: string, theme: unknown) =>
+    fetchWithAuth(`/business/places/${id}/menu-theme`, { method: 'PATCH', body: JSON.stringify(theme) }),
+
   // Menu Management
   getMenu: (id: string) => fetchWithAuth(`/business/places/${id}/menu`),
 
@@ -410,6 +423,17 @@ export const businessApi = {
   // Conexión directa con Facebook (Embedded Signup): config para abrir el flujo y cierre con el código de Meta.
   getWhatsappConnectConfig: () =>
     fetchWithAuth('/business/whatsapp/connect/config') as Promise<{ configured: boolean; appId: string; configId: string; graphVersion: string }>,
+  // Estado de cada paso del asistente "Conecta tu WhatsApp en 4 pasos".
+  getWhatsappConnectStatus: (placeId: string) =>
+    fetchWithAuth(`/business/whatsapp/connect/status?placeId=${placeId}`) as Promise<{
+      metaEnabled: boolean;
+      serverConfigured: boolean;
+      number: { id: string; phoneNumber: string; isActive: boolean } | null;
+      testReceived: boolean;
+      botReplied: boolean;
+      botConfigured: boolean;
+      hasMenuOrKnowledge: boolean;
+    }>,
   // Checkbox por local: activa/desactiva el canal de Facebook. Mientras esté apagado todo sigue por PlazBot.
   getWhatsappChannel: (placeId: string) =>
     fetchWithAuth(`/business/whatsapp/connect/channel?placeId=${placeId}`) as Promise<{ metaEnabled: boolean }>,
@@ -491,6 +515,14 @@ export const businessApi = {
     }),
   sendManualFile: (conversationId: string, file: File, caption?: string) =>
     sendConversationFile(conversationId, file, caption),
+
+  // Plantillas de la cuenta de WhatsApp del local (API de Meta)
+  getMetaTemplates: (placeId: string) =>
+    fetchWithAuth(`/business/whatsapp/templates?placeId=${placeId}`) as Promise<{
+      data: { id: string; name: string; language: string; category: string; status: string; body: string; variableCount: number }[];
+    }>,
+  createMetaTemplate: (data: { placeId: string; name: string; language: string; category: 'MARKETING' | 'UTILITY'; body: string; footer?: string; bodyExamples?: string[] }) =>
+    fetchWithAuth('/business/whatsapp/templates', { method: 'POST', body: JSON.stringify(data) }),
 
   // Broadcasts (WhatsApp)
   getBroadcasts: (placeId: string) =>
@@ -611,7 +643,7 @@ export const publicApi = {
 
   // Loyalty (fidelización) — público, sin JWT
   getLoyaltyProgram: (placeId: string) => fetchPublic(`/public/loyalty/${placeId}/program`),
-  loyaltyScan: (placeId: string, data: { phone: string; name?: string }) =>
+  loyaltyScan: (placeId: string, data: { phone: string; name?: string; marketingConsent?: boolean }) =>
     fetchPublic(`/public/loyalty/${placeId}/scan`, {
       method: 'POST',
       body: JSON.stringify(data),

@@ -5,6 +5,7 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import MenuBuilder from '../../../components/MenuBuilder';
+import MenuDesign from '../../../components/MenuDesign';
 
 type CategoryType = 'food' | 'drink' | 'dessert' | 'other';
 
@@ -57,6 +58,7 @@ export default function CartaPage() {
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
 
   const [logoUrl, setLogoUrl] = useState('');
+  const [placeName, setPlaceName] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [showLogoOnQr, setShowLogoOnQr] = useState(true);
 
@@ -78,6 +80,7 @@ export default function CartaPage() {
         setMenuType('photo');
       }
       setLogoUrl(profile.logoUrl || '');
+      setPlaceName(profile.name || '');
       setShowLogoOnQr(profile.showLogoOnQr ?? true);
     } catch (err) {
       console.error('Error loading menu:', err);
@@ -458,6 +461,9 @@ export default function CartaPage() {
           </button>
         </div>
       )}
+
+      {/* ── Diseño de la carta pública ── */}
+      {activePlaceId && <MenuDesign placeId={activePlaceId} logoUrl={logoUrl} placeName={placeName} />}
 
       {/* ── Digital Menu ── */}
       {menuType === 'digital' ? (
