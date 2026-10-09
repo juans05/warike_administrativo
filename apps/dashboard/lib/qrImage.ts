@@ -245,14 +245,16 @@ export async function openPrintSheet(qrCodes: QrWithPlace[], templateId: Templat
 <meta charset="utf-8">
 <title>Lote de QR — Wuarikes</title>
 <style>
-  body { font-family: sans-serif; margin: 24px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .cell { text-align: center; padding: 8px; page-break-inside: avoid; }
-  .cell img { width: 100%; height: auto; }
+  /* 2 placas de 12×12 cm por hoja A4, una debajo de otra — igual que el PDF. */
+  @page { size: A4; margin: 0; }
+  body { font-family: sans-serif; margin: 0; }
+  .cell { width: 120mm; margin: 0 auto; padding-top: 14mm; break-inside: avoid; }
+  .cell:nth-child(even) { padding-top: 18mm; break-after: page; }
+  .cell img { display: block; width: 100%; height: auto; }
 </style>
 </head>
 <body>
-  <div class="grid">${cells.join('')}</div>
+  ${cells.join('')}
   <script>window.onload = () => window.print();</script>
 </body>
 </html>`;
