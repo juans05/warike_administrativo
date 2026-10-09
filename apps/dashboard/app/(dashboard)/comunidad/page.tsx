@@ -50,6 +50,7 @@ export default function ComunidadPage() {
     setCreating(true);
     try {
       await adminApi.createUser(newUser);
+      toast.success(`Usuario creado. Enviamos el correo de activación a ${newUser.email}`);
       setIsModalOpen(false);
       setNewUser({ fullName: '', email: '', password: '', role: 'business' });
       loadUsers();
@@ -68,6 +69,16 @@ export default function ComunidadPage() {
       loadUsers();
     } catch {
       toast.error('Error actualizando estado del usuario');
+    }
+  };
+
+  const sendAccessEmail = async (user: User) => {
+    if (!confirm(`¿Enviar a ${user.email} un correo para crear una contraseña nueva?`)) return;
+    try {
+      await adminApi.sendAccessEmail(user.id);
+      toast.success(`Correo enviado a ${user.email}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al enviar el correo');
     }
   };
 
@@ -168,7 +179,13 @@ export default function ComunidadPage() {
                       {user.isBanned ? 'Baneado' : 'Activo'}
                     </span>
                   </td>
-                  <td className="px-6 py-5 text-right">
+                  <td className="px-6 py-5 text-right space-x-4 whitespace-nowrap">
+                    <button
+                      onClick={() => sendAccessEmail(user)}
+                      className="text-xs font-black underline underline-offset-4 text-[#F26122]"
+                    >
+                      Reenviar acceso
+                    </button>
                     <button
                       onClick={() => toggleBan(user)}
                       className={`text-xs font-black underline underline-offset-4 ${user.isBanned ? 'text-green-600' : 'text-red-500'}`}

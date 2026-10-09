@@ -94,9 +94,12 @@ function ForgotPasswordContent() {
           ) : (
             <form onSubmit={handleReset} className="space-y-6">
               <p className="text-sm text-gray-500 text-center -mt-4">
-                Te mandamos un código de 6 dígitos a <span className="font-bold text-gray-700">{email}</span>
+                {urlCode
+                  ? <>Elige la contraseña para <span className="font-bold text-gray-700">{email}</span></>
+                  : <>Te mandamos un código de 6 dígitos a <span className="font-bold text-gray-700">{email}</span></>}
               </p>
-              <div>
+              {/* Llegando desde el link del correo el código ya viene en la URL (y es largo): no hace falta mostrarlo. */}
+              {!urlCode && <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Código</label>
                 <input
                   type="text" inputMode="numeric" maxLength={6}
@@ -106,7 +109,7 @@ function ForgotPasswordContent() {
                   className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#F26122]/10 focus:border-[#F26122] outline-none transition-all font-medium py-3 tracking-[0.5em] text-center"
                   required
                 />
-              </div>
+              </div>}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nueva contraseña</label>
                 <input

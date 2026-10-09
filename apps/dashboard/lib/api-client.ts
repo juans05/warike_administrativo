@@ -264,6 +264,15 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
+  // Alertas de reseñas bajas y respuesta automática a las de 4 y 5 estrellas
+  getReviewAuto: (id: string) => fetchWithAuth(`/business/places/${id}/review-auto`),
+  setReviewAuto: (id: string, settings: { alerts: boolean }) =>
+    fetchWithAuth(`/business/places/${id}/review-auto`, { method: 'PATCH', body: JSON.stringify(settings) }),
+
+  // Opiniones y escaneos por dispositivo (ranking del equipo)
+  getDeviceRanking: (placeId: string, days = 30) =>
+    fetchWithAuth(`/business/places/${placeId}/devices/ranking?days=${days}`),
+
   // Promoción que se ofrece a cambio del WhatsApp en la pantalla de calificación
   getScanPromo: (id: string) => fetchWithAuth(`/business/places/${id}/scan-promo`),
   setScanPromo: (id: string, promo: { enabled: boolean; text: string }) =>
@@ -719,6 +728,7 @@ export const adminApi = {
   }),
   banUser: (id: string) => fetchWithAuth(`/admin/users/${id}/ban`, { method: 'PATCH' }),
   activateUser: (id: string) => fetchWithAuth(`/admin/users/${id}/activate`, { method: 'PATCH' }),
+  sendAccessEmail: (id: string) => fetchWithAuth(`/admin/users/${id}/send-access-email`, { method: 'POST' }),
 
   getOpportunities: (status?: string) => fetchWithAuth(`/admin/opportunities${status ? `?status=${status}` : ''}`),
   updateOpportunityStatus: (placeId: string, status: string) => fetchWithAuth(`/admin/opportunities/${placeId}`, {
@@ -883,6 +893,8 @@ export const plazbotApi = {
 };
 
 export const authApi = {
+  verifyEmail: (email: string, code: string) =>
+    fetchPublic('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email, code }) }),
   forgotPassword: (email: string) =>
     fetchPublic('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   resetPassword: (email: string, code: string, password: string) =>
