@@ -53,7 +53,8 @@ export function CampaignList({ broadcasts, onSend, onNew }: CampaignListProps) {
                 </div>
                 <p className="text-xs text-gray-500 truncate">{b.templateBody}</p>
                 <div className="flex items-center gap-3 text-[10px] text-gray-400 font-bold">
-                  <span>{b.messagesSent} enviados</span>
+                  <span>{b.messagesSent}{b.totalRecipients ? ` de ${b.totalRecipients}` : ''} enviados</span>
+                  {!!b.messagesFailed && <span className="text-red-500">· {b.messagesFailed} fallidos</span>}
                   {b.whatsappNumber && <span>· {b.whatsappNumber.phoneNumber}</span>}
                   <span>· {new Date(b.createdAt).toLocaleDateString('es-PE')}</span>
                 </div>

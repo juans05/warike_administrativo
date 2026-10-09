@@ -5,20 +5,41 @@ import { toast } from 'sonner';
 
 export type BroadcastStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'COMPLETED' | 'FAILED';
 
+export interface MetaTemplate {
+  id: string;
+  name: string;
+  language: string;
+  category: string;
+  status: string;
+  body: string;
+  variableCount: number;
+}
+
 export interface Broadcast {
   id: string;
   campaignName: string;
   templateBody: string;
   status: BroadcastStatus;
   messagesSent: number;
+  messagesFailed?: number;
+  totalRecipients?: number;
+  templateName?: string | null;
   createdAt: string;
   whatsappNumber?: { phoneNumber: string };
+}
+
+export interface ContactImportItem {
+  id: string;
+  filename: string;
+  importedRows: number;
+  status: string;
 }
 
 export interface WaNumber {
   id: string;
   phoneNumber: string;
   isActive: boolean;
+  provider?: 'meta' | 'plazbot';
 }
 
 export interface CampaignFormData {
@@ -26,7 +47,14 @@ export interface CampaignFormData {
   whatsappNumberId: string;
   templateId: string;
   templateName: string;
+  templateLanguage: string;
+  bodyVariables: string[];
+  /** all | excel | loyalty | inactive | normal (los dos últimos de fidelización solo con el flag de Meta). */
   segment: string;
+  /** Niveles de fidelización elegidos (vacío = todos). */
+  levels: string[];
+  /** Lista de Excel elegida. */
+  csvImportId: string;
 }
 
 const makeEmptyCampaign = (): CampaignFormData => ({
@@ -34,13 +62,21 @@ const makeEmptyCampaign = (): CampaignFormData => ({
   whatsappNumberId: '',
   templateId: '',
   templateName: '',
+  templateLanguage: 'es',
+  bodyVariables: [],
   segment: 'all',
+  levels: [],
+  csvImportId: '',
 });
 
 export function useBroadcasts() {
   const { activePlaceId } = useRestaurant();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
+  const [metaTemplates, setMetaTemplates] = useState<MetaTemplate[]>([]);
+  // Flag por local (checkbox de "WhatsApp con Facebook"): sin él todo sigue por el flujo anterior.
+  const [metaEnabled, setMetaEnabled] = useState(false);
+  const [imports, setImports] = useState<ContactImportItem[]>([]);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [campaignForm, setCampaignForm] = useState<CampaignFormData>(makeEmptyCampaign);
   const [creatingCampaign, setCreatingCampaign] = useState(false);
@@ -58,6 +94,22 @@ export function useBroadcasts() {
     }
     if (nums.status === 'fulfilled') {
       setWaNumbers((nums.value?.data || []).filter((n: WaNumber) => n.isActive));
+    }
+  }, []);
+
+  // Las plantillas viven en la cuenta de WhatsApp del local; si no tiene número de Meta, no hay nada que cargar.
+  const loadMetaTemplates = useCallback(async (placeId: string) => {
+    try {
+      const channel = await businessApi.getWhatsappChannel(placeId);
+      setMetaEnabled(channel.metaEnabled);
+      if (!channel.metaEnabled) { setMetaTemplates([]); return; }
+      const res = await businessApi.getMetaTemplates(placeId);
+      setMetaTemplates(res.data || []);
+      // Listas de Excel ya subidas, para elegir a cuál enviar.
+      const lists = await businessApi.getContactImports(placeId).catch(() => []);
+      setImports((Array.isArray(lists) ? lists : []).filter((i: ContactImportItem) => i.status === 'completed'));
+    } catch {
+      setMetaTemplates([]);
     }
   }, []);
 
@@ -86,6 +138,25 @@ export function useBroadcasts() {
         templateBody: campaignForm.templateName,
         segmentFilter: { type: campaignForm.segment, templateId: campaignForm.templateId },
       };
+      // Los datos de la plantilla de Meta solo viajan con el flag activo y un número de Meta: el resto, igual que antes.
+      const number = waNumbers.find(n => n.id === campaignForm.whatsappNumberId);
+      if (metaEnabled && number?.provider === 'meta') {
+        payload.templateName = campaignForm.templateName;
+        payload.templateLanguage = campaignForm.templateLanguage;
+        payload.bodyVariables = campaignForm.bodyVariables;
+        const seg = campaignForm.segment;
+        payload.segmentFilter = {
+          type: seg,
+          templateId: campaignForm.templateId,
+          ...(seg === 'loyalty' ? { levels: campaignForm.levels } : {}),
+          ...(seg === 'inactive' ? { days: 30 } : {}),
+        };
+        if (seg === 'excel') {
+          if (!campaignForm.csvImportId) { toast.warning('Elige la lista de Excel'); setCreatingCampaign(false); return; }
+          payload.csvImportId = campaignForm.csvImportId;
+          payload.useCsvMerge = true;
+        }
+      }
       const created = await businessApi.createBroadcast(payload);
       setBroadcasts(prev => [created, ...prev]);
       setShowCampaignModal(false);
@@ -101,6 +172,10 @@ export function useBroadcasts() {
   return {
     broadcasts,
     waNumbers,
+    metaTemplates,
+    metaEnabled,
+    imports,
+    loadMetaTemplates,
     showCampaignModal,
     setShowCampaignModal,
     campaignForm,

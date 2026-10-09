@@ -8,6 +8,7 @@ import { CampaignList } from '../../../components/broadcasts/CampaignList';
 import { CampaignModal } from '../../../components/broadcasts/CampaignModal';
 import { TemplateList } from '../../../components/broadcasts/TemplateList';
 import { TemplateModal } from '../../../components/broadcasts/TemplateModal';
+import { MetaTemplates } from '../../../components/broadcasts/MetaTemplates';
 
 type Tab = 'campaigns' | 'templates';
 
@@ -17,7 +18,7 @@ export default function BroadcastsPage() {
   const [loading, setLoading] = useState(true);
 
   const {
-    broadcasts, waNumbers,
+    broadcasts, waNumbers, metaTemplates, metaEnabled, imports, loadMetaTemplates,
     showCampaignModal, setShowCampaignModal,
     campaignForm, setCampaignForm,
     creatingCampaign,
@@ -41,7 +42,7 @@ export default function BroadcastsPage() {
   useEffect(() => {
     if (!activePlaceId) { setLoading(false); return; }
     setLoading(true);
-    Promise.all([loadBroadcasts(activePlaceId), loadTemplates()])
+    Promise.all([loadBroadcasts(activePlaceId), loadTemplates(), loadMetaTemplates(activePlaceId)])
       .finally(() => setLoading(false));
   }, [activePlaceId]);
 
@@ -97,6 +98,10 @@ export default function BroadcastsPage() {
         />
       )}
 
+      {!subscriptionBlocked && tab === 'templates' && activePlaceId && metaEnabled && waNumbers.some(n => n.provider === 'meta') && (
+        <MetaTemplates placeId={activePlaceId} templates={metaTemplates} onChanged={() => loadMetaTemplates(activePlaceId)} />
+      )}
+
       {!subscriptionBlocked && tab === 'templates' && (
         <TemplateList
           templates={filteredTemplates}
@@ -123,6 +128,9 @@ export default function BroadcastsPage() {
         creating={creatingCampaign}
         waNumbers={waNumbers}
         approvedTemplates={templates.filter(t => t.status === 'APPROVED')}
+        metaTemplates={metaTemplates}
+        metaEnabled={metaEnabled}
+        imports={imports}
       />
 
       <TemplateModal
