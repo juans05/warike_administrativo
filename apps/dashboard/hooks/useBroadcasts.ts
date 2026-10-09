@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { businessApi, BroadcastPayload } from '../lib/api-client';
 import { useRestaurant } from '../context/RestaurantContext';
 import { toast } from 'sonner';
+import { META_ENABLED } from '../lib/features';
 
 export type BroadcastStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'COMPLETED' | 'FAILED';
 
@@ -99,6 +100,8 @@ export function useBroadcasts() {
 
   // Las plantillas viven en la cuenta de WhatsApp del local; si no tiene número de Meta, no hay nada que cargar.
   const loadMetaTemplates = useCallback(async (placeId: string) => {
+    // Sin la validación de Meta no se muestra nada de Meta en campañas: todo sigue por PlazBot.
+    if (!META_ENABLED) { setMetaEnabled(false); return; }
     try {
       const channel = await businessApi.getWhatsappChannel(placeId);
       setMetaEnabled(channel.metaEnabled);

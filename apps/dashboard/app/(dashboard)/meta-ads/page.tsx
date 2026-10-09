@@ -5,8 +5,15 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { metaAdsApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
+import { redirect } from 'next/navigation';
+import { META_ENABLED } from '../../../lib/features';
 
-export default function MetaAdsPage() {
+export default function Page() {
+  if (!META_ENABLED) redirect('/inicio');
+  return <MetaAdsPage />;
+}
+
+function MetaAdsPage() {
   const { activePlaceId } = useRestaurant();
   const [status, setStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
