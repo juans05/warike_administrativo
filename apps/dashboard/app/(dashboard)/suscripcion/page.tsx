@@ -168,6 +168,26 @@ export default function SuscripcionPage() {
           <p className="text-[#6B7280] font-medium">Gestiona el plan Wuarike Pro y el historial de pagos de esta sede.</p>
         </header>
 
+        {/* Suscrito, pero Culqi todavía no confirmó el primer cobro: el plan se activa al confirmarse */}
+        {subscription?.status === 'pending' && (
+          <section className="bg-blue-50 border border-blue-200 rounded-[2rem] p-6 md:p-8">
+            <p className="font-black text-blue-800">⏳ Estamos procesando el primer pago de tu plan {planName(subscription.tier)}</p>
+            <p className="text-sm text-blue-700 font-medium mt-1">
+              Tu plan se activa en cuanto Culqi confirme el cobro (normalmente el mismo día). No hace falta que vuelvas a pagar.
+            </p>
+          </section>
+        )}
+
+        {/* Culqi no pudo renovar el cobro: el plan queda pausado hasta que se vuelva a suscribir */}
+        {subscription?.status === 'past_due' && (
+          <section className="bg-amber-50 border border-amber-200 rounded-[2rem] p-6 md:p-8">
+            <p className="font-black text-amber-800">⚠️ No pudimos cobrar la renovación de tu plan {planName(subscription.tier)}</p>
+            <p className="text-sm text-amber-700 font-medium mt-1">
+              Tu plan está pausado desde el {fmt(subscription.currentPeriodEnd)}. Vuelve a suscribirte abajo con una tarjeta válida para reactivarlo; el cobro anterior se cancela solo.
+            </p>
+          </section>
+        )}
+
         {/* Estado de suscripción activa */}
         {isActive && subscription && (
           <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -193,7 +213,7 @@ export default function SuscripcionPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-black text-[#1A1A1A]">S/. {(subscription.amount / 100).toFixed(0)}</p>
+                <p className="text-3xl font-black text-[#1A1A1A]">S/. {(subscription.amount / 100).toFixed(2)}</p>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">por mes</p>
               </div>
             </div>
@@ -251,7 +271,7 @@ export default function SuscripcionPage() {
         )}
 
         {/* Sin suscripción - elegir plan */}
-        {!subscription && plans.length > 0 && (
+        {(!subscription || subscription.status === 'past_due') && plans.length > 0 && (
           <section className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {plans.map((p) => {
