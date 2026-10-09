@@ -425,7 +425,7 @@ export default function FidelizacionPage() {
             {notifStatus && !notifStatus.whatsappConfigured && (
               <p className="text-xs font-black text-amber-700 bg-amber-50 rounded-xl px-4 py-2">
                 ⚠️ Tu local no tiene un número de WhatsApp Business conectado, así que estos mensajes no se enviarán.{' '}
-                <a href="/whatsapp" className="underline">Conectar WhatsApp →</a>
+                <a href="/plazbot" className="underline">Conectar WhatsApp →</a>
               </p>
             )}
             <label className="flex items-center gap-3">

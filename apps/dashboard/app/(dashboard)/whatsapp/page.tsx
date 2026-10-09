@@ -4,23 +4,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
-import FacebookWhatsAppConnect from '../../../components/FacebookWhatsAppConnect';
+import WhatsAppSetupWizard from '../../../components/WhatsAppSetupWizard';
 import { toast } from 'sonner';
 
 export default function WhatsAppConfigPage() {
   const { activePlaceId } = useRestaurant();
   const [numbers, setNumbers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [metaEnabled, setMetaEnabled] = useState(false);
-  const [togglingChannel, setTogglingChannel] = useState(false);
 
   const load = useCallback(async () => {
     if (!activePlaceId) { setIsLoading(false); return; }
     try {
       const res = await businessApi.getWhatsappNumbers(activePlaceId);
       setNumbers(res.data || []);
-      const channel = await businessApi.getWhatsappChannel(activePlaceId);
-      setMetaEnabled(channel.metaEnabled);
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,21 +25,6 @@ export default function WhatsAppConfigPage() {
   }, [activePlaceId]);
 
   useEffect(() => { setIsLoading(true); load(); }, [load]);
-
-  const handleToggleChannel = async (enabled: boolean) => {
-    if (!activePlaceId) return;
-    setTogglingChannel(true);
-    try {
-      const res = await businessApi.setWhatsappChannel(activePlaceId, enabled);
-      setMetaEnabled(res.metaEnabled);
-      await load();
-      toast.success(enabled ? 'Conexión con Facebook activada' : 'Volviste a PlazBot. Tu conexión de Facebook queda guardada.');
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo cambiar el canal');
-    } finally {
-      setTogglingChannel(false);
-    }
-  };
 
   const handleDelete = async (numberId: string) => {
     if (!confirm('¿Desconectar este número de WhatsApp? Dejará de responder y recibir mensajes en Wuarikes.')) return;
@@ -72,26 +53,7 @@ export default function WhatsAppConfigPage() {
         <p className="text-text-muted font-bold text-lg">Conecta el número de tu restaurante — {numbers.length} {numbers.length === 1 ? 'número conectado' : 'números conectados'}.</p>
       </header>
 
-      {/* Canal: PlazBot sigue siendo el canal por defecto; Facebook se activa con este checkbox */}
-      <label className={`flex items-start gap-4 p-6 rounded-[2rem] border cursor-pointer transition-colors ${metaEnabled ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'}`}>
-        <input
-          type="checkbox"
-          checked={metaEnabled}
-          disabled={togglingChannel}
-          onChange={(e) => handleToggleChannel(e.target.checked)}
-          className="mt-1 h-5 w-5 accent-[#1877F2]"
-        />
-        <div>
-          <p className="font-black text-text">Activar la conexión directa con Facebook (Meta)</p>
-          <p className="text-sm text-text-muted mt-1">
-            {metaEnabled
-              ? 'Activada. Los mensajes de los números conectados con Facebook se atienden por la API de WhatsApp de Meta.'
-              : 'Apagada. Tu WhatsApp sigue funcionando con PlazBot, como hasta ahora. Actívala cuando tu cuenta de Meta esté lista; PlazBot no se toca.'}
-          </p>
-        </div>
-      </label>
-
-      {metaEnabled && activePlaceId && <FacebookWhatsAppConnect placeId={activePlaceId} onConnected={load} />}
+      {activePlaceId && <WhatsAppSetupWizard placeId={activePlaceId} onChanged={load} />}
 
       <div className="space-y-4">
         <h2 className="font-black text-text text-lg">Números conectados</h2>
