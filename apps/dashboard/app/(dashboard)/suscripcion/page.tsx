@@ -89,7 +89,8 @@ export default function SuscripcionPage() {
       title: selectedPlan.name,
       currency: 'PEN',
       description: 'Suscripción mensual',
-      amount: selectedPlan.price * 100,
+      // 79.99 * 100 = 7998.999… en coma flotante; Culqi exige céntimos enteros.
+      amount: Math.round(selectedPlan.price * 100),
       order: `sub-${Date.now()}`,
     });
     setCulqiReady(true);

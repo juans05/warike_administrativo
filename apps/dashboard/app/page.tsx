@@ -43,9 +43,9 @@ interface PlanInfo {
 // Shown immediately and kept if the live API is slow/unavailable, so the
 // pricing section is never empty — values mirror the backend defaults.
 const FALLBACK_PLANS: PlanInfo[] = [
-  { tier: 'reputacion', name: 'Wuarike Reputación', price: 79, currency: 'PEN', features: ['Filtro de reputación Google activado', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva'] },
-  { tier: 'fidelizacion', name: 'Wuarike Fidelización+', price: 149, currency: 'PEN', features: ['Todo lo de Wuarike Reputación', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM'] },
-  { tier: 'ia_total', name: 'Wuarike IA Total', price: 249, currency: 'PEN', features: ['Todo lo de Wuarike Fidelización+', 'PlazBot: bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)'] },
+  { tier: 'reputacion', name: 'Wuarike Reputación', price: 79.99, currency: 'PEN', features: ['Filtro de reputación Google activado', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva'] },
+  { tier: 'fidelizacion', name: 'Wuarike Fidelización+', price: 199, currency: 'PEN', features: ['Todo lo de Wuarike Reputación', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM'] },
+  { tier: 'ia_total', name: 'Wuarike IA Total', price: 499, currency: 'PEN', features: ['Todo lo de Wuarike Fidelización+', 'PlazBot: bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)'] },
 ];
 
 // --- Scroll reveal (transform/opacity only, respects reduced-motion) ---
