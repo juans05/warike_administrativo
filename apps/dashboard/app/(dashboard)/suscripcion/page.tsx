@@ -175,6 +175,9 @@ export default function SuscripcionPage() {
             <p className="text-sm text-blue-700 font-medium mt-1">
               Tu plan se activa en cuanto Culqi confirme el cobro (normalmente el mismo día). No hace falta que vuelvas a pagar.
             </p>
+            <button onClick={handleCancel} disabled={canceling} className="mt-3 text-xs font-black text-blue-700 underline underline-offset-4 disabled:opacity-50">
+              {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
+            </button>
           </section>
         )}
 
@@ -185,6 +188,9 @@ export default function SuscripcionPage() {
             <p className="text-sm text-amber-700 font-medium mt-1">
               Tu plan está pausado desde el {fmt(subscription.currentPeriodEnd)}. Vuelve a suscribirte abajo con una tarjeta válida para reactivarlo; el cobro anterior se cancela solo.
             </p>
+            <button onClick={handleCancel} disabled={canceling} className="mt-3 text-xs font-black text-amber-700 underline underline-offset-4 disabled:opacity-50">
+              {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
+            </button>
           </section>
         )}
 
