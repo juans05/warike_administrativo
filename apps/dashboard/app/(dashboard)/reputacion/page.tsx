@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import ScanPromoSettings from '../../../components/ScanPromoSettings';
+import ReviewGoal from '../../../components/ReviewGoal';
+import ReviewAutomation from '../../../components/ReviewAutomation';
+import TeamRanking from '../../../components/TeamRanking';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth } from '../../../lib/api-client';
 import GoogleReviews from '../../../components/GoogleReviews';
@@ -42,6 +45,7 @@ export default function ReputacionPage() {
   const [placeIdCandidates, setPlaceIdCandidates] = useState<any[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [reviewsRefreshKey, setReviewsRefreshKey] = useState(0);
+  const [googleReviewCount, setGoogleReviewCount] = useState(0);
 
   // Pedido de nuevos taps (genérico o personalizado)
   const [deviceRequests, setDeviceRequests] = useState<any[]>([]);
@@ -58,6 +62,7 @@ export default function ReputacionPage() {
     // Cargar perfil para obtener googlePlaceId y estado de conexión Google
     businessApi.getProfile(activePlaceId).then(profile => {
       setGooglePlaceId(profile.googlePlaceId || '');
+      setGoogleReviewCount(Number(profile.googleTotalReviews) || 0);
       setIsGoogleConnected(
         !!profile.googlePlaceId &&
         (!!profile.googleRating || (profile.googleTotalReviews > 0))
@@ -376,6 +381,9 @@ export default function ReputacionPage() {
           </div>
         </section>
 
+        <ReviewGoal rating={stats.ratingAverage} total={googleReviewCount} />
+        {activePlaceId && <ReviewAutomation placeId={activePlaceId} />}
+        {activePlaceId && <TeamRanking placeId={activePlaceId} />}
         {activePlaceId && <ScanPromoSettings placeId={activePlaceId} />}
 
         {/* Logic Configuration */}
