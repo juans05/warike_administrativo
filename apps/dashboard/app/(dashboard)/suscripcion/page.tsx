@@ -91,7 +91,13 @@ export default function SuscripcionPage() {
       description: 'Suscripción mensual',
       // 79.99 * 100 = 7998.999… en coma flotante; Culqi exige céntimos enteros.
       amount: Math.round(selectedPlan.price * 100),
-      order: `sub-${Date.now()}`,
+      // Sin `order`: Culqi solo acepta ahí un ID real de su API de Órdenes (ord_...); un valor
+      // inventado invalida toda la configuración. La suscripción solo necesita el token de tarjeta.
+    });
+    // Solo tarjeta: la suscripción recurrente se cobra a una tarjeta guardada.
+    window.Culqi.options?.({
+      lang: 'auto',
+      paymentMethods: { tarjeta: true, yape: false, bancaMovil: false, agente: false, billetera: false, cuotealo: false },
     });
     setCulqiReady(true);
 
@@ -109,8 +115,8 @@ export default function SuscripcionPage() {
         } finally {
           setPaying(false);
         }
-      } else if (window.Culqi.order) {
-        // handle order flow if needed
+      } else if (window.Culqi.error) {
+        toast.error(window.Culqi.error.user_message || window.Culqi.error.merchant_message || 'Culqi no pudo procesar la tarjeta');
       }
     };
   }, [selectedPlan, load, activePlaceId]);
