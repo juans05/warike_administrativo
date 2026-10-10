@@ -9,7 +9,7 @@ interface User {
   id: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'business';
+  role: 'admin' | 'business' | 'sales';
   isBanned: boolean;
   createdAt: string;
 }
@@ -24,7 +24,7 @@ export default function ComunidadPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newUser, setNewUser] = useState<{ fullName: string; email: string; password: string; role: 'admin' | 'business' }>({ fullName: '', email: '', password: '', role: 'business' });
+  const [newUser, setNewUser] = useState<{ fullName: string; email: string; password: string; role: 'admin' | 'business' | 'sales' }>({ fullName: '', email: '', password: '', role: 'business' });
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -169,9 +169,10 @@ export default function ComunidadPage() {
                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${
                       user.role === 'admin' ? 'bg-purple-50 text-purple-600'
                       : user.role === 'business' ? 'bg-blue-50 text-blue-600'
+                      : user.role === 'sales' ? 'bg-green-50 text-green-700'
                       : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {user.role}
+                      {user.role === 'sales' ? 'comercial' : user.role}
                     </span>
                   </td>
                   <td className="px-6 py-5">
@@ -293,16 +294,17 @@ export default function ComunidadPage() {
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
                   Rol del Usuario
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { value: 'business', label: 'Business', emoji: '🏢' },
                     { value: 'user', label: 'Usuario', emoji: '👤' },
                     { value: 'admin', label: 'Admin', emoji: '🛡️' },
+                    { value: 'sales', label: 'Comercial', emoji: '🤝' },
                   ].map((r) => (
                     <button
                       key={r.value}
                       type="button"
-                      onClick={() => setNewUser({ ...newUser, role: r.value as 'admin' | 'business' })}
+                      onClick={() => setNewUser({ ...newUser, role: r.value as 'admin' | 'business' | 'sales' })}
                       className={`p-3 rounded-xl border-2 text-center transition-all ${
                         newUser.role === r.value
                           ? 'border-[#F26122] bg-[#F26122]/5'

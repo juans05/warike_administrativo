@@ -103,7 +103,7 @@ export interface AdminUserPayload {
   email: string;
   password: string;
   fullName: string;
-  role: 'admin' | 'business';
+  role: 'admin' | 'business' | 'sales';
 }
 
 export interface AdminPlaceUpdate {
@@ -731,6 +731,9 @@ export const adminApi = {
   sendAccessEmail: (id: string) => fetchWithAuth(`/admin/users/${id}/send-access-email`, { method: 'POST' }),
 
   getOpportunities: (status?: string) => fetchWithAuth(`/admin/opportunities${status ? `?status=${status}` : ''}`),
+  listSalesUsers: () => fetchWithAuth('/admin/sales-users'),
+  assignSalesUser: (placeId: string, salesUserId: string | null) =>
+    fetchWithAuth(`/admin/places/${placeId}/sales-user`, { method: 'PATCH', body: JSON.stringify({ salesUserId }) }),
   updateOpportunityStatus: (placeId: string, status: string) => fetchWithAuth(`/admin/opportunities/${placeId}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
@@ -922,3 +925,15 @@ export const reportsApi = {
   },
 };
 
+
+// ── Comisiones (admin) ───────────────────────────────────────────────────────
+export const adminCommissionsApi = {
+  getSettings: () => fetchWithAuth('/admin/commissions/settings'),
+  updateSettings: (patch: Partial<{ firstMonthRate: number; recurringRate: number; recurringMonths: number; clawbackDays: number }>) =>
+    fetchWithAuth('/admin/commissions/settings', { method: 'PATCH', body: JSON.stringify(patch) }),
+  generate: (period: string) => fetchWithAuth('/admin/commissions/payouts', { method: 'POST', body: JSON.stringify({ period }) }),
+  listPayouts: (period?: string) => fetchWithAuth(`/admin/commissions/payouts${period ? `?period=${period}` : ''}`),
+  payout: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`),
+  pay: (id: string, note?: string) => fetchWithAuth(`/admin/commissions/payouts/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ note }) }),
+  cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
+};
