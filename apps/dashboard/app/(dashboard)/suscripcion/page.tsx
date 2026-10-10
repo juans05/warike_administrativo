@@ -47,7 +47,7 @@ interface PlanInfo {
   configured: boolean;
 }
 
-const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY || 'pk_live_xxxxxxxxxxxxxxxx';
+const CULQI_PUBLIC_KEY = process.env.NEXT_PUBLIC_CULQI_PUBLIC_KEY;
 
 export default function SuscripcionPage() {
   const { activePlaceId, places } = useRestaurant();
@@ -85,8 +85,10 @@ export default function SuscripcionPage() {
   // instancia por pago con el plan elegido; el token de tarjeta va al backend, que arma la suscripción.
   const handleSubscribe = () => {
     if (!selectedPlan?.configured) { toast.warning('Este plan todavía no está configurado para cobros.'); return; }
+    if (!CULQI_PUBLIC_KEY) { toast.error('Falta NEXT_PUBLIC_CULQI_PUBLIC_KEY: los pagos no están configurados.'); return; }
     if (!window.CulqiCheckout) { toast.warning('Cargando procesador de pagos...'); return; }
     const plan = selectedPlan;
+    console.log('[Culqi] public key:', CULQI_PUBLIC_KEY, '| plan:', plan.tier, '| amount:', Math.round(plan.price * 100)); // TODO: quitar debug
     const checkout = new window.CulqiCheckout(CULQI_PUBLIC_KEY, {
       settings: {
         title: plan.name,
@@ -106,6 +108,7 @@ export default function SuscripcionPage() {
       appearance: { menuType: 'sidebar', buttonCardPayText: 'Suscribirme' },
     });
     checkout.culqi = async () => {
+      console.log('[Culqi] token:', checkout.token, '| error:', checkout.error); // TODO: quitar debug
       if (checkout.token) {
         if (!activePlaceId) return;
         const token = checkout.token.id;
