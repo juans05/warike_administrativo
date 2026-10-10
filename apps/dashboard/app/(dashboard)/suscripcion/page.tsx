@@ -9,8 +9,7 @@ import { toast } from 'sonner';
 
 declare global {
   interface Window {
-    Culqi: any;
-    culqi: () => void;
+    CulqiCheckout: any;
   }
 }
 
@@ -82,53 +81,49 @@ export default function SuscripcionPage() {
 
   const selectedPlan = plans.find((p) => p.tier === selectedTier) || null;
 
-  const initCulqi = useCallback(() => {
-    if (!window.Culqi || !selectedPlan) return;
-    window.Culqi.publicKey = CULQI_PUBLIC_KEY;
-    window.Culqi.settings({
-      title: selectedPlan.name,
-      currency: 'PEN',
-      description: 'Suscripción mensual',
-      // 79.99 * 100 = 7998.999… en coma flotante; Culqi exige céntimos enteros.
-      amount: Math.round(selectedPlan.price * 100),
-      // Sin `order`: Culqi solo acepta ahí un ID real de su API de Órdenes (ord_...); un valor
-      // inventado invalida toda la configuración. La suscripción solo necesita el token de tarjeta.
+  // Culqi Checkout Custom (docs.culqi.com/es/documentacion/checkout/checkout-custom): se crea una
+  // instancia por pago con el plan elegido; el token de tarjeta va al backend, que arma la suscripción.
+  const handleSubscribe = () => {
+    if (!selectedPlan?.configured) { toast.warning('Este plan todavía no está configurado para cobros.'); return; }
+    if (!window.CulqiCheckout) { toast.warning('Cargando procesador de pagos...'); return; }
+    const plan = selectedPlan;
+    const checkout = new window.CulqiCheckout(CULQI_PUBLIC_KEY, {
+      settings: {
+        title: plan.name,
+        currency: 'PEN',
+        // 79.99 * 100 = 7998.999… en coma flotante; Culqi exige céntimos enteros.
+        amount: Math.round(plan.price * 100),
+        // Sin `order`: solo acepta un ID real de la API de Órdenes y no hace falta para tarjeta.
+      },
+      options: {
+        lang: 'auto',
+        installments: false,
+        modal: true,
+        // Solo tarjeta: la suscripción recurrente se cobra a una tarjeta guardada.
+        paymentMethods: { tarjeta: true, yape: false, billetera: false, bancaMovil: false, agente: false, cuotealo: false },
+        paymentMethodsSort: ['tarjeta'],
+      },
+      appearance: { menuType: 'sidebar', buttonCardPayText: 'Suscribirme' },
     });
-    // Solo tarjeta: la suscripción recurrente se cobra a una tarjeta guardada.
-    window.Culqi.options?.({
-      lang: 'auto',
-      paymentMethods: { tarjeta: true, yape: false, bancaMovil: false, agente: false, billetera: false, cuotealo: false },
-    });
-    setCulqiReady(true);
-
-    window.culqi = async () => {
-      if (window.Culqi.token) {
+    checkout.culqi = async () => {
+      if (checkout.token) {
         if (!activePlaceId) return;
-        const token = window.Culqi.token.id;
+        const token = checkout.token.id;
+        checkout.close();
         setPaying(true);
         try {
-          await placeSubscriptionApi.subscribe(activePlaceId, token, selectedPlan.tier);
-          window.Culqi.close();
+          await placeSubscriptionApi.subscribe(activePlaceId, token, plan.tier);
           await load();
         } catch (err: any) {
           toast.error(err.message || 'Error al procesar el pago');
         } finally {
           setPaying(false);
         }
-      } else if (window.Culqi.error) {
-        toast.error(window.Culqi.error.user_message || window.Culqi.error.merchant_message || 'Culqi no pudo procesar la tarjeta');
+      } else if (checkout.error) {
+        toast.error(checkout.error.user_message || checkout.error.merchant_message || 'Culqi no pudo procesar la tarjeta');
       }
     };
-  }, [selectedPlan, load, activePlaceId]);
-
-  useEffect(() => {
-    if (culqiReady && selectedPlan) initCulqi();
-  }, [selectedPlan, culqiReady, initCulqi]);
-
-  const handleSubscribe = () => {
-    if (!selectedPlan?.configured) { toast.warning('Este plan todavía no está configurado para cobros.'); return; }
-    if (!window.Culqi) { toast.warning('Cargando procesador de pagos...'); return; }
-    window.Culqi.open();
+    checkout.open();
   };
 
   const planName = (tier: string) => plans.find((p) => p.tier === tier)?.name || tier;
@@ -161,8 +156,8 @@ export default function SuscripcionPage() {
   return (
     <>
       <Script
-        src="https://checkout.culqi.com/js/v4"
-        onLoad={() => { setCulqiReady(true); initCulqi(); }}
+        src="https://js.culqi.com/checkout-js"
+        onLoad={() => setCulqiReady(true)}
         strategy="afterInteractive"
       />
 
