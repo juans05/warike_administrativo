@@ -16,6 +16,7 @@ import {
   Mail,
   Brain,
   CreditCard,
+  Wallet,
   Shield,
   LogOut,
   UserPlus,
@@ -184,6 +185,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                   <SidebarItem href="/moderacion/dispositivos" icon={QrCode} label="Códigos QR" active={pathname === '/moderacion/dispositivos'} />
                   <SidebarItem href="/moderacion/reclamaciones" icon={FileWarning} label="Libro de Reclamaciones" active={pathname === '/moderacion/reclamaciones'} />
                   <SidebarItem href="/moderacion/oportunidades" icon={Flame} label="Oportunidades" active={pathname === '/moderacion/oportunidades'} />
+                  <SidebarItem href="/moderacion/comisiones" icon={Wallet} label="Comisiones" active={pathname === '/moderacion/comisiones'} />
                   <SidebarItem href="/configuracion" icon={Settings} label="Configuración del Sitio" active={pathname === '/configuracion'} />
                 </div>
               </>

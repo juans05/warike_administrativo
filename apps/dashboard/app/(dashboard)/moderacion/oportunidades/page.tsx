@@ -15,6 +15,7 @@ interface Opportunity {
   totalReviews: number;
   score: number;
   commercialStatus: string | null;
+  assignedSalesUserId: string | null;
 }
 
 interface WuarikesHereRequest {
@@ -71,6 +72,7 @@ export default function OportunidadesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [requests, setRequests] = useState<WuarikesHereRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [salesUsers, setSalesUsers] = useState<{ id: string; fullName: string }[]>([]);
 
   const loadData = () => {
     Promise.all([
@@ -83,6 +85,18 @@ export default function OportunidadesPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => { adminApi.listSalesUsers().then(setSalesUsers).catch(() => setSalesUsers([])); }, []);
+
+  const handleAssignSeller = async (placeId: string, salesUserId: string) => {
+    setOpportunities((prev) => prev.map((o) => (o.id === placeId ? { ...o, assignedSalesUserId: salesUserId || null } : o)));
+    try {
+      await adminApi.assignSalesUser(placeId, salesUserId || null);
+      toast.success(salesUserId ? 'Comercial asignado' : 'Local liberado');
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo asignar');
+      loadData();
+    }
+  };
 
   const handleOpportunityStatus = async (placeId: string, status: string) => {
     setOpportunities((prev) => prev.map((o) => (o.id === placeId ? { ...o, commercialStatus: status } : o)));
@@ -135,6 +149,7 @@ export default function OportunidadesPage() {
                   <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Local</th>
                   <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actividad</th>
                   <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Score</th>
+                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vendedor</th>
                   <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Estado</th>
                 </tr>
               </thead>
@@ -150,6 +165,17 @@ export default function OportunidadesPage() {
                     </td>
                     <td className="px-10 py-6">
                       <p className="text-lg font-black text-[#F26122]">{o.score}</p>
+                    </td>
+                    <td className="px-10 py-6">
+                      <select
+                        value={o.assignedSalesUserId ?? ''}
+                        onChange={(e) => handleAssignSeller(o.id, e.target.value)}
+                        aria-label={`Comercial de ${o.name}`}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold border border-gray-200 bg-white cursor-pointer"
+                      >
+                        <option value="">Sin vendedor</option>
+                        {salesUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                      </select>
                     </td>
                     <td className="px-10 py-6 text-right">
                       <StatusSelect value={o.commercialStatus} onChange={(status) => handleOpportunityStatus(o.id, status)} />
