@@ -82,6 +82,10 @@ export default function PlazbotSetupPage() {
   // Metrics & templates
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    try { setIsAdmin(JSON.parse(localStorage.getItem('user') || '{}')?.role === 'admin'); } catch { setIsAdmin(false); }
+  }, []);
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [campaignForm, setCampaignForm] = useState({ name: '', templateId: '', contacts: '' });
   const [campaignSending, setCampaignSending] = useState(false);
@@ -608,7 +612,8 @@ export default function PlazbotSetupPage() {
       )}
 
       {/* ─── CAMPAÑAS WHATSAPP ─── */}
-      {plazbotConnected && (
+      {/* Usan la cuenta global de PlazBot de Wuarikes: solo admin (el backend también lo exige). */}
+      {plazbotConnected && isAdmin && (
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">Campañas WhatsApp</h2>
