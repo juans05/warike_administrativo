@@ -675,6 +675,12 @@ export const subscriptionApi = {
   adminGetStats: () => fetchWithAuth('/subscriptions/admin/stats'),
 };
 
+export const hardwareApi = {
+  getProducts: () => fetchWithAuth('/subscriptions/hardware'),
+  checkout: (order: { token: string; productId: string; quantity: number; fullName: string; phone: string; address: string; district: string }) =>
+    fetchWithAuth('/subscriptions/hardware/checkout', { method: 'POST', body: JSON.stringify(order) }),
+};
+
 // La suscripción es de la sede, no de la cuenta que llama — solo un Admin de
 // esa sede la gestiona.
 export const placeSubscriptionApi = {

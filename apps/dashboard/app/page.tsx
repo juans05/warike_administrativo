@@ -443,8 +443,15 @@ const PLAN_ICONS: Record<string, LucideIcon> = {
   ia_total: Bot,
 };
 
+const PLAN_IMAGES: Record<string, string> = {
+  reputacion: '/images/reputation_shield.png',
+  fidelizacion: '/images/touch_review.png',
+  ia_total: '/images/growth_chart.png',
+};
+
 function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boolean }) {
   const PlanIcon = PLAN_ICONS[plan.tier] || Sparkles;
+  const checkoutHref = `/login?next=${encodeURIComponent(`/suscripcion?plan=${plan.tier}`)}`;
   return (
     <div
       className={`relative rounded-[28px] p-8 flex flex-col transition-transform duration-300 ${
@@ -457,6 +464,11 @@ function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boole
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[var(--primary)] text-white text-xs font-bold px-4 py-2 rounded-full shadow-[0_8px_20px_rgba(200,75,49,0.35)] whitespace-nowrap">
           <Flame size={14} className="shrink-0" />
           El más elegido
+        </div>
+      )}
+      {PLAN_IMAGES[plan.tier] && (
+        <div className="aspect-[16/9] rounded-2xl bg-[var(--background)] overflow-hidden mb-5">
+          <img src={PLAN_IMAGES[plan.tier]} alt={plan.name} className="w-full h-full object-cover" />
         </div>
       )}
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${highlighted ? 'bg-[var(--primary)] text-white' : 'bg-[var(--background)] text-[var(--primary)]'}`}>
@@ -475,18 +487,16 @@ function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boole
           </li>
         ))}
       </ul>
-      <a
-        href={waLink(`Hola equipo Wuarike! Quiero unirme al Club con la membresía "${plan.name}" (S/. ${plan.price}/mes) para mi restaurante.`)}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href={checkoutHref}
         className={`w-full text-center py-3.5 rounded-full text-sm font-semibold transition-all ${
           highlighted
             ? 'bg-[var(--primary)] text-white shadow-[0_10px_24px_rgba(200,75,49,0.35)] hover:bg-[var(--primary-light)] hover:scale-[1.03] active:scale-95'
             : 'bg-[var(--text)] text-white hover:opacity-90'
         }`}
       >
-        {highlighted ? '¡Quiero esta membresía!' : 'Unirme con esta membresía'}
-      </a>
+        Comprar membresía
+      </Link>
     </div>
   );
 }
@@ -519,7 +529,8 @@ function PricingSection() {
 
 // --- Hardware add-on ---
 
-function ProductCard({ title, img, reviews, price, oldPrice }: { title: string, img: string, reviews: number, price: string, oldPrice: string }) {
+function ProductCard({ id, title, desc, img, reviews, price, oldPrice }: { id: string, title: string, desc: string, img: string, reviews: number, price: string, oldPrice: string }) {
+  const checkoutHref = `/login?next=${encodeURIComponent(`/hardware?product=${id}`)}`;
   return (
     <div className="rounded-[28px] bg-white border border-[var(--border)] shadow-[0_2px_20px_rgba(45,36,36,0.05)] p-8 text-center space-y-5 hover:shadow-[0_8px_30px_rgba(45,36,36,0.1)] transition-shadow duration-300">
       <div className="aspect-square rounded-2xl bg-[var(--background)] flex items-center justify-center overflow-hidden">
@@ -527,6 +538,7 @@ function ProductCard({ title, img, reviews, price, oldPrice }: { title: string, 
       </div>
       <div className="space-y-1.5">
         <h3 className="text-base font-medium text-[var(--text)]">{title}</h3>
+        <p className="text-sm text-[var(--text-muted)] leading-snug">{desc}</p>
         <div className="flex justify-center items-center gap-2">
           <StarRating rating={5} size={13} />
           <span className="text-xs text-[var(--text-muted)]">({reviews})</span>
@@ -536,14 +548,12 @@ function ProductCard({ title, img, reviews, price, oldPrice }: { title: string, 
           <span className="text-sm text-[var(--text-muted)] line-through">S/. {oldPrice}</span>
         </div>
       </div>
-      <a
-        href={waLink(`Hola equipo Wuarike! Quiero el "${title}" para mi restaurante.`)}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href={checkoutHref}
         className="w-full inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white text-sm font-semibold py-3.5 rounded-full shadow-[0_8px_20px_rgba(200,75,49,0.3)] hover:bg-[var(--primary-light)] hover:shadow-[0_10px_26px_rgba(200,75,49,0.4)] hover:scale-[1.03] active:scale-95 transition-all duration-200"
       >
-        Quiero este <ArrowRight size={16} />
-      </a>
+        Comprar <ArrowRight size={16} />
+      </Link>
     </div>
   );
 }
@@ -558,9 +568,9 @@ function ProductsSection() {
           <p className="text-lg text-[var(--text-muted)] leading-relaxed">Tu membresía ya incluye un link y un QR digital. Si prefieres algo físico, estos stands premium con NFC tienen descuento exclusivo para miembros del Club.</p>
         </Reveal>
         <Reveal delay={80} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ProductCard title="Expositor Reseñas Google NFC" img="/images/warike_expositor_clean.png" reviews={370} price="129" oldPrice="169" />
-          <ProductCard title="Stand Premium de Madera" img="/images/warike_madera_clean.png" reviews={512} price="169" oldPrice="219" />
-          <ProductCard title="Placa Reseñas de Google" img="/images/warike_placa_clean.png" reviews={79} price="99" oldPrice="139" />
+          <ProductCard id="expositor-nfc" title="Expositor Reseñas Google NFC" desc="Expositor de mesa con chip NFC y QR: tus clientes acercan el celular y dejan su reseña en Google al instante." img="/images/warike_expositor_clean.png" reviews={370} price="129" oldPrice="169" />
+          <ProductCard id="stand-madera" title="Stand Premium de Madera" desc="Stand de madera para caja o barra, con chip NFC y QR grabados, que lleva a tus clientes directo a reseñar." img="/images/warike_madera_clean.png" reviews={512} price="169" oldPrice="219" />
+          <ProductCard id="placa-google" title="Placa Reseñas de Google" desc="Placa adhesiva compacta con NFC y QR para pegar en mesas, mostradores o la puerta del local." img="/images/warike_placa_clean.png" reviews={79} price="99" oldPrice="139" />
         </Reveal>
       </div>
     </section>
@@ -643,8 +653,8 @@ interface PlatformSettingsInfo {
 
 const DEFAULT_SETTINGS: PlatformSettingsInfo = {
   contactEmail: 'consulta@wuarikes.com',
-  contactPhone: null,
-  contactAddress: 'Lima, Perú',
+  contactPhone: '+51 902 191 948',
+  contactAddress: 'Micaela Bastidas 231, Lima, Perú',
   socialInstagram: null,
   socialFacebook: null,
   socialTiktok: null,
@@ -663,7 +673,8 @@ function Footer() {
 
   useEffect(() => {
     publicApi.getPlatformSettings()
-      .then((data: PlatformSettingsInfo) => setSettings({ ...DEFAULT_SETTINGS, ...data }))
+      // Empty fields from the API must not wipe the defaults (Culqi requires phone/email/address to be visible).
+      .then((data: PlatformSettingsInfo) => setSettings({ ...DEFAULT_SETTINGS, ...Object.fromEntries(Object.entries(data).filter(([, v]) => v)) }))
       .catch(() => { /* keep defaults */ });
   }, []);
 
@@ -677,6 +688,9 @@ function Footer() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] mt-1">Reputación &amp; Sazón</p>
           <p className="text-xs text-[var(--text-muted)] mt-2">
             {settings.contactAddress}
+            {settings.contactPhone && (
+              <> · <a href={`tel:${settings.contactPhone.replace(/\s/g, '')}`} className="hover:text-[var(--text)] transition-colors">{settings.contactPhone}</a></>
+            )}
             {settings.contactEmail && (
               <> · <a href={`mailto:${settings.contactEmail}`} className="hover:text-[var(--text)] transition-colors">{settings.contactEmail}</a></>
             )}

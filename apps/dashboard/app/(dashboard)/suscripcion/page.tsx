@@ -70,8 +70,10 @@ export default function SuscripcionPage() {
       ]);
       setSubscription(subData);
       setPlans(plansData);
-      // Preselect the middle tier (Fidelización+) as the recommended default.
-      setSelectedTier((prev) => prev || plansData[1]?.tier || plansData[0]?.tier || null);
+      // Preselect the plan chosen on the landing (?plan=), else the middle tier (Fidelización+).
+      const requestedTier = new URLSearchParams(window.location.search).get('plan');
+      const requestedPlan = plansData.find((p: PlanInfo) => p.tier === requestedTier);
+      setSelectedTier((prev) => prev || requestedPlan?.tier || plansData[1]?.tier || plansData[0]?.tier || null);
     } finally {
       setLoading(false);
     }

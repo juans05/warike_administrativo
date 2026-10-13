@@ -20,6 +20,9 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get('expired') === '1';
+  // Only same-origin paths, to avoid an open redirect via ?next=//evil.com
+  const nextParam = searchParams.get('next') || '';
+  const nextPath = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/inicio';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +57,7 @@ function LoginContent() {
       localStorage.setItem('token', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       setShowSplash(true);
-      setTimeout(() => router.push('/inicio'), 500);
+      setTimeout(() => router.push(nextPath), 500);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
         setError('La solicitud tardó demasiado. Verifica que el servidor está disponible.');
