@@ -74,7 +74,7 @@ export default function OrdersPage() {
                   <td className="p-3 font-bold">{soles(o.total)}</td>
                   <td className="p-3">{STATUS_LABEL[o.status as OrderStatus]}{o.refundPending && <span className="block text-xs text-red-500">Reembolso pendiente</span>}</td>
                   <td className="p-3 space-x-2 whitespace-nowrap">
-                    {o.status === 'PENDIENTE_PAGO' && !o.tabId && <>
+                    {o.status === 'PENDIENTE_PAGO' && <>
                       <button onClick={() => markPaid(o, 'EFECTIVO')} className="font-bold text-green-700">Pagado en efectivo</button>
                       <button onClick={() => markPaid(o, 'POS')} className="font-bold text-green-700">Pagado con POS</button>
                     </>}

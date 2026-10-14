@@ -34,8 +34,12 @@ export default function OrderSettingsPage() {
   };
 
   const testKeys = async () => {
-    const r = await ordersApi.testCulqi(activePlaceId!);
-    r.ok ? toast.success(r.message) : toast.error(r.message);
+    try {
+      const r = await ordersApi.testCulqi(activePlaceId!);
+      r.ok ? toast.success(r.message) : toast.error(r.message);
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudieron probar las llaves');
+    }
   };
 
   const addTable = async () => {
