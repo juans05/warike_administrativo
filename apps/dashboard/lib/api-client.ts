@@ -1,5 +1,5 @@
 // apps/dashboard/lib/api-client.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // ── Payload types ────────────────────────────────────────────────────────────
 
@@ -942,4 +942,49 @@ export const adminCommissionsApi = {
   payout: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`),
   pay: (id: string, note?: string) => fetchWithAuth(`/admin/commissions/payouts/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ note }) }),
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
+};
+
+export const ordersApi = {
+  me: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/me`),
+  list: (placeId: string, params: { status?: string; channel?: string; q?: string; page?: number } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
+    return fetchWithAuth(`/business/places/${placeId}/orders?${qs}`);
+  },
+  kds: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/kds`),
+  changeStatus: (placeId: string, orderId: string, status: string, reason?: string) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+  tablesBoard: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables-board`),
+  closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
+  manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/payments/manual`, { method: 'POST', body: JSON.stringify(body) }),
+  getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
+  updateSettings: (placeId: string, body: Record<string, unknown>) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/settings`, { method: 'PATCH', body: JSON.stringify(body) }),
+  testCulqi: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings/test-culqi`, { method: 'POST' }),
+  tables: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables`),
+  createTable: (placeId: string, body: { name: string; capacity?: number }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables`, { method: 'POST', body: JSON.stringify(body) }),
+  updateTable: (placeId: string, tableId: string, body: Record<string, unknown>) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  regenerateQr: (placeId: string, tableId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}/regenerate-qr`, { method: 'POST' }),
+  adminPayouts: (period?: string) => fetchWithAuth(`/admin/order-payouts${period ? `?period=${period}` : ''}`),
+  adminGeneratePayouts: (period: string) => fetchWithAuth('/admin/order-payouts/generate', { method: 'POST', body: JSON.stringify({ period }) }),
+  adminPayPayout: (id: string, reference: string) => fetchWithAuth(`/admin/order-payouts/${id}/pay`, { method: 'POST', body: JSON.stringify({ reference }) }),
+  adminSetCommission: (placeId: string, wuarikesCommissionPct: number) =>
+    fetchWithAuth(`/admin/order-payouts/commission/${placeId}`, { method: 'PATCH', body: JSON.stringify({ wuarikesCommissionPct }) }),
+};
+
+export const publicOrdersApi = {
+  table: (qrToken: string) => fetchPublic(`/public/tables/${qrToken}`),
+  createOrder: (body: { qrToken: string; items: { dishId: string; quantity: number; note?: string }[]; customerName?: string; customerPhone?: string; notes?: string }) =>
+    fetchPublic('/public/orders', { method: 'POST', body: JSON.stringify(body) }),
+  order: (token: string) => fetchPublic(`/public/orders/${token}`),
+  tab: (token: string) => fetchPublic(`/public/tabs/${token}`),
+  requestBill: (token: string) => fetchPublic(`/public/tabs/${token}/request-bill`, { method: 'POST' }),
+  paymentIntent: (body: { orderToken?: string; tabToken?: string; email: string; name?: string; phone?: string }) =>
+    fetchPublic('/public/payments/intent', { method: 'POST', body: JSON.stringify(body) }),
+  payWithToken: (paymentId: string, token: string) =>
+    fetchPublic(`/public/payments/${paymentId}/token`, { method: 'POST', body: JSON.stringify({ token }) }),
+  paymentStatus: (paymentId: string) => fetchPublic(`/public/payments/${paymentId}`),
 };

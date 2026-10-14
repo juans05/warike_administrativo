@@ -25,13 +25,16 @@ import {
   FileWarning,
   Flame,
   Settings,
+  ChefHat,
+  ClipboardList,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
 import TermsGate from '../../components/TermsGate';
-import { businessApi } from '../../lib/api-client';
+import { businessApi, ordersApi } from '../../lib/api-client';
 
 interface DashboardUser {
   id: string;
@@ -116,6 +119,17 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   const canFidelizacion = hasTierAccess(tier, 'fidelizacion');
   const canIaTotal = hasTierAccess(tier, 'ia_total');
 
+  const router = useRouter();
+  const [placeRole, setPlaceRole] = useState<string | null>(null);
+  useEffect(() => {
+    if (user?.role !== 'business' || !activePlaceId) { setPlaceRole(null); return; }
+    ordersApi.me(activePlaceId).then((r: { role: string }) => setPlaceRole(r.role)).catch(() => setPlaceRole(null));
+  }, [user?.role, activePlaceId]);
+  const kitchenOnly = placeRole === 'cocina';
+  useEffect(() => {
+    if (kitchenOnly && pathname !== '/cocina') router.replace('/cocina');
+  }, [kitchenOnly, pathname, router]);
+
   return (
     <div className="flex min-h-screen bg-background texture-paper">
       {user?.role === 'business' && <TermsGate />}
@@ -132,7 +146,12 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
         <div className="relative flex-1 min-h-0">
           <nav className="h-full overflow-y-auto px-4 pb-6">
-            {user?.role === 'business' && !noPlaces && (
+            {user?.role === 'business' && !noPlaces && kitchenOnly && (
+              <div className="pt-2">
+                <SidebarItem href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
+              </div>
+            )}
+            {user?.role === 'business' && !noPlaces && !kitchenOnly && (
               <>
                 {/* PRINCIPALES */}
                 <div className="pt-2">
@@ -146,6 +165,9 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                     <SidebarItem href="/reputacion" icon={Star} label="Reputación Google" active={pathname === '/reputacion'} />
                     <SidebarItem href="/social" icon={Camera} label="Instagram IA" active={pathname === '/social'} />
                     <SidebarItem href="/carta" icon={UtensilsCrossed} label="Carta Digital" active={pathname === '/carta'} />
+                    <SidebarItem href="/pedidos" icon={ClipboardList} label="Pedidos" badge="NEW" active={pathname === '/pedidos'} />
+                    <SidebarItem href="/cocina" icon={ChefHat} label="Cocina" badge="NEW" active={pathname === '/cocina'} />
+                    <SidebarItem href="/mesas" icon={LayoutGrid} label="Mesas" badge="NEW" active={pathname === '/mesas'} />
                     {canFidelizacion && <SidebarItem href="/fidelizacion" icon={Gift} label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />}
                   </div>
                 )}
@@ -238,6 +260,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
         {user?.role === 'business' && !noPlaces && (
           <>
             <MobileNavItem href="/inicio" icon={Building2} label="Local" active={pathname === '/inicio'} />
+            <MobileNavItem href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
             {canIaTotal && (
               <>
                 <MobileNavItem href="/chat" icon={MessagesSquare} label="Chat" badge="NEW" active={pathname === '/chat'} />
