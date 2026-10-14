@@ -205,6 +205,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                   <SidebarItem href="/moderacion" icon={Shield} label="Control de Locales" active={pathname === '/moderacion'} />
                   <SidebarItem href="/comunidad" icon={Users} label="Gestión de Usuarios" active={pathname === '/comunidad'} />
                   <SidebarItem href="/suscripciones" icon={CreditCard} label="Suscripciones" active={pathname === '/suscripciones'} />
+                  <SidebarItem href="/liquidaciones" icon={CreditCard} label="Liquidaciones" active={pathname === '/liquidaciones'} />
                   <SidebarItem href="/moderacion/whatsapp" icon={Bot} label="WhatsApp Bot" active={pathname === '/moderacion/whatsapp'} />
                   <SidebarItem href="/moderacion/dispositivos" icon={QrCode} label="Códigos QR" active={pathname === '/moderacion/dispositivos'} />
                   <SidebarItem href="/moderacion/reclamaciones" icon={FileWarning} label="Libro de Reclamaciones" active={pathname === '/moderacion/reclamaciones'} />
