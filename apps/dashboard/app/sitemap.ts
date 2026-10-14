@@ -11,6 +11,7 @@ const PUBLIC_ROUTES: { path: string; changeFrequency: 'daily' | 'monthly' | 'yea
   { path: '/terminos-y-condiciones', changeFrequency: 'yearly', priority: 0.2 },
   { path: '/politica-de-privacidad', changeFrequency: 'yearly', priority: 0.2 },
   { path: '/politica-de-cambios-y-devoluciones', changeFrequency: 'yearly', priority: 0.2 },
+  { path: '/contrato-de-encargo-de-datos', changeFrequency: 'yearly', priority: 0.2 },
   { path: '/libro-de-reclamaciones', changeFrequency: 'yearly', priority: 0.2 },
 ];
 

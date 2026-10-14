@@ -104,7 +104,7 @@ export default function ReclamacionesPage() {
     <div className="space-y-12 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
       <header>
         <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Libro de Reclamaciones</h1>
-        <p className="text-[#6B7280] font-medium max-w-lg">Reclamos y quejas recibidos a través del formulario público. Debes responder dentro de 30 días calendario.</p>
+        <p className="text-[#6B7280] font-medium max-w-lg">Reclamos y quejas recibidos a través del formulario público. Debes responder dentro de 15 días hábiles improrrogables (art. 24.1 del Código de Consumo).</p>
       </header>
 
       <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">

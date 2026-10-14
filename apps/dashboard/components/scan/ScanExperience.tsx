@@ -44,6 +44,7 @@ export default function ScanExperience({
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [googleLink, setGoogleLink] = useState<string | null>(null);
+  const [openedGoogle, setOpenedGoogle] = useState(false);
 
   const [phone, setPhone] = useState('');
   const [loyaltyResult, setLoyaltyResult] = useState<any>(null);
@@ -114,6 +115,7 @@ export default function ScanExperience({
     if (comment) copyText(comment);
     const googleUrl = buildGoogleLink();
     setGoogleLink(googleUrl);
+    setOpenedGoogle(openGoogle);
     const popup = openGoogle ? window.open('', '_blank') : null;
 
     setIsSending(true);
@@ -157,6 +159,7 @@ export default function ScanExperience({
     setChips([]);
     setMarketingConsent(false);
     setGoogleLink(null);
+    setOpenedGoogle(false);
     setPhone('');
     setLoyaltyResult(null);
   };
@@ -286,33 +289,30 @@ export default function ScanExperience({
             )}
           </div>
 
-          {rating >= 4 ? (
-            <>
-              <button
-                onClick={() => handleSubmit(true)}
-                disabled={isSending}
-                className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50"
-              >
-                {isSending ? 'Enviando...' : <><span>⭐</span> Publicar en Google</>}
-              </button>
-              <p className="text-[11px] font-bold text-text-muted text-balance">Copiamos tu comentario: en Google solo pégalo y toca Publicar.</p>
-              <button
-                onClick={() => handleSubmit(false)}
-                disabled={isSending}
-                className="w-full py-3 text-[10px] font-black text-text-muted uppercase tracking-widest hover:underline min-h-[48px] disabled:opacity-50"
-              >
-                Solo enviar, sin publicar en Google
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => handleSubmit(false)}
-              disabled={isSending}
-              className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 disabled:opacity-50"
-            >
-              {isSending ? 'Enviando...' : 'Enviar al equipo →'}
-            </button>
-          )}
+          {/* Aviso de privacidad en el punto de recojo (art. 6 del Reglamento de la Ley 29733). */}
+          <p className="text-[10px] font-semibold text-text-muted leading-relaxed text-balance">
+            Tus datos los recibe {profile.name}, responsable de su tratamiento, con Wuarikes SAC como encargado, para
+            atender tu opinión y, si dejas tu WhatsApp, tu programa de puntos. Más información y tus derechos en la{' '}
+            <a href="/politica-de-privacidad" target="_blank" rel="noopener noreferrer" className="underline">Política de Privacidad</a>.
+          </p>
+
+          {/* Mismas opciones para cualquier calificación: Google prohíbe pedir reseñas públicas solo a quienes
+              califican bien ("selectively solicit positive reviews", política de contenido de Google Maps). */}
+          <button
+            onClick={() => handleSubmit(true)}
+            disabled={isSending}
+            className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            {isSending ? 'Enviando...' : <><span>⭐</span> Publicar en Google</>}
+          </button>
+          <p className="text-[11px] font-bold text-text-muted text-balance">Copiamos tu comentario: en Google solo pégalo y toca Publicar.</p>
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={isSending}
+            className="w-full py-3 text-[10px] font-black text-text-muted uppercase tracking-widest hover:underline min-h-[48px] disabled:opacity-50"
+          >
+            Solo enviar al equipo, sin publicar en Google
+          </button>
         </div>
       )}
 
@@ -370,7 +370,7 @@ export default function ScanExperience({
             </a>
           )}
 
-          {googleLink && rating <= 3 && (
+          {googleLink && !openedGoogle && (
             <a href={googleLink} target="_blank" rel="noopener noreferrer" className="block w-full py-4 rounded-2xl border-2 border-border text-text font-black text-xs uppercase tracking-widest text-center min-h-[48px] flex items-center justify-center">
               ⭐ Dejar también una reseña pública en Google
             </a>

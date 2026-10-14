@@ -43,7 +43,7 @@ interface PlanInfo {
 // Shown immediately and kept if the live API is slow/unavailable, so the
 // pricing section is never empty — values mirror the backend defaults.
 const FALLBACK_PLANS: PlanInfo[] = [
-  { tier: 'reputacion', name: 'Wuarike Reputación', price: 79.99, currency: 'PEN', features: ['Filtro de reputación Google activado', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva'] },
+  { tier: 'reputacion', name: 'Wuarike Reputación', price: 79.99, currency: 'PEN', features: ['Solicitud de reseñas en Google por NFC y QR', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva'] },
   { tier: 'fidelizacion', name: 'Wuarike Fidelización+', price: 199, currency: 'PEN', features: ['Todo lo de Wuarike Reputación', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM'] },
   { tier: 'ia_total', name: 'Wuarike IA Total', price: 499, currency: 'PEN', features: ['Todo lo de Wuarike Fidelización+', 'PlazBot: bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)'] },
 ];
@@ -733,6 +733,7 @@ function Footer() {
           <Link href="/terminos-y-condiciones" className="hover:text-[var(--text)] transition-colors">Términos y Condiciones</Link>
           <Link href="/politica-de-privacidad" className="hover:text-[var(--text)] transition-colors">Política de Privacidad</Link>
           <Link href="/politica-de-cambios-y-devoluciones" className="hover:text-[var(--text)] transition-colors">Política de Cambios y Devoluciones</Link>
+          <Link href="/contrato-de-encargo-de-datos" className="hover:text-[var(--text)] transition-colors">Contrato de Encargo de Datos</Link>
           <Link href="/libro-de-reclamaciones" className="hover:text-[var(--text)] transition-colors">Libro de Reclamaciones</Link>
         </div>
       </div>

@@ -340,7 +340,7 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
-  // Complaints (quejas interceptadas por el filtro — rating <= 3)
+  // Complaints (comentarios privados con rating <= 3)
   getComplaints: (id: string, page = 1) =>
     fetchWithAuth(`/business/places/${id}/complaints?page=${page}&type=complaint`),
 

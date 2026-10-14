@@ -159,7 +159,7 @@ export default function FeedbackPage() {
       )}
 
       {/* ═══════════════════════════════════════════════ */}
-      {/* TAB: QUEJAS INTERCEPTADAS                       */}
+      {/* TAB: COMENTARIOS PRIVADOS                       */}
       {/* ═══════════════════════════════════════════════ */}
       {!isLoading && activeTab === 'complaints' && (
         <div className="space-y-8">
@@ -195,7 +195,7 @@ export default function FeedbackPage() {
                 <div className="text-5xl">🎉</div>
                 <div>
                   <h3 className="text-lg font-semibold text-text mb-1">¡Sin quejas!</h3>
-                  <p className="text-sm text-gray-500">Tu filtro no ha interceptado ninguna queja todavía.</p>
+                  <p className="text-sm text-gray-500">Todavía no hay comentarios privados de tus clientes.</p>
                 </div>
               </div>
             ) : (

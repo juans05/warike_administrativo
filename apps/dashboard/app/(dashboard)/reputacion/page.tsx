@@ -174,7 +174,7 @@ export default function ReputacionPage() {
       <header className="space-y-2">
         <h1 className="text-5xl font-black text-text tracking-tight font-warike">Motor de Reputación</h1>
         <p className="text-text-muted font-bold text-lg max-w-2xl leading-snug">
-          Vista consolidada de cómo va tu negocio: escaneos NFC, quejas interceptadas y rendimiento en redes sociales.
+          Vista consolidada de cómo va tu negocio: escaneos NFC, comentarios privados y rendimiento en redes sociales.
         </p>
       </header>
 
@@ -185,7 +185,7 @@ export default function ReputacionPage() {
         <KpiCard label="Escaneos NFC" value={stats.totalTaps.toLocaleString()} icon="📱" color="bg-blue-500" />
         <KpiCard label="Rating Google" value={stats.ratingAverage.toFixed(1)} icon="⭐" color="bg-yellow-500" />
         <KpiCard label="Reseñas a Google" value={stats.reviewsSentToGoogle} icon="🚀" color="bg-green-500" />
-        <KpiCard label="Quejas Interceptadas" value={stats.disastersAvoided} icon="🛡️" color="bg-red-500" />
+        <KpiCard label="Comentarios privados" value={stats.disastersAvoided} icon="🛡️" color="bg-red-500" />
         <KpiCard label="Comentarios IG" value={stats.totalComments} icon="💬" color="bg-purple-500" />
       </div>
 

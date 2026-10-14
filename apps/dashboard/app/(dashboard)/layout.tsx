@@ -30,6 +30,7 @@ import {
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
+import TermsGate from '../../components/TermsGate';
 import { businessApi } from '../../lib/api-client';
 
 interface DashboardUser {
@@ -117,6 +118,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
   return (
     <div className="flex min-h-screen bg-background texture-paper">
+      {user?.role === 'business' && <TermsGate />}
       <aside className="w-80 bg-white border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-sm z-10">
         <div className="p-8">
           <div className="flex flex-col gap-2">
