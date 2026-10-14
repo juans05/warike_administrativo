@@ -23,7 +23,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
-  const [pendingPayment, setPendingPayment] = useState<string | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{ token: string; total: number } | null>(null);
 
   useEffect(() => {
     if (!qrToken) return;
@@ -56,7 +56,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
       if (result.tabToken) {
         try { localStorage.setItem(`wuarike:tab:${qrToken}`, result.tabToken); } catch { /* sin storage: igual se redirige */ }
       }
-      if (result.requiresPayment) { setPendingPayment(result.orderToken); return; }
+      if (result.requiresPayment) { setPendingPayment({ token: result.orderToken, total: result.total }); return; }
       setLines([]);
       window.location.href = `/cuenta/${result.tabToken}`;
     } catch (err: any) {
@@ -93,8 +93,8 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
               <button onClick={() => setOpen(false)} aria-label="Cerrar"><X /></button>
             </div>
             {pendingPayment ? (
-              <CulqiPay target={{ orderToken: pendingPayment }} customerName={name} label={`Pagar ${soles(total)} y enviar a cocina`}
-                onPaid={() => { setLines([]); window.location.href = `/pedido/${pendingPayment}`; }} />
+              <CulqiPay target={{ orderToken: pendingPayment.token }} customerName={name} label={`Pagar ${soles(pendingPayment.total)} y enviar a cocina`}
+                onPaid={() => { setLines([]); window.location.href = `/pedido/${pendingPayment.token}`; }} />
             ) : (
               <>
                 <ul className="space-y-4">
