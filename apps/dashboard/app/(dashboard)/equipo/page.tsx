@@ -5,9 +5,9 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { teamApi, businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 
-type Role = 'admin' | 'supervisor' | 'agente';
+type Role = 'admin' | 'supervisor' | 'agente' | 'cocina';
 
-const ROLE_LABELS: Record<Role, string> = { admin: 'Admin', supervisor: 'Supervisor', agente: 'Agente' };
+const ROLE_LABELS: Record<Role, string> = { admin: 'Admin', supervisor: 'Supervisor', agente: 'Agente', cocina: 'Cocina' };
 
 interface TeamMember {
   id: string;
@@ -196,6 +196,7 @@ export default function EquipoPage() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
             >
               <option value="agente">Agente</option>
+              <option value="cocina">Cocina (solo pantalla de cocina)</option>
               <option value="supervisor">Supervisor</option>
               <option value="admin">Admin</option>
             </select>
@@ -249,6 +250,7 @@ export default function EquipoPage() {
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
                     >
                       <option value="agente">Agente</option>
+                      <option value="cocina">Cocina (solo pantalla de cocina)</option>
                       <option value="supervisor">Supervisor</option>
                       <option value="admin">Admin</option>
                     </select>

@@ -914,7 +914,7 @@ export const authApi = {
 
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
-  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente'; whatsappNumberIds?: string[] }) =>
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'cocina'; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
   update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
