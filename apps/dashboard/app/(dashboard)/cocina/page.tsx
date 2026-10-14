@@ -43,7 +43,8 @@ export default function KitchenPage() {
   }, [activePlaceId]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 30_000); return () => clearInterval(t); }, []);
+  // Cada 30 s: refresca los minutos de espera y recarga por si se perdió algún evento del stream.
+  useEffect(() => { const t = setInterval(() => { tick((n) => n + 1); load(); }, 30_000); return () => clearInterval(t); }, [load]);
 
   useOrderStream(staffStreamUrl(activePlaceId), (event) => {
     if (event.type === 'order.created' && soundOn && audio.current) beep(audio.current);

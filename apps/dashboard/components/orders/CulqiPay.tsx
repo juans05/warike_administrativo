@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { toast } from 'sonner';
 import { publicOrdersApi } from '../../lib/api-client';
@@ -22,13 +22,17 @@ export default function CulqiPay({ target, customerName, onPaid, label = 'Pagar'
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [waitingCip, setWaitingCip] = useState(false);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopPolling = () => { if (timer.current) clearInterval(timer.current); timer.current = null; };
+  useEffect(() => stopPolling, []);
 
   const waitForConfirmation = (paymentId: string) => {
     setWaitingCip(true);
-    const timer = setInterval(async () => {
+    stopPolling();
+    timer.current = setInterval(async () => {
       const { status } = await publicOrdersApi.paymentStatus(paymentId).catch(() => ({ status: 'PENDIENTE' }));
-      if (status === 'PAGADO') { clearInterval(timer); setWaitingCip(false); onPaid(); }
-      if (status === 'EXPIRADO' || status === 'FALLIDO') { clearInterval(timer); setWaitingCip(false); toast.error('El código de pago venció'); }
+      if (status === 'PAGADO') { stopPolling(); setWaitingCip(false); onPaid(); }
+      if (status === 'EXPIRADO' || status === 'FALLIDO') { stopPolling(); setWaitingCip(false); toast.error('El código de pago venció'); }
     }, 5000);
   };
 
