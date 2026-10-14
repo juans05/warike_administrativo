@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useParams } from 'next/navigation';
 import { Image as ImageIcon, LayoutGrid, List, Play, Sparkles, X } from 'lucide-react';
 import { publicApi } from '../../../lib/api-client';
+import { TableOrderingProvider, AddToCartButton } from '../../../components/orders/TableOrdering';
 import { buildPalette, type MenuTheme, type Palette } from '../../../lib/menuTheme';
 
 // Las tipografías se piden desde el navegador (no con next/font): si Google Fonts falla durante el build del servidor,
@@ -153,7 +154,10 @@ function FeedCard({ dish, color, onVideo }: { dish: Dish; color: string; onVideo
             {dish.description && <p className="mt-1 line-clamp-2 text-sm text-white/80">{dish.description}</p>}
             {dish.isVegetarian && <div className="mt-2"><VegBadge /></div>}
           </div>
-          <PriceTag price={dish.price} color={color} />
+          <div className="flex flex-col items-end gap-2">
+            <PriceTag price={dish.price} color={color} />
+            <AddToCartButton dish={dish} className="pointer-events-auto" />
+          </div>
         </div>
       </div>
       {dish.videoUrl && (
@@ -254,6 +258,7 @@ function DishSheet({ dish, color, onClose, onVideo }: { dish: Dish; color: strin
             <h2 className="text-2xl font-bold leading-tight" style={{ fontFamily: 'var(--font-display)', color: C.text }}>{dish.name}</h2>
             <PriceTag price={dish.price} color={color} />
           </div>
+          <AddToCartButton dish={dish} />
           {dish.isVegetarian && <VegBadge />}
           {dish.description && <p className="text-[15px] leading-relaxed" style={{ color: C.muted }}>{dish.description}</p>}
           {dish.videoUrl && (
@@ -286,6 +291,9 @@ export default function PublicMenuPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const C = buildPalette(place?.theme);
+  // ?mesa=<qr_token>: la carta entra en modo pedido para esa mesa.
+  const [mesa, setMesa] = useState<string | null>(null);
+  useEffect(() => { setMesa(new URLSearchParams(window.location.search).get('mesa')); }, []);
 
   // La vista elegida se recuerda en el celular; si el almacenamiento falla, se usa la cuadrícula.
   useEffect(() => {
@@ -377,6 +385,7 @@ export default function PublicMenuPage() {
   const totalDishes = categories.reduce((n, c) => n + c.dishes.length, 0);
 
   return (
+    <TableOrderingProvider qrToken={mesa}>
     <PalContext.Provider value={C}>
     <div className={shell} style={shellStyle}>
       <style>{FONTS_CSS + '.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>
@@ -569,5 +578,6 @@ export default function PublicMenuPage() {
       )}
     </div>
     </PalContext.Provider>
+    </TableOrderingProvider>
   );
 }
