@@ -82,7 +82,7 @@ export default function KitchenPage() {
                       <p className="font-black text-lg">#{o.number} · {o.channel === 'MESA' ? 'Mesa' : 'WhatsApp'} {FULFILLMENT_LABEL[o.fulfillment]} · hace {waited} min</p>
                       <ul className="space-y-1">
                         {o.items.map((i: any) => (
-                          <li key={i.id}><span className="font-bold">{i.quantity}x</span> {i.dishNameSnapshot}{i.note && <span className="block rounded bg-yellow-100 px-2 text-sm font-semibold">{i.note}</span>}</li>
+                          <li key={i.id}><span className="font-bold">{i.quantity}x</span> {i.name}{i.note && <span className="block rounded bg-yellow-100 px-2 text-sm font-semibold">{i.note}</span>}</li>
                         ))}
                       </ul>
                       {o.notes && <p className="rounded bg-yellow-100 px-2 text-sm">{o.notes}</p>}
