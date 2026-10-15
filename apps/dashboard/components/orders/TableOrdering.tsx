@@ -8,7 +8,7 @@ import { soles } from '../../lib/orders-format';
 import CulqiPay from './CulqiPay';
 
 interface Line { dishId: string; name: string; unitPrice: number; quantity: number; note: string }
-interface TableInfo { place: { id: string; name: string }; table: { name: string }; ordering: { enabled: boolean; tablePaymentMode: 'CUENTA_ABIERTA' | 'PREPAGO'; cashPaymentEnabled: boolean }; liveTabToken: string | null }
+interface TableInfo { place: { id: string; name: string }; table: { name: string }; ordering: { enabled: boolean; tablePaymentMode: 'CUENTA_ABIERTA' | 'PREPAGO'; cashPaymentEnabled: boolean }; pinRequired: boolean }
 
 const Ctx = createContext<{ enabled: boolean; add: (dish: { id: string; name: string; price: string | null }) => void } | null>(null);
 
@@ -24,6 +24,13 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<{ token: string; total: number } | null>(null);
+  // PIN de la mesa: lo da el personal, cambia al pagar la cuenta completa o al cerrar la mesa. Se recuerda en este celular.
+  const pinKey = `wuarike:pin:${qrToken}`;
+  const [pin, setPin] = useState('');
+  useEffect(() => {
+    if (!qrToken) return;
+    try { setPin(localStorage.getItem(pinKey) ?? ''); } catch { /* sin storage: se pide cada vez */ }
+  }, [qrToken, pinKey]);
 
   useEffect(() => {
     if (!qrToken) return;
@@ -47,19 +54,25 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
 
   const send = async () => {
     if (!qrToken || !lines.length) return;
+    if (!/^\d{4}$/.test(pin)) { toast.warning('Ingresa el PIN de 4 dígitos de tu mesa. Pídelo al personal.'); return; }
     setSending(true);
     try {
       const result = await publicOrdersApi.createOrder({
-        qrToken, customerName: name || undefined, customerPhone: phone || undefined,
+        qrToken, pin, customerName: name || undefined, customerPhone: phone || undefined,
         items: lines.map((l) => ({ dishId: l.dishId, quantity: l.quantity, ...(l.note ? { note: l.note } : {}) })),
       });
-      if (result.tabToken) {
-        try { localStorage.setItem(`wuarike:tab:${qrToken}`, result.tabToken); } catch { /* sin storage: igual se redirige */ }
-      }
+      try {
+        localStorage.setItem(pinKey, pin);
+        if (result.tabToken) localStorage.setItem(`wuarike:tab:${qrToken}`, result.tabToken);
+      } catch { /* sin storage: igual se redirige */ }
       if (result.requiresPayment) { setPendingPayment({ token: result.orderToken, total: result.total }); return; }
       setLines([]);
       window.location.href = `/cuenta/${result.tabToken}`;
     } catch (err: any) {
+      if (/PIN/i.test(err.message || '')) {
+        setPin('');
+        try { localStorage.removeItem(pinKey); } catch { /* nada */ }
+      }
       toast.error(err.message || 'No se pudo enviar el pedido');
     } finally {
       setSending(false);
@@ -67,7 +80,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
   };
 
   const value = useMemo(() => ({ enabled, add }), [enabled, add]);
-  const tabToken = info?.liveTabToken ?? (qrToken && typeof window !== 'undefined' ? (() => { try { return localStorage.getItem(`wuarike:tab:${qrToken}`); } catch { return null; } })() : null);
+  const tabToken = (qrToken && typeof window !== 'undefined' ? (() => { try { return localStorage.getItem(`wuarike:tab:${qrToken}`); } catch { return null; } })() : null);
 
   return (
     <Ctx.Provider value={value}>
@@ -97,6 +110,12 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
                 onPaid={() => { setLines([]); window.location.href = `/pedido/${pendingPayment.token}`; }} />
             ) : (
               <>
+                <label className="block space-y-1">
+                  <span className="text-sm font-semibold">PIN de tu mesa</span>
+                  <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="off"
+                    placeholder="4 dígitos" aria-label="PIN de la mesa" className="w-full rounded-xl border border-gray-200 px-3 py-3 text-center text-lg tracking-[0.5em]" />
+                  <span className="block text-xs text-gray-500">Pídelo al personal del local. Solo se pide una vez.</span>
+                </label>
                 <ul className="space-y-4">
                   {lines.map((l) => (
                     <li key={l.dishId} className="space-y-2">

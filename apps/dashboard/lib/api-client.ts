@@ -977,7 +977,9 @@ export const ordersApi = {
 
 export const publicOrdersApi = {
   table: (qrToken: string) => fetchPublic(`/public/tables/${qrToken}`),
-  createOrder: (body: { qrToken: string; items: { dishId: string; quantity: number; note?: string }[]; customerName?: string; customerPhone?: string; notes?: string }) =>
+  verifyPin: (qrToken: string, pin: string) =>
+    fetchPublic(`/public/tables/${qrToken}/verify-pin`, { method: 'POST', body: JSON.stringify({ pin }) }),
+  createOrder: (body: { qrToken: string; pin: string; items: { dishId: string; quantity: number; note?: string }[]; customerName?: string; customerPhone?: string; notes?: string }) =>
     fetchPublic('/public/orders', { method: 'POST', body: JSON.stringify(body) }),
   order: (token: string) => fetchPublic(`/public/orders/${token}`),
   tab: (token: string) => fetchPublic(`/public/tabs/${token}`),

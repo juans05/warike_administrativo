@@ -55,6 +55,7 @@ export default function TablesPage() {
               <button key={r.table.id} onClick={() => setSelected(r)} className={`rounded-3xl border-2 p-4 text-left ${style.className}`} aria-label={`${r.table.name}: ${style.label}`}>
                 <p className="text-lg font-black">{r.table.name}</p>
                 <p className="text-xs">{r.table.capacity} personas</p>
+                {r.table.pin && <p className="mt-2 inline-block rounded-lg bg-white/80 px-2 py-1 font-mono text-base font-black tracking-widest" aria-label={`PIN de ${r.table.name}`}>PIN {r.table.pin}</p>}
                 <p className="mt-3 text-sm font-bold">{style.label}</p>
                 {r.tab && <p className="text-sm">{soles(r.total)} · {r.minutesOpen} min</p>}
               </button>

@@ -121,6 +121,7 @@ export default function OrderSettingsPage() {
               <QRCodeCanvas id={`qr-${t.id}`} value={t.qrUrl} size={96} marginSize={2} />
               <div className="space-y-1 text-sm">
                 <p className="font-black">{t.name} · {t.capacity} personas {!t.active && '(inactiva)'}</p>
+                {t.pin && <p className="font-mono font-bold">PIN actual: {t.pin} <span className="font-sans font-normal text-gray-500">(cambia solo al pagar la cuenta o cerrar la mesa)</span></p>}
                 <button onClick={() => downloadQr(t.id, t.name)} className="block font-bold text-[#F26122]">Descargar QR</button>
                 <button onClick={() => ordersApi.updateTable(activePlaceId!, t.id, { active: !t.active }).then(load)} className="block">{t.active ? 'Desactivar' : 'Activar'}</button>
                 <button onClick={() => ordersApi.regenerateQr(activePlaceId!, t.id).then(load)} className="block text-gray-500">Generar QR nuevo (invalida el impreso)</button>
