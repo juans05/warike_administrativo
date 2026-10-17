@@ -14,9 +14,9 @@ export const metadata = {
   title: 'Política de Privacidad — Wuarike',
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ id, title, children }: { id?: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-3">
+    <section id={id} className="space-y-3 scroll-mt-16">
       <h2 className="font-warike text-xl font-bold text-[var(--text)]">{title}</h2>
       <div className="text-sm leading-relaxed text-[var(--text-muted)] space-y-3">{children}</div>
     </section>
@@ -268,7 +268,7 @@ export default function PoliticaPrivacidadPage() {
           </p>
         </Section>
 
-        <Section title="13. Tus derechos y cómo ejercerlos">
+        <Section id="eliminacion-de-datos" title="13. Tus derechos y cómo ejercerlos">
           <p>Como titular de tus datos personales puedes ejercer en cualquier momento, de forma gratuita, los derechos de:</p>
           <ul className="list-disc pl-5 space-y-2">
             <li><strong>Información:</strong> saber cómo tratamos tus datos. Respondemos en un máximo de 8 días.</li>
@@ -287,6 +287,14 @@ export default function PoliticaPrivacidadPage() {
             nombre, una copia de tu documento de identidad (o el de tu representante, con el poder correspondiente), el
             derecho que ejerces, un correo o domicilio para responderte y los documentos que sustenten tu pedido. Si
             falta información, te la pediremos dentro de los 7 días siguientes.
+          </p>
+          <p>
+            <strong>Eliminar los datos obtenidos de Facebook o WhatsApp:</strong> si conectaste tu cuenta de WhatsApp
+            Business con Facebook, puedes desconectar el número desde la sección WhatsApp de tu panel; con eso dejamos de
+            recibir y enviar mensajes por él. Para que además borremos tu token de acceso, tus conversaciones y los datos
+            de tu cuenta, escríbenos a <a href={`mailto:${PROVIDER.correo}`} className={linkClass}>{PROVIDER.correo}</a> con
+            el asunto &quot;Eliminación de datos&quot;. Los eliminamos en un máximo de 10 días y te confirmamos por correo.
+            También puedes quitar el acceso de Wuarikes desde la configuración de Facebook, en Integraciones comerciales.
           </p>
           <p>
             Si consideras que no atendimos tu solicitud, puedes presentar una reclamación ante la Autoridad Nacional de
