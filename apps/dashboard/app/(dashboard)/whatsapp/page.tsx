@@ -6,16 +6,8 @@ import { businessApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
 import WhatsAppSetupWizard from '../../../components/WhatsAppSetupWizard';
 import { toast } from 'sonner';
-import { redirect } from 'next/navigation';
-import { META_ENABLED } from '../../../lib/features';
 
-// Mientras Meta no valide la app, WhatsApp va solo por PlazBot.
-export default function Page() {
-  if (!META_ENABLED) redirect('/plazbot');
-  return <WhatsAppConfigPage />;
-}
-
-function WhatsAppConfigPage() {
+export default function WhatsAppConfigPage() {
   const { activePlaceId } = useRestaurant();
   const [numbers, setNumbers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);

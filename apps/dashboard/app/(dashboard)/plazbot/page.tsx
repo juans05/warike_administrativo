@@ -106,7 +106,8 @@ export default function PlazbotSetupPage() {
         const status = await plazbotApi.getStatus();
         setPlazbotConnected(status?.connected ?? false);
 
-        if (status?.connected && activePlaceId) {
+        // La configuración del bot sirve para cualquier canal (Meta o PlazBot): no depende de PlazBot.
+        if (activePlaceId) {
           const config = await plazbotApi.getConfig(activePlaceId);
           setFormData({
             botName: config?.botName || '',
@@ -123,8 +124,8 @@ export default function PlazbotSetupPage() {
               actionValue: o.actionValue || '',
             })),
           );
-          await loadMetricsAndTemplates();
         }
+        if (status?.connected) await loadMetricsAndTemplates();
       } catch (err: any) {
         if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
           setSubscriptionBlocked(err.message);
@@ -260,7 +261,7 @@ export default function PlazbotSetupPage() {
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-6">
       <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">PlazBot</h1>
+        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Mi bot de WhatsApp</h1>
         <p className="text-gray-500 mt-1">Configura el comportamiento del bot de WhatsApp para tu restaurante</p>
       </div>
 
@@ -277,25 +278,8 @@ export default function PlazbotSetupPage() {
         </div>
       )}
 
-      {/* Estado PlazBot */}
-      {!subscriptionBlocked && (
-      <div className={`rounded-2xl p-4 border flex items-center gap-3 ${plazbotConnected ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${plazbotConnected ? 'bg-green-500' : 'bg-amber-400'}`} />
-        <div>
-          <p className={`font-black text-sm ${plazbotConnected ? 'text-green-800' : 'text-amber-800'}`}>
-            {plazbotConnected ? 'PlazBot Activo' : 'PlazBot no configurado'}
-          </p>
-          <p className={`text-xs mt-0.5 ${plazbotConnected ? 'text-green-700' : 'text-amber-700'}`}>
-            {plazbotConnected
-              ? 'El sistema de WhatsApp está activo. Los mensajes de tus clientes llegarán al bot automáticamente.'
-              : 'Las credenciales de PlazBot deben configurarse en el servidor. Contacta al administrador.'}
-          </p>
-        </div>
-      </div>
-      )}
-
       {/* ─── PERSONALIZACIÓN DEL BOT ─── */}
-      {plazbotConnected && (
+      {!subscriptionBlocked && (
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
           <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest mb-4">
             Personalización del Bot
@@ -515,7 +499,7 @@ export default function PlazbotSetupPage() {
       )}
 
       {/* ─── DEMO BOT ─── */}
-      {plazbotConnected && activePlaceId && (
+      {!subscriptionBlocked && activePlaceId && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 pt-5 pb-3 flex items-center justify-between">
             <div>

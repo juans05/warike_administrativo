@@ -187,9 +187,8 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
                 {canIaTotal && (
                   <div className="mt-5 pt-5 border-t border-gray-200">
                     <SidebarLabel>WhatsApp & IA</SidebarLabel>
-                    <SidebarItem href="/plazbot" icon={Bot} label="PlazBot Setup" badge="NEW" active={pathname === '/plazbot'} />
-                    {/* Oculto por ahora: WhatsApp va solo por PlazBot. Descomentar para volver a ofrecer la API de Meta. */}
-                    {/* <SidebarItem href="/whatsapp" icon={MessagesSquare} label="WhatsApp con Facebook" badge="BETA" active={pathname === '/whatsapp'} /> */}
+                    <SidebarItem href="/whatsapp" icon={MessagesSquare} label="Conectar WhatsApp" active={pathname === '/whatsapp'} />
+                    <SidebarItem href="/plazbot" icon={Bot} label="Mi bot" active={pathname === '/plazbot'} />
                     <SidebarItem href="/chat" icon={MessagesSquare} label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
                     <SidebarItem href="/reportes" icon={BarChart3} label="Reportes" badge="NEW" active={pathname === '/reportes'} />
                     <SidebarItem href="/equipo" icon={UserPlus} label="Equipo" badge="NEW" active={pathname === '/equipo'} />

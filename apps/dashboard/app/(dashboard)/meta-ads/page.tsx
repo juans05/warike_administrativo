@@ -6,10 +6,10 @@ import { metaAdsApi } from '../../../lib/api-client';
 import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
 import { redirect } from 'next/navigation';
-import { META_ENABLED } from '../../../lib/features';
+import { META_ADS_ENABLED } from '../../../lib/features';
 
 export default function Page() {
-  if (!META_ENABLED) redirect('/inicio');
+  if (!META_ADS_ENABLED) redirect('/inicio');
   return <MetaAdsPage />;
 }
 
