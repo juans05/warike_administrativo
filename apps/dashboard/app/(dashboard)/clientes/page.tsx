@@ -1,243 +1,166 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { RefreshCw, Upload, Users } from 'lucide-react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { fetchWithAuth } from '../../../lib/api-client';
-import { SkeletonPage } from '../../../components/SkeletonLoader';
-import { maskPhone } from '../../../lib/mask';
+import type { LoyaltyCard } from '../../../lib/api-client';
+import { plural } from '../../../lib/modules';
 import { useContacts } from '../../../hooks/useContacts';
+import { Button, EmptyState, InboxLayout, Input, PageHeader, Tabs } from '../../../components/ui';
 import { ContactsList } from '../../../components/clientes/ContactsList';
 import { ContactsUploadModal } from '../../../components/clientes/ContactsUploadModal';
+import { ContactDetail } from '../../../components/clientes/ContactDetail';
+import { LoyaltyClientsList } from '../../../components/clientes/LoyaltyClientsList';
+import { LoyaltyCardDetail } from '../../../components/clientes/LoyaltyCardSection';
 
-const LEVEL_COLORS: Record<string, string> = {
-  BRONCE: 'bg-amber-100 text-amber-700',
-  PLATA: 'bg-slate-100 text-slate-600',
-  ORO: 'bg-yellow-100 text-yellow-700',
-  VIP: 'bg-purple-100 text-purple-700',
-};
+type View = 'contactos' | 'tarjeta';
 
-const LEVEL_EMOJI: Record<string, string> = {
-  BRONCE: '🥉', PLATA: '🥈', ORO: '🥇', VIP: '👑',
-};
-
-type Tab = 'fidelizacion' | 'contactos';
+const VIEWS = [
+  { key: 'contactos', label: 'Todos' },
+  { key: 'tarjeta', label: 'Con tarjeta' },
+];
 
 export default function ClientesPage() {
-  const { activePlaceId } = useRestaurant();
-  const [tab, setTab] = useState<Tab>('fidelizacion');
-  const [clients, setClients] = useState<any[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const { activePlaceId, activePlace } = useRestaurant();
+  const customer = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
+  const customers = plural(customer).toLowerCase();
+
+  const [view, setView] = useState<View>('contactos');
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<LoyaltyCard | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [contactsPage, setContactsPage] = useState(1);
 
   const {
-    contacts, meta: contactsMeta, loadingContacts,
+    contacts, meta, loadingContacts,
     showUploadModal, setShowUploadModal, uploading, lastImportResult, setLastImportResult, syncing,
     loadContacts, loadImports, handleUploadFile, handleSync,
   } = useContacts();
-  const [contactsPage, setContactsPage] = useState(1);
+
+  // La búsqueda espera a que se deje de escribir y vuelve a la primera página.
+  useEffect(() => {
+    const timer = setTimeout(() => { setSearch(searchInput.trim()); setContactsPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
-    if (!activePlaceId) { setIsLoading(false); return; }
-    setIsLoading(true);
-    fetchWithAuth(`/business/places/${activePlaceId}/loyalty/clients?page=${page}`)
-      .then(res => {
-        setClients(res.data || []);
-        setMeta(res.meta || { total: 0, page: 1, totalPages: 1 });
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [activePlaceId, page]);
+    if (!activePlaceId) return;
+    loadContacts(activePlaceId, contactsPage, search);
+  }, [activePlaceId, contactsPage, search]);
 
+  // Una selección de otro local no existe en este.
   useEffect(() => {
-    if (!activePlaceId || tab !== 'contactos') return;
-    loadContacts(activePlaceId, contactsPage);
-    loadImports(activePlaceId);
-  }, [activePlaceId, tab, contactsPage]);
+    setSelectedContactId(null);
+    setSelectedCard(null);
+    if (activePlaceId) loadImports(activePlaceId);
+  }, [activePlaceId]);
 
-  const handleSelectClient = async (client: any) => {
-    setSelected(client);
-    try {
-      const txs = await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/clients/${client.id}/transactions`);
-      setHistory(Array.isArray(txs) ? txs : []);
-    } catch { setHistory([]); }
+  const changeView = (key: string) => {
+    setView(key as View);
+    setSelectedContactId(null);
+    setSelectedCard(null);
   };
 
-  if (isLoading) return <SkeletonPage type="table" />;
+  // Importar y sincronizar recargan la lista completa (sin búsqueda, página 1); la pantalla se alinea con eso.
+  const showAll = () => { setView('contactos'); setSearchInput(''); setSearch(''); setContactsPage(1); };
 
-  return (
-    <div className="max-w-6xl space-y-10 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="space-y-2">
-        <h1 className="text-5xl font-black text-text tracking-tight font-warike">Clientes</h1>
-        <p className="text-text-muted font-bold text-lg">Programa de fidelización y base de contactos de tu negocio.</p>
-      </header>
-
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
-        {([['fidelizacion', '🎫 Fidelización'], ['contactos', '👥 Contactos']] as const).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${tab === id ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            {label}
-          </button>
-        ))}
+  const list = (
+    <>
+      <div className="sticky top-0 z-10 border-b border-border bg-surface">
+        <div className="px-2"><Tabs tabs={VIEWS} value={view} onChange={changeView} aria-label={`Lista de ${customers}`} /></div>
+        {view === 'contactos' && (
+          <div className="p-3">
+            <Input
+              label="Buscar"
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={`Nombre del ${customer.toLowerCase()}`}
+            />
+          </div>
+        )}
       </div>
-
-      {tab === 'contactos' ? (
-        <>
-          <ContactsList
-            contacts={contacts}
-            meta={contactsMeta}
-            loading={loadingContacts}
-            onPageChange={setContactsPage}
-            onNew={() => setShowUploadModal(true)}
-            onSync={() => activePlaceId && handleSync(activePlaceId)}
-            syncing={syncing}
-          />
-          <ContactsUploadModal
-            open={showUploadModal}
-            onClose={() => { setShowUploadModal(false); setLastImportResult(null); }}
-            onUpload={file => activePlaceId && handleUploadFile(activePlaceId, file)}
-            uploading={uploading}
-            lastResult={lastImportResult}
-          />
-        </>
+      {view === 'contactos' ? (
+        <ContactsList
+          contacts={contacts}
+          meta={meta}
+          loading={loadingContacts}
+          search={search}
+          customers={customers}
+          selectedId={selectedContactId}
+          onSelect={(contact) => setSelectedContactId(contact.id)}
+          onPageChange={setContactsPage}
+          onImport={() => setShowUploadModal(true)}
+        />
       ) : (
-      <>
-      {/* Stats rápidas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon="👥" label="Total clientes" value={meta.total} color="bg-blue-500" />
-        <StatCard icon="👑" label="VIP" value={clients.filter(c => c.level === 'VIP').length} color="bg-purple-500" />
-        <StatCard icon="🥇" label="Oro" value={clients.filter(c => c.level === 'ORO').length} color="bg-yellow-500" />
-        <StatCard icon="⭐" label="Visitas hoy" value="—" color="bg-green-500" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Lista */}
-        <div className="lg:col-span-2 space-y-3">
-          {clients.length === 0 ? (
-            <div className="bg-white p-12 rounded-[2.5rem] border border-dashed border-border text-center">
-              <p className="text-4xl mb-4">🎫</p>
-              <p className="font-bold text-text-muted">Ningún cliente ha escaneado el NFC aún.</p>
-              <p className="text-xs font-bold text-text-muted mt-2">Cuando activen su tarjeta aparecerán aquí.</p>
-            </div>
-          ) : (
-            clients.map(client => (
-              <button
-                key={client.id}
-                onClick={() => handleSelectClient(client)}
-                className={`w-full bg-white p-6 rounded-[2rem] border transition-all text-left hover:shadow-md ${selected?.id === client.id ? 'border-primary ring-2 ring-primary/10' : 'border-border'}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-xl font-black text-primary">
-                      {(client.customerName || maskPhone(client.customerPhone))[0]}
-                    </div>
-                    <div>
-                      <p className="font-black text-text">{client.customerName || maskPhone(client.customerPhone)}</p>
-                      <p className="text-xs font-bold text-text-muted">{maskPhone(client.customerPhone)}</p>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${LEVEL_COLORS[client.level]}`}>
-                      {LEVEL_EMOJI[client.level]} {client.level}
-                    </span>
-                    <p className="text-xs font-bold text-text-muted">{client.totalVisits} visitas · {client.stamps} sellos</p>
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-
-          {/* Paginación */}
-          {meta.totalPages > 1 && (
-            <div className="flex justify-center gap-3 pt-4">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-5 py-3 rounded-xl bg-white border border-border font-black text-xs disabled:opacity-40">← Anterior</button>
-              <span className="px-5 py-3 font-black text-xs text-text-muted">{page} / {meta.totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))} disabled={page === meta.totalPages} className="px-5 py-3 rounded-xl bg-white border border-border font-black text-xs disabled:opacity-40">Siguiente →</button>
-            </div>
-          )}
-        </div>
-
-        {/* Detalle del cliente */}
-        <div className="space-y-4">
-          {selected ? (
-            <div className="bg-white p-8 rounded-[2.5rem] border border-border shadow-sm space-y-6 sticky top-6">
-              <div className="text-center space-y-3">
-                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-2xl font-black text-primary mx-auto">
-                  {(selected.customerName || maskPhone(selected.customerPhone))[0]}
-                </div>
-                <div>
-                  <p className="font-black text-text">{selected.customerName || 'Sin nombre'}</p>
-                  <p className="text-xs font-bold text-text-muted">{maskPhone(selected.customerPhone)}</p>
-                </div>
-                <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${LEVEL_COLORS[selected.level]}`}>
-                  {LEVEL_EMOJI[selected.level]} {selected.level}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-background p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-text">{selected.totalVisits}</p>
-                  <p className="text-[9px] font-black text-text-muted uppercase">Visitas</p>
-                </div>
-                <div className="bg-background p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-primary">{selected.stamps}</p>
-                  <p className="text-[9px] font-black text-text-muted uppercase">Sellos</p>
-                </div>
-                <div className="bg-background p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-green-600">{selected.points}</p>
-                  <p className="text-[9px] font-black text-text-muted uppercase">Puntos</p>
-                </div>
-                <div className="bg-background p-4 rounded-2xl text-center">
-                  <p className="text-2xl font-black text-orange-500">{selected.totalRedeemed}</p>
-                  <p className="text-[9px] font-black text-text-muted uppercase">Canjeados</p>
-                </div>
-              </div>
-
-              {selected.lastVisitAt && (
-                <p className="text-[10px] font-bold text-text-muted text-center">
-                  Última visita: {new Date(selected.lastVisitAt).toLocaleDateString('es-PE')}
-                </p>
-              )}
-
-              {history.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">Historial reciente</p>
-                  {history.slice(0, 5).map((tx: any) => (
-                    <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                      <p className="text-xs font-bold text-text">{tx.description}</p>
-                      <span className={`text-xs font-black ${tx.type === 'earn' ? 'text-green-500' : 'text-orange-500'}`}>
-                        {tx.type === 'earn' ? '+' : '-'}{tx.stamps || tx.points}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-border text-center text-text-muted">
-              <p className="text-3xl mb-3">👆</p>
-              <p className="font-bold text-sm">Selecciona un cliente para ver su detalle</p>
-            </div>
-          )}
-        </div>
-      </div>
-      </>
+        activePlaceId && (
+          <LoyaltyClientsList
+            placeId={activePlaceId}
+            customers={customers}
+            selectedId={selectedCard?.id ?? null}
+            onSelect={setSelectedCard}
+          />
+        )
       )}
-    </div>
+    </>
   );
-}
 
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: any; color: string }) {
+  let detail: React.ReactNode = null;
+  if (activePlaceId && view === 'contactos' && selectedContactId) {
+    detail = <ContactDetail key={selectedContactId} placeId={activePlaceId} contactId={selectedContactId} />;
+  } else if (activePlaceId && view === 'tarjeta' && selectedCard) {
+    detail = <LoyaltyCardDetail key={selectedCard.id} placeId={activePlaceId} card={selectedCard} />;
+  }
+
   return (
-    <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-3 hover:shadow-xl transition-all">
-      <div className={`w-10 h-10 ${color} rounded-2xl flex items-center justify-center text-xl`}>{icon}</div>
-      <p className="text-2xl font-black text-text">{value}</p>
-      <p className="text-[9px] font-black text-text-muted uppercase tracking-widest">{label}</p>
-    </div>
+    <>
+      <PageHeader
+        title={plural(customer)}
+        subtitle="Quiénes te compran, te escriben o se unieron a tu programa."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              icon={RefreshCw}
+              loading={syncing}
+              onClick={() => { if (activePlaceId) { showAll(); handleSync(activePlaceId); } }}
+              title="Trae contactos nuevos desde tus conversaciones de WhatsApp y las reseñas con email o teléfono"
+            >
+              {syncing ? 'Sincronizando...' : 'Sincronizar'}
+            </Button>
+            <Button icon={Upload} onClick={() => setShowUploadModal(true)}>Importar {customers}</Button>
+          </div>
+        }
+      />
+
+      <InboxLayout
+        list={list}
+        detail={detail}
+        emptyDetail={
+          <div className="flex h-full items-center justify-center">
+            <EmptyState
+              icon={Users}
+              title={`Selecciona un ${customer.toLowerCase()}`}
+              description="Verás sus datos, su tarjeta y su historial."
+            />
+          </div>
+        }
+        onCloseDetail={() => { setSelectedContactId(null); setSelectedCard(null); }}
+      />
+
+      <ContactsUploadModal
+        open={showUploadModal}
+        onClose={() => { setShowUploadModal(false); setLastImportResult(null); }}
+        onUpload={(file) => {
+          if (!activePlaceId) return;
+          showAll();
+          handleUploadFile(activePlaceId, file);
+        }}
+        uploading={uploading}
+        lastResult={lastImportResult}
+        customers={customers}
+      />
+    </>
   );
 }

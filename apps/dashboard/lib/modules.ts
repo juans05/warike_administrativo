@@ -62,7 +62,7 @@ export interface NavGroup {
 }
 
 // "Cliente" → "Clientes", "Tutor" → "Tutores".
-const plural = (word: string) => (/[aeiouáéíóú]$/i.test(word) ? `${word}s` : `${word}es`);
+export const plural = (word: string) => (/[aeiouáéíóú]$/i.test(word) ? `${word}s` : `${word}es`);
 
 // Spec 2026-10-18-rediseno-panel-design.md §4.3: groups, routes and the plan each section asks for.
 export const NAV: NavGroup[] = [

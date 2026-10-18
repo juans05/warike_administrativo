@@ -135,10 +135,40 @@ export interface Contact {
   phone: string | null;
   email: string | null;
   dni: string | null;
-  source: 'whatsapp' | 'feedback' | 'import';
+  source: 'whatsapp' | 'feedback' | 'import' | 'order' | 'loyalty';
   tags: string[] | null;
   marketingConsent: boolean;
   createdAt: string;
+}
+
+/** Tarjeta de fidelización de un cliente (tabla loyalty_cards). */
+export interface LoyaltyCard {
+  id: string;
+  customerPhone: string;
+  customerName: string | null;
+  stamps: number;
+  points: number;
+  totalVisits: number;
+  totalRedeemed: number;
+  level: 'BRONCE' | 'PLATA' | 'ORO' | 'VIP';
+  lastVisitAt: string | null;
+  marketingConsent: boolean;
+  createdAt: string;
+}
+
+export interface ContactTimelineEntry {
+  at: string;
+  kind: 'order' | 'conversation' | 'loyalty';
+  title: string;
+  /** Solo en pedidos, en céntimos. */
+  amount?: number;
+}
+
+/** GET business/contacts/:id/profile — la línea de tiempo llega ordenada de la más reciente a la más antigua. */
+export interface ContactProfile {
+  contact: Contact;
+  loyaltyCard: LoyaltyCard | null;
+  timeline: ContactTimelineEntry[];
 }
 
 export interface ContactImport {
@@ -617,6 +647,8 @@ export const businessApi = {
     fetchWithAuth(`/business/contacts?placeId=${placeId}&page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   getContactImports: (placeId: string) =>
     fetchWithAuth(`/business/contacts/imports/list?placeId=${placeId}`),
+  getContactProfile: (placeId: string, contactId: string) =>
+    fetchWithAuth(`/business/contacts/${contactId}/profile?placeId=${placeId}`) as Promise<ContactProfile>,
   uploadContacts: (placeId: string, file: File) => uploadContactsFile(placeId, file),
   syncContacts: (placeId: string) =>
     fetchWithAuth(`/business/contacts/sync?placeId=${placeId}`, { method: 'POST' }),
