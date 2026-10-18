@@ -30,9 +30,19 @@ export function ContactsUploadModal({ open, onClose, onUpload, uploading, lastRe
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // El <dialog> nativo deja montado el <input>: sin vaciarlo, elegir el mismo archivo otra vez no dispara onChange.
+  const clearInput = () => { if (fileInputRef.current) fileInputRef.current.value = ''; };
+
   const handleCloseAndReset = () => {
     setSelectedFile(null);
+    clearInput();
     onClose();
+  };
+
+  const handleSubmit = () => {
+    if (!selectedFile) return;
+    onUpload(selectedFile);
+    clearInput();
   };
 
   return (
@@ -44,7 +54,7 @@ export function ContactsUploadModal({ open, onClose, onUpload, uploading, lastRe
         <>
           <Button variant="secondary" onClick={handleCloseAndReset}>{lastResult ? 'Cerrar' : 'Cancelar'}</Button>
           {!lastResult && (
-            <Button icon={Upload} loading={uploading} disabled={!selectedFile} onClick={() => selectedFile && onUpload(selectedFile)}>
+            <Button icon={Upload} loading={uploading} disabled={!selectedFile} onClick={handleSubmit}>
               {uploading ? 'Subiendo...' : 'Subir archivo'}
             </Button>
           )}

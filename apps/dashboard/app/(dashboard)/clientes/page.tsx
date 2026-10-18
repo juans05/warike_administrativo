@@ -21,6 +21,12 @@ const VIEWS = [
 ];
 
 export default function ClientesPage() {
+  const { activePlaceId } = useRestaurant();
+  // Al cambiar de local se vuelve a montar todo: página, búsqueda, selección y lista no arrastran nada del anterior.
+  return <ClientesContent key={activePlaceId ?? 'none'} />;
+}
+
+function ClientesContent() {
   const { activePlaceId, activePlace } = useRestaurant();
   const customer = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
   const customers = plural(customer).toLowerCase();
@@ -36,7 +42,7 @@ export default function ClientesPage() {
     contacts, meta, loadingContacts,
     showUploadModal, setShowUploadModal, uploading, lastImportResult, setLastImportResult, syncing,
     loadContacts, loadImports, handleUploadFile, handleSync,
-  } = useContacts();
+  } = useContacts({ one: customer.toLowerCase(), many: customers });
 
   // La búsqueda espera a que se deje de escribir y vuelve a la primera página.
   useEffect(() => {
@@ -49,10 +55,7 @@ export default function ClientesPage() {
     loadContacts(activePlaceId, contactsPage, search);
   }, [activePlaceId, contactsPage, search]);
 
-  // Una selección de otro local no existe en este.
   useEffect(() => {
-    setSelectedContactId(null);
-    setSelectedCard(null);
     if (activePlaceId) loadImports(activePlaceId);
   }, [activePlaceId]);
 
@@ -85,7 +88,7 @@ export default function ClientesPage() {
         <ContactsList
           contacts={contacts}
           meta={meta}
-          loading={loadingContacts}
+          loading={loadingContacts && !!activePlaceId}
           search={search}
           customers={customers}
           selectedId={selectedContactId}

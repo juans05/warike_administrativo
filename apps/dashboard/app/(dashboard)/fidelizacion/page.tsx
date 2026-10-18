@@ -49,8 +49,6 @@ const formFromProgram = (p: any): ProgramForm => ({
   winbackMessage: p.winbackMessage || '',
 });
 
-const clamp = (value: string, min: number, max = Infinity) => Math.min(max, Math.max(min, Number(value) || min));
-
 export default function FidelizacionPage() {
   const { activePlaceId, activePlace } = useRestaurant();
   const customer = (activePlace?.verticalConfig?.labels.customer ?? 'Cliente').toLowerCase();
@@ -82,12 +80,15 @@ export default function FidelizacionPage() {
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
+    // Si cambia el local antes de que responda el anterior, esa respuesta no debe llenar el formulario del nuevo.
+    let cancelled = false;
     let failed = false;
     setIsLoading(true);
     setLoadFailed(false);
     setSubscriptionBlocked(null);
     Promise.all([
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`).catch((err) => {
+        if (cancelled) return null;
         if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
           setSubscriptionBlocked(err.message);
         } else {
@@ -98,6 +99,7 @@ export default function FidelizacionPage() {
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards`).catch(() => []),
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/notifications-status`).catch(() => null),
     ]).then(([prog, rwds, status]) => {
+      if (cancelled) return;
       setNotifStatus(status);
       setProgram(prog);
       const loaded = prog ? formFromProgram(prog) : DEFAULT_FORM;
@@ -105,7 +107,8 @@ export default function FidelizacionPage() {
       setSavedForm(loaded);
       setRewards(Array.isArray(rwds) ? rwds : []);
       setLoadFailed(failed);
-    }).finally(() => setIsLoading(false));
+    }).finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [activePlaceId, reloadKey]);
 
   const handleSave = async () => {
@@ -234,31 +237,28 @@ export default function FidelizacionPage() {
             </div>
 
             {form.type === 'stamps' ? (
-              <Input
+              <NumberInput
                 label="Sellos para ganar premio"
-                type="number"
                 min={1}
                 max={50}
                 value={form.stampsToReward}
-                onChange={(e) => set({ stampsToReward: clamp(e.target.value, 1, 50) })}
+                onChange={(stampsToReward) => set({ stampsToReward })}
                 hint={`${form.stampsToReward} sellos = 1 premio`}
               />
             ) : (
-              <Input
+              <NumberInput
                 label="Puntos por visita"
-                type="number"
                 min={1}
                 value={form.pointsPerVisit}
-                onChange={(e) => set({ pointsPerVisit: clamp(e.target.value, 1) })}
+                onChange={(pointsPerVisit) => set({ pointsPerVisit })}
               />
             )}
 
-            <Input
+            <NumberInput
               label="Espera mínima entre visitas (horas)"
-              type="number"
               min={0}
               value={form.minHoursBetweenVisits}
-              onChange={(e) => set({ minHoursBetweenVisits: clamp(e.target.value, 0) })}
+              onChange={(minHoursBetweenVisits) => set({ minHoursBetweenVisits })}
               hint={`Evita que el mismo ${customer} sume sellos varias veces seguidas. Usa 0 para desactivar el límite.`}
             />
             <Input
@@ -312,13 +312,7 @@ export default function FidelizacionPage() {
                 onChange={(e) => setNewRewardTitle(e.target.value)}
                 placeholder="Nombre del premio"
               />
-              <Input
-                label="Sellos"
-                type="number"
-                min={1}
-                value={newRewardStamps}
-                onChange={(e) => setNewRewardStamps(clamp(e.target.value, 1))}
-              />
+              <NumberInput label="Sellos" min={1} value={newRewardStamps} onChange={setNewRewardStamps} />
               <Button variant="secondary" icon={Plus} loading={isAddingReward} disabled={!newRewardTitle} onClick={handleAddReward}>
                 Agregar
               </Button>
@@ -407,7 +401,7 @@ export default function FidelizacionPage() {
               <div>
                 <h3 className="text-base font-semibold text-text">Notificar a mis {customers}</h3>
                 <p className="mt-0.5 text-sm text-text-muted">
-                  Manda un aviso a la tarjeta de tus {customers} (ej. &quot;Hoy 2x1&quot;). Solo llega a quienes guardaron su tarjeta en <b>Google Wallet</b>; les aparece como notificación en el celular. Máximo 3 avisos por día.
+                  Manda un aviso a la tarjeta de tus {customers} (ej. &quot;Hoy 20% de descuento&quot;). Solo llega a quienes guardaron su tarjeta en <b>Google Wallet</b>; les aparece como notificación en el celular. Máximo 3 avisos por día.
                 </p>
               </div>
               {notifStatus && (
@@ -433,7 +427,7 @@ export default function FidelizacionPage() {
                 rows={2}
                 value={campaignBody}
                 onChange={(e) => setCampaignBody(e.target.value)}
-                placeholder="Ej. 2x1 en postres hasta las 8 p. m."
+                placeholder="Ej. 20% de descuento hasta las 8 p. m."
                 maxLength={200}
               />
               <Button
@@ -457,6 +451,40 @@ export default function FidelizacionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Número editable: mientras se escribe se guarda el texto (se puede vaciar) y se ajusta al rango al salir del campo. */
+function NumberInput({ label, value, min, max = Infinity, hint, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max?: number;
+  hint?: string;
+  onChange(value: number): void;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+  return (
+    <Input
+      label={label}
+      type="number"
+      inputMode="numeric"
+      min={min}
+      max={Number.isFinite(max) ? max : undefined}
+      value={text}
+      hint={hint}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = Number(e.target.value);
+        if (e.target.value !== '' && Number.isInteger(n) && n >= min && n <= max) onChange(n);
+      }}
+      onBlur={() => {
+        const n = Math.min(max, Math.max(min, Math.round(Number(text)) || min));
+        setText(String(n));
+        onChange(n);
+      }}
+    />
   );
 }
 
