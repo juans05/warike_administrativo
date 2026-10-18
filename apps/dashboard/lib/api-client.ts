@@ -50,10 +50,14 @@ export interface MenuItemPayload {
   price: number;
   categoryId: string;
   imageUrl?: string;
+  images?: string[];
   videoUrl?: string;
   isVegetarian?: boolean;
   available?: boolean;
   displayOrder?: number;
+  /** Rubros de servicios: 'servicio' + duración en minutos (entero >= 0; null la quita). */
+  kind?: 'producto' | 'servicio';
+  durationMin?: number | null;
 }
 export interface MenuItemUpdate extends Partial<MenuItemPayload> {}
 
