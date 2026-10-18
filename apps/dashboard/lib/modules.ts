@@ -102,7 +102,7 @@ export const NAV: NavGroup[] = [
     group: 'Reputación',
     subtitle: 'Lo que dicen de ti',
     items: [
-      { href: '/reputacion', label: 'Reseñas Google', icon: Star, module: 'reputacion' },
+      { href: '/reputacion', label: 'Reseñas Google', icon: Star, module: 'reputacion', tier: 'reputacion' },
       { href: '/feedback', label: 'Feedback', icon: MessageSquareText },
       { href: '/reportes', label: 'Reportes', icon: BarChart3, module: 'reportes', tier: 'ia_total' },
       { href: '/hardware', label: 'Tienda NFC', icon: Nfc },

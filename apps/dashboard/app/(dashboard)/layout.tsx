@@ -41,16 +41,20 @@ interface DashboardUser {
 
 // El plan es de la SEDE activa (lo paga su dueño), no del usuario logueado — un
 // Agente/Supervisor de esa sede lo hereda igual, sin tener suscripción propia.
-// `undefined` = todavía cargando (no se muestran candados hasta saberlo).
-function useSubscriptionTier(placeId: string | null) {
+// `undefined` = desconocido (cargando o error): sin candados ni bloqueo de página; el backend
+// aplica el plan de todos modos. `null` solo tras cargar sin local o con respuesta "sin plan".
+function useSubscriptionTier(placeId: string | null, placesLoading: boolean) {
   const [tier, setTier] = useState<string | null | undefined>(undefined);
   useEffect(() => {
+    if (placesLoading) { setTier(undefined); return; }
     if (!placeId) { setTier(null); return; }
+    let cancelled = false;
     setTier(undefined);
     businessApi.getSubscriptionTier(placeId)
-      .then((res) => setTier(res?.tier ?? null))
-      .catch(() => setTier(null));
-  }, [placeId]);
+      .then((res) => { if (!cancelled) setTier(res?.tier ?? null); })
+      .catch(() => { if (!cancelled) setTier(undefined); });
+    return () => { cancelled = true; };
+  }, [placeId, placesLoading]);
   return tier;
 }
 
@@ -58,9 +62,10 @@ function useSubscriptionTier(placeId: string | null) {
 function usePendingChats(placeId: string | null) {
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
-    if (!placeId) { setCount(null); return; }
+    setCount(null);
+    if (!placeId) return;
     let cancelled = false;
-    const load = () => businessApi.getToday(placeId)
+    const load = () => !document.hidden && businessApi.getToday(placeId)
       .then((res) => { if (!cancelled) setCount(res?.pendingHumanChats ?? null); })
       .catch(() => { if (!cancelled) setCount(null); });
     load();
@@ -140,7 +145,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   const pathname = usePathname();
   const { places, activePlaceId, activePlace, isLoading: contextLoading, refreshPlaces } = useRestaurant();
   const isBusiness = user?.role === 'business';
-  const tier = useSubscriptionTier(isBusiness ? activePlaceId : null);
+  const tier = useSubscriptionTier(isBusiness ? activePlaceId : null, isBusiness && contextLoading);
 
   const hasSavedPlace = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
   const noPlaces = !contextLoading && places.length === 0 && isBusiness && !hasSavedPlace;
@@ -162,6 +167,8 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   const config = activePlace?.verticalConfig;
   const routeEntry = matchRoute(pathname);
   const pageAccess = isBusiness && !kitchenOnly && routeEntry ? accessOf(routeEntry, config, tier) : 'open';
+  // No montar una página de módulo antes de saber el rubro (evita que /mesas empiece a pedir datos antes del redirect).
+  const waitForPlaces = isBusiness && contextLoading && Boolean(routeEntry?.module);
   useEffect(() => {
     if (pageAccess === 'hidden') router.replace('/inicio');
   }, [pageAccess, router]);
@@ -194,7 +201,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           </button>
         </header>
         <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} side="left" title="Menú">
-          <SidebarContent {...navProps} hideLogo />
+          <SidebarContent {...navProps} hideLogo onNavigate={() => setMenuOpen(false)} />
         </Sheet>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 md:px-8 md:py-8">
@@ -211,7 +218,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           )}
           {noPlaces ? (
             <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} />
-          ) : pageAccess === 'hidden' ? null : pageAccess === 'locked' ? (
+          ) : pageAccess === 'hidden' || waitForPlaces ? null : pageAccess === 'locked' ? (
             <EmptyState
               icon={Lock}
               title="Esta sección no está en tu plan"
@@ -227,17 +234,20 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
 function Logo() {
   return (
-    <Link href="/inicio" className="rounded-control text-lg font-bold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+    <Link href="/inicio" className="inline-flex min-h-11 items-center rounded-control text-lg font-bold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
       WUARIKE
     </Link>
   );
 }
 
-function SidebarContent({ user, pathname, showBusiness, kitchenOnly, config, tier, pendingChats, handleLogout, hideLogo }: NavProps & { hideLogo?: boolean }) {
+function SidebarContent({
+  user, pathname, showBusiness, kitchenOnly, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+}: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <div className="flex h-full w-full flex-col">
+    // Cierra el Sheet al tocar cualquier enlace, aunque sea la ruta actual.
+    <div className="flex h-full w-full flex-col" onClick={(e) => { if ((e.target as Element).closest('a')) onNavigate?.(); }}>
       {!hideLogo && <div className="px-5 py-5"><Logo /></div>}
 
       <nav aria-label="Menú principal" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
