@@ -33,8 +33,9 @@ export function InboxLayout({ list, detail, emptyDetail, onCloseDetail }: InboxL
   return (
     <div className="grid gap-4 lg:h-[calc(100dvh-12rem)] lg:min-h-[480px] lg:grid-cols-[minmax(280px,360px)_1fr]">
       <section aria-label="Lista" className={pane}>{list}</section>
-      {/* Desktop pane is CSS-hidden below lg: no layout shift, and the selection survives resizes. */}
-      <section aria-label="Detalle" className={`hidden lg:block ${pane}`}>{detail ?? emptyDetail}</section>
+      {/* Desktop pane is CSS-hidden below lg: no layout shift, and the selection survives resizes.
+          Its content renders only at lg+ so `detail` is never mounted twice (Sheet below lg). */}
+      <section aria-label="Detalle" className={`hidden lg:block ${pane}`}>{!belowLg && (detail ?? emptyDetail)}</section>
       {belowLg && (
         <Sheet open={detail != null} onClose={onCloseDetail} side="right">
           {detail}
