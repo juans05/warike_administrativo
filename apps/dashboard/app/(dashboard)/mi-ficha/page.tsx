@@ -23,7 +23,7 @@ const FALLBACK_AMENITIES = [
 ];
 
 // Stable reference: MapSelector re-geocodes whenever this callback changes.
-const logLocation = (lat: number, lng: number) => console.log('Ubicación seleccionada:', lat, lng);
+const ignoreLocation = () => {};
 
 export default function MiFichaPage() {
   const { activePlaceId, activePlace, refreshPlaces } = useRestaurant();
@@ -61,6 +61,7 @@ export default function MiFichaPage() {
   // Tipo de negocio: el guardado (savedType) y el elegido en el formulario.
   const [verticals, setVerticals] = useState<BusinessTypesResponse['verticals']>([]);
   const [savedType, setSavedType] = useState('');
+  const [savedCategoryId, setSavedCategoryId] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -111,8 +112,8 @@ export default function MiFichaPage() {
       .then(data => {
         const cats = Array.isArray(data) ? data : [];
         setDbCategories(cats);
-        // Keep the current category only if it belongs to this vertical; otherwise default to the first one.
-        setFormData(prev => cats.some(c => c.id === prev.categoriaId) ? prev : { ...prev, categoriaId: cats[0]?.id ?? '' });
+        // A category from another vertical is dropped: the owner picks one from "Elige una especialidad".
+        setFormData(prev => !prev.categoriaId || cats.some(c => c.id === prev.categoriaId) ? prev : { ...prev, categoriaId: '' });
       })
       .catch(err => console.error(err));
   }, [placeVertical]);
@@ -207,6 +208,7 @@ export default function MiFichaPage() {
         const type = profile.businessType || activePlace?.businessType || '';
         setSavedType(type);
         setBusinessType(type);
+        setSavedCategoryId(profile.categoryId || '');
 
         isLoadingProfile.current = true;
 
@@ -313,15 +315,17 @@ export default function MiFichaPage() {
 
   const handleSave = async () => {
     if (!activePlaceId) return;
-    setConfirmOpen(false);
     setIsSaving(true);
     try {
       await businessApi.updateProfile(activePlaceId, {
         name: formData.nombre,
         address: formData.direccion,
-        // On a type change only businessType goes: the backend clears a category from another vertical,
-        // and re-sending the current one would be validated against the new type (400).
-        ...(typeChanged ? { businessType } : { categoryId: formData.categoriaId || undefined }),
+        ...(typeChanged && { businessType }),
+        // Rubro change: no categoryId (the backend clears one from another rubro; re-sending it is a 400).
+        // Type change within the rubro: categoryId only if the owner changed it (the backend accepts it).
+        categoryId: verticalChanged || (typeChanged && formData.categoriaId === savedCategoryId)
+          ? undefined
+          : (formData.categoriaId || undefined),
         districtId: country === 'PE' ? (formData.ubigeoId || undefined) : null,
         amenityIds: formData.amenityIds,
         openHoursText: JSON.stringify(formData.horarios),
@@ -332,6 +336,12 @@ export default function MiFichaPage() {
         spainProvince: country === 'ES' ? (formData.provincia || null) : null,
         spainMunicipality: country === 'ES' ? (formData.distrito || null) : null,
       });
+      if (verticalChanged) {
+        setFormData(prev => ({ ...prev, categoriaId: '' }));
+        setSavedCategoryId('');
+      } else if (formData.categoriaId) {
+        setSavedCategoryId(formData.categoriaId);
+      }
       if (typeChanged) {
         setSavedType(businessType);
         await refreshPlaces(); // menú y etiquetas del nuevo rubro
@@ -342,6 +352,7 @@ export default function MiFichaPage() {
       toast.error(err instanceof Error && err.message ? err.message : 'Error al guardar los cambios.');
     } finally {
       setIsSaving(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -398,8 +409,7 @@ export default function MiFichaPage() {
           label="Especialidad"
           value={formData.categoriaId}
           onChange={(e) => update({ categoriaId: e.target.value })}
-          disabled={typeChanged}
-          hint={typeChanged ? 'Guarda el nuevo tipo de negocio para cambiar la especialidad.' : undefined}
+          hint={verticalChanged ? 'Al guardar el nuevo rubro elegirás una especialidad de ese rubro.' : undefined}
         >
           {!formData.categoriaId && <option value="">Elige una especialidad</option>}
           {dbCategories.map(cat => (
@@ -488,8 +498,9 @@ export default function MiFichaPage() {
         <MapSelector
           locationName={formData.nombre || 'Tu ubicación'}
           direccion={formData.direccion}
-          onLocationSelect={logLocation}
-          onUbigeoFound={(dept, prov, dist, ubigeoCode, ubigeoId) => {
+          onLocationSelect={ignoreLocation}
+          onUbigeoFound={(dept, prov, dist, ubigeoCode, ubigeoId, source) => {
+            if (source === 'user') setIsDirty(true); // geocoding the saved address is not an edit
             setFormData(prev => ({
               ...prev,
               departamento: dept,

@@ -14,7 +14,8 @@ export function MapSelector({
   locationName: string;
   direccion?: string;
   onLocationSelect: (lat: number, lng: number) => void;
-  onUbigeoFound?: (dept: string, prov: string, dist: string, ubigeoCode: string, ubigeoId: string) => void;
+  /** source 'user' = the owner clicked the map; 'geocode' = derived from the address. */
+  onUbigeoFound?: (dept: string, prov: string, dist: string, ubigeoCode: string, ubigeoId: string, source: 'user' | 'geocode') => void;
 }) {
   const mapRef = React.useRef<HTMLDivElement>(null);
   const markerRef = React.useRef<any>(null);
@@ -57,7 +58,7 @@ export function MapSelector({
         googleMarker.setPosition({ lat, lng });
         setCoords({ lat, lng });
         onLocationSelect(lat, lng);
-        searchUbigeo(lat, lng);
+        searchUbigeo(lat, lng, 'user');
       });
 
       markerRef.current = googleMarker;
@@ -67,12 +68,12 @@ export function MapSelector({
     document.head.appendChild(script);
   }, [mapRef, coords, locationName, onLocationSelect]);
 
-  const searchUbigeo = async (lat: number, lng: number) => {
+  const searchUbigeo = async (lat: number, lng: number, source: 'user' | 'geocode') => {
     try {
       const res = await fetch(`${API_BASE}/api/ubigeo/nearest?lat=${lat}&lng=${lng}`);
       const ubigeo = await res.json();
       if (ubigeo && onUbigeoFound) {
-        onUbigeoFound(ubigeo.department, ubigeo.province, ubigeo.district, ubigeo.ubigeoCode, ubigeo.id);
+        onUbigeoFound(ubigeo.department, ubigeo.province, ubigeo.district, ubigeo.ubigeoCode, ubigeo.id, source);
       }
     } catch (error) {
       console.error('Error searching ubigeo:', error);
@@ -104,7 +105,7 @@ export function MapSelector({
         if (markerRef.current) {
           markerRef.current.setPosition({ lat, lng });
         }
-        searchUbigeo(lat, lng);
+        searchUbigeo(lat, lng, 'geocode');
       } else {
         console.error('Geocode error:', status);
       }

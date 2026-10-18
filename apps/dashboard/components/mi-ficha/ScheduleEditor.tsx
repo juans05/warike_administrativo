@@ -30,8 +30,8 @@ export function ScheduleEditor({ schedules, onChange }: { schedules: DaySchedule
           <Switch label={schedule.day} checked={schedule.isOpen} onChange={(isOpen) => patch(idx, { isOpen })} />
           {schedule.isOpen ? (
             <>
-              <Input label="Apertura" type="time" value={schedule.openTime} onChange={(e) => patch(idx, { openTime: e.target.value })} />
-              <Input label="Cierre" type="time" value={schedule.closeTime} onChange={(e) => patch(idx, { closeTime: e.target.value })} />
+              <Input label="Apertura" aria-label={`Apertura ${schedule.day}`} type="time" value={schedule.openTime} onChange={(e) => patch(idx, { openTime: e.target.value })} />
+              <Input label="Cierre" aria-label={`Cierre ${schedule.day}`} type="time" value={schedule.closeTime} onChange={(e) => patch(idx, { closeTime: e.target.value })} />
             </>
           ) : (
             <p className="text-sm text-text-muted sm:col-span-2 sm:pb-3">Cerrado</p>

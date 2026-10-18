@@ -130,7 +130,7 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
 
   // Paso 1: rubro
   if (!vertical) {
-    if (typesError) {
+    if (typesError || verticals?.length === 0) {
       return (
         <EmptyState
           icon={AlertCircle}
