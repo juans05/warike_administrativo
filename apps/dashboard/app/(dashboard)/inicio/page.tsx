@@ -2,12 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, ClipboardList, MessageCircle, RefreshCw, Star, type LucideIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ClipboardList, MessageCircle, RefreshCw, Star, type LucideIcon } from 'lucide-react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth, plazbotApi, type TodaySummary } from '../../../lib/api-client';
 import { accessOf, matchRoute } from '../../../lib/modules';
 import {
-  Card, ChecklistCard, EmptyState, PageHeader, Skeleton, StatTile, buttonStyles, cn,
+  Button, Card, ChecklistCard, EmptyState, PageHeader, Skeleton, StatTile, buttonStyles, cn,
   type ChecklistStep,
 } from '../../../components/ui';
 
@@ -20,16 +20,21 @@ interface CheckinStats {
   returningCustomersThisMonth: number;
 }
 
-// Datos para marcar cada paso, de los mismos endpoints que usan sus pantallas. `null` = no se pidió o falló.
-interface SetupData {
-  profile: { name?: string; address?: string; coverImageUrl?: string; googleLocationName?: string | null } | null;
-  menu: { dishes?: unknown[] }[] | null;
-  whatsapp: { isActive?: boolean }[] | null;
-  botName: string | null;
-  loyaltyActive: boolean;
-}
+// Estado de cada paso, de los mismos endpoints que usan sus pantallas. `null` = no se pidió o falló: el paso se oculta.
+type StepKey = 'ficha' | 'catalogo' | 'whatsapp' | 'bot' | 'fidelizacion' | 'google';
+type SetupData = Record<StepKey, boolean | null>;
 
 const hiddenKey = (placeId: string) => `inicio-pasos-ocultos:${placeId}`;
+
+// TO_CHAR(..., 'Day') del backend llega en inglés y con espacios de relleno.
+const DAYS_ES: Record<string, string> = {
+  monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', thursday: 'Jueves',
+  friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo',
+};
+const dayEs = (day: string | null) => (day ? DAYS_ES[day.trim().toLowerCase()] ?? day.trim() : '—');
+
+// Pide un dato para un paso; si falla, `null` (el paso no se muestra en vez de verse pendiente).
+const check = <T,>(req: Promise<T>, done: (res: T) => boolean) => req.then(done).catch(() => null);
 
 function greeting() {
   const h = new Date().getHours();
@@ -97,6 +102,8 @@ export default function InicioPage() {
   // `undefined` = desconocido (error): como en el layout, no se esconde nada y el backend aplica el plan.
   const [tier, setTier] = useState<string | null | undefined>(undefined);
   const [today, setToday] = useState<TodaySummary | null>(null);
+  const [todayFailed, setTodayFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [reviews, setReviews] = useState<{ connected: boolean; unanswered: number } | null>(null);
   const [checkins, setCheckins] = useState<CheckinStats | null>(null);
   const [setup, setSetup] = useState<SetupData | null>(null);
@@ -105,7 +112,8 @@ export default function InicioPage() {
   useEffect(() => { setName(firstName()); }, []);
 
   // Rubro y plan: la misma regla del menú lateral (lib/modules.ts), sobre la entrada del menú de cada ruta.
-  const allows = (href: string, t: string | null | undefined = tier) => {
+  // `t === undefined` = plan desconocido = abierto (solo filtra el rubro).
+  const allows = (href: string, t: string | null | undefined) => {
     const entry = matchRoute(href);
     return !!entry && accessOf(entry, config, t) === 'open';
   };
@@ -115,7 +123,9 @@ export default function InicioPage() {
     let cancelled = false;
     const placeId = activePlaceId;
     setLoading(true);
+    setTier(undefined);
     setToday(null);
+    setTodayFailed(false);
     setReviews(null);
     setCheckins(null);
     setSetup(null);
@@ -125,81 +135,63 @@ export default function InicioPage() {
       .then((s) => { if (!cancelled) setCheckins(s); })
       .catch(() => {});
 
-    (async () => {
-      const [tierRes, todayRes] = await Promise.all([
-        businessApi.getSubscriptionTier(placeId).then((r) => (r?.tier ?? null) as string | null).catch(() => undefined),
-        businessApi.getToday(placeId).catch(() => null),
-      ]);
+    // Todo sale a la vez (sin segunda tanda). Antes de saber el plan solo se filtra por rubro; lo que el plan
+    // no incluye responde 403 → `null` y además se oculta al pintar con el plan real.
+    const inVertical = (href: string) => allows(href, undefined);
+
+    // Reseñas: llamado aparte (Google puede tardar) que no bloquea la página; si falla, la fila no aparece.
+    if (inVertical('/reputacion')) {
+      businessApi.getTodayReviews(placeId)
+        .then((r) => { if (!cancelled) setReviews(r); })
+        .catch(() => {});
+    }
+
+    const profileReq = businessApi.getProfile(placeId);
+    const ifVertical = (href: string, run: () => Promise<boolean | null>) => (inVertical(href) ? run() : Promise.resolve(null));
+
+    Promise.all([
+      businessApi.getSubscriptionTier(placeId).then((r) => (r?.tier ?? null) as string | null).catch(() => undefined),
+      businessApi.getToday(placeId).catch(() => null),
+      Promise.all([
+        check(profileReq, (p) => !!(p?.name && p?.address && p?.coverImageUrl)),
+        ifVertical('/carta', () => check(businessApi.getMenu(placeId),
+          (m) => Array.isArray(m) && m.some((c: { dishes?: unknown[] }) => (c.dishes?.length ?? 0) > 0))),
+        ifVertical('/whatsapp', () => check(businessApi.getWhatsappNumbers(placeId),
+          (r) => (r?.data ?? []).some((n: { isActive?: boolean }) => n.isActive))),
+        ifVertical('/plazbot', () => check(plazbotApi.getConfig(placeId), (c) => !!c?.botName)),
+        ifVertical('/fidelizacion', () => check(fetchWithAuth(`/business/places/${placeId}/loyalty/program`),
+          (p) => !!p && p.isActive !== false)),
+        check(profileReq, (p) => !!p?.googleLocationName),
+      ]),
+    ]).then(([tierRes, todayRes, [ficha, catalogo, whatsapp, bot, fidelizacion, google]]) => {
       if (cancelled) return;
       setTier(tierRes);
       setToday(todayRes);
+      setTodayFailed(!todayRes);
+      setSetup({ ficha, catalogo, whatsapp, bot, fidelizacion, google });
       setLoading(false);
-
-      const can = (href: string) => allows(href, tierRes);
-
-      // Reseñas: llamado aparte (Google puede tardar); si falla, la fila no aparece.
-      if (can('/reputacion')) {
-        businessApi.getTodayReviews(placeId)
-          .then((r) => { if (!cancelled) setReviews(r); })
-          .catch(() => {});
-      }
-
-      // Pasos: solo se piden los datos de los módulos que el plan y el rubro permiten.
-      const [profile, menu, whatsapp, bot, loyalty] = await Promise.all([
-        businessApi.getProfile(placeId).catch(() => null),
-        can('/carta') ? businessApi.getMenu(placeId).catch(() => null) : null,
-        can('/whatsapp') ? businessApi.getWhatsappNumbers(placeId).then((r) => r?.data ?? []).catch(() => null) : null,
-        can('/plazbot') ? plazbotApi.getConfig(placeId).catch(() => null) : null,
-        can('/fidelizacion') ? fetchWithAuth(`/business/places/${placeId}/loyalty/program`).catch(() => null) : null,
-      ]);
-      if (cancelled) return;
-      setSetup({
-        profile,
-        menu: Array.isArray(menu) ? menu : null,
-        whatsapp: Array.isArray(whatsapp) ? whatsapp : null,
-        botName: bot?.botName || null,
-        loyaltyActive: !!loyalty && loyalty.isActive !== false,
-      });
-    })();
+    });
 
     return () => { cancelled = true; };
-  }, [activePlaceId]);
+  }, [activePlaceId, reloadKey]);
 
   const hideSteps = () => {
     setStepsHidden(true);
     try { if (activePlaceId) localStorage.setItem(hiddenKey(activePlaceId), '1'); } catch { /* sin almacenamiento */ }
   };
 
-  // ── Pasos ──
-  const profile = setup?.profile;
-  const steps: ChecklistStep[] = !setup || !profile ? [] : ([
-    {
-      key: 'ficha', href: '/mi-ficha', label: 'Completa Mi ficha: nombre, dirección y foto de portada', cta: 'Completar',
-      done: !!(profile.name && profile.address && profile.coverImageUrl),
-    },
-    {
-      key: 'catalogo', href: '/carta', label: `Agrega tu primer ${labels.catalogItem.toLowerCase()} a ${labels.catalog}`, cta: 'Agregar',
-      done: !!setup.menu?.some((c) => (c.dishes?.length ?? 0) > 0),
-    },
-    {
-      key: 'whatsapp', href: '/whatsapp', label: 'Conecta tu WhatsApp', cta: 'Conectar',
-      done: !!setup.whatsapp?.some((n) => n.isActive),
-    },
-    {
-      key: 'bot', href: '/plazbot', label: 'Ponle nombre y personalidad a tu bot', cta: 'Configurar',
-      done: !!setup.botName,
-    },
-    {
-      key: 'fidelizacion', href: '/fidelizacion', label: 'Activa tu programa de fidelización', cta: 'Activar',
-      done: setup.loyaltyActive,
-    },
-    {
-      key: 'google', href: '/reputacion', label: 'Conecta tu Google', cta: 'Conectar',
-      done: !!profile.googleLocationName,
-    },
-  ])
-    .filter((s) => allows(s.href))
-    .map(({ key, label, done, href, cta }) => ({ key, label, done, action: { label: cta, href } }));
+  // ── Pasos ── (solo los del plan y el rubro, y solo si su dato cargó)
+  const stepDefs: { key: StepKey; href: string; label: string; cta: string }[] = [
+    { key: 'ficha', href: '/mi-ficha', label: 'Completa Mi ficha: nombre, dirección y foto de portada', cta: 'Completar' },
+    { key: 'catalogo', href: '/carta', label: `Agrega tu primer ${labels.catalogItem.toLowerCase()} a ${labels.catalog}`, cta: 'Agregar' },
+    { key: 'whatsapp', href: '/whatsapp', label: 'Conecta tu WhatsApp', cta: 'Conectar' },
+    { key: 'bot', href: '/plazbot', label: 'Ponle nombre y personalidad a tu bot', cta: 'Configurar' },
+    { key: 'fidelizacion', href: '/fidelizacion', label: 'Activa tu programa de fidelización', cta: 'Activar' },
+    { key: 'google', href: '/reputacion', label: 'Conecta tu Google', cta: 'Conectar' },
+  ];
+  const steps: ChecklistStep[] = !setup ? [] : stepDefs
+    .filter((s) => setup[s.key] !== null && allows(s.href, tier))
+    .map(({ key, label, href, cta }) => ({ key, label, done: !!setup[key], action: { label: cta, href } }));
   const missing = steps.filter((s) => !s.done).length;
   const showSteps = !stepsHidden && missing > 0;
   const stepsTitle = `Te ${missing === 1 ? 'falta 1 paso' : `faltan ${missing} pasos`} para ${
@@ -209,7 +201,7 @@ export default function InicioPage() {
   // ── Tu día ──
   const rows: (TodayRowProps & { key: string })[] = [];
   if (today) {
-    if (allows('/chat') && today.pendingHumanChats > 0) {
+    if (allows('/chat', tier) && today.pendingHumanChats > 0) {
       rows.push({
         key: 'chats', icon: MessageCircle, tone: 'primary',
         title: `${plural(today.pendingHumanChats, 'chat espera', 'chats esperan')} a una persona`,
@@ -217,7 +209,7 @@ export default function InicioPage() {
         action: { label: 'Responder', href: '/chat', primary: true },
       });
     }
-    if (reviews?.connected && reviews.unanswered > 0 && allows('/reputacion')) {
+    if (reviews?.connected && reviews.unanswered > 0 && allows('/reputacion', tier)) {
       rows.push({
         key: 'resenas', icon: Star, tone: 'secondary',
         title: `${plural(reviews.unanswered, 'reseña', 'reseñas')} de Google sin responder`,
@@ -225,7 +217,7 @@ export default function InicioPage() {
         action: { label: 'Ver', href: '/reputacion' },
       });
     }
-    if (allows('/fidelizacion') && !today.winbackEnabled && today.inactiveLoyalCustomers > 0) {
+    if (allows('/fidelizacion', tier) && !today.winbackEnabled && today.inactiveLoyalCustomers > 0) {
       rows.push({
         key: 'winback', icon: RefreshCw, tone: 'success',
         title: `${plural(today.inactiveLoyalCustomers, 'cliente no vuelve', 'clientes no vuelven')} hace 30 días`,
@@ -233,7 +225,7 @@ export default function InicioPage() {
         action: { label: 'Activar', href: '/fidelizacion' },
       });
     }
-    if (allows('/pedidos') && today.newOrders > 0) {
+    if (allows('/pedidos', tier) && today.newOrders > 0) {
       rows.push({
         key: 'pedidos', icon: ClipboardList, tone: 'primary',
         title: plural(today.newOrders, 'pedido nuevo', 'pedidos nuevos'),
@@ -243,27 +235,27 @@ export default function InicioPage() {
     }
   }
   // Mensaje automático encendido: no es un pendiente, es un dato.
-  const winbackInfo = today && allows('/fidelizacion') && today.winbackEnabled
+  const winbackInfo = today && allows('/fidelizacion', tier) && today.winbackEnabled
     ? today.winbacksSentThisWeek > 0
       ? `Tu mensaje de reactivación llegó a ${plural(today.winbacksSentThisWeek, 'cliente', 'clientes')} esta semana`
       : 'Tu mensaje de reactivación está encendido; esta semana no hizo falta enviarlo'
     : null;
 
-  const subtitleParts = [
-    today ? (rows.length ? `Tienes ${plural(rows.length, 'cosa', 'cosas')} para hoy` : 'Hoy no tienes pendientes') : null,
-    today && allows('/chat') && today.botChatsSince24h > 0
-      ? `tu bot atendió ${plural(today.botChatsSince24h, 'chat', 'chats')} desde ayer` : null,
-  ].filter(Boolean);
-  const subtitle = subtitleParts.length
-    ? subtitleParts.join(' · ')
-    : `Así va ${activePlace?.name ?? 'tu negocio'} hoy`;
+  // Sin datos de /today no se deduce nada ("sin pendientes" sería falso).
+  const subtitle = today
+    ? [
+      rows.length ? `Tienes ${plural(rows.length, 'cosa', 'cosas')} para hoy` : 'Hoy no tienes pendientes',
+      allows('/chat', tier) && today.botChatsSince24h > 0
+        ? `tu bot atendió ${plural(today.botChatsSince24h, 'chat', 'chats')} desde ayer` : null,
+    ].filter(Boolean).join(' · ')
+    : undefined;
 
   // ── Números de la semana (según el plan) ──
   const week = today?.weekStats;
   const tiles = week ? ([
-    allows('/chat') && { label: 'Chats esta semana', value: week.chats },
-    allows('/fidelizacion') && { label: 'Clientes que volvieron', value: week.returningCustomers },
-    allows('/reputacion') && {
+    allows('/chat', tier) && { label: 'Chats esta semana', value: week.chats },
+    allows('/fidelizacion', tier) && { label: 'Clientes que volvieron', value: week.returningCustomers },
+    allows('/reputacion', tier) && {
       label: 'Calificación Google',
       value: week.googleRating != null
         ? <span className="inline-flex items-center gap-1">{week.googleRating.toFixed(1)}<Star size={20} className="fill-secondary text-secondary" aria-label="estrellas" /></span>
@@ -273,7 +265,7 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`${greeting()}${name ? `, ${name}` : ''}`} subtitle={loading ? undefined : subtitle} />
+      <PageHeader title={`${greeting()}${name ? `, ${name}` : ''}`} subtitle={subtitle} />
 
       {showSteps && <ChecklistCard title={stepsTitle} steps={steps} onDismiss={hideSteps} />}
 
@@ -288,6 +280,10 @@ export default function InicioPage() {
                 </div>
               ))}
             </div>
+          ) : todayFailed ? (
+            <EmptyState icon={AlertCircle} headingLevel="h3" title="No pudimos cargar tus pendientes"
+              description="Revisa tu conexión e inténtalo otra vez."
+              action={<Button variant="secondary" icon={RefreshCw} onClick={() => setReloadKey((k) => k + 1)}>Reintentar</Button>} />
           ) : rows.length ? (
             <ul className="divide-y divide-border">{rows.map(({ key, ...row }) => <TodayRow key={key} {...row} />)}</ul>
           ) : (
@@ -304,9 +300,7 @@ export default function InicioPage() {
       </Section>
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-card" />)}
-        </div>
+        <Skeleton className="h-24 rounded-card" />
       ) : tiles.length > 0 && (
         <Section title="Tu semana">
           <div className={cn('grid grid-cols-1 gap-4', tiles.length > 1 && 'sm:grid-cols-2', tiles.length > 2 && 'lg:grid-cols-3')}>
@@ -325,7 +319,7 @@ export default function InicioPage() {
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatTile label="Check-ins esta semana" value={checkins.checkinsThisWeek} />
             <StatTile label="Check-ins este mes" value={checkins.checkinsThisMonth} />
-            <StatTile label="Tu mejor día del mes" value={checkins.bestDayOfWeek || '—'} />
+            <StatTile label="Tu mejor día del mes" value={dayEs(checkins.bestDayOfWeek)} />
             <StatTile label={`${labels.catalogItem} más pedido`} value={<span className="block truncate text-base">{checkins.topDish?.dishName || '—'}</span>} />
           </div>
         </Section>
