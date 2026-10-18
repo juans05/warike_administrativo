@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from 'react';
 import { useDialog } from './useDialog';
-import { CloseButton } from './Modal';
+import { CloseButton } from './CloseButton';
 
 export type SheetProps = {
   open: boolean;
@@ -26,7 +26,7 @@ export function Sheet({ open, onClose, title, side = 'right', children }: SheetP
     >
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
-          {title ? <h2 id={titleId} className="text-lg font-semibold">{title}</h2> : <span />}
+          {title ? <h2 id={titleId} className="text-base font-semibold">{title}</h2> : <span />}
           <CloseButton onClose={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto">{children}</div>

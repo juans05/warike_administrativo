@@ -46,6 +46,9 @@ h1, h2, h3, .font-warike {
 /* Panel (dashboard + auth): Inter only. Scoped so public pages keep Lora headings. */
 .panel-ui {
   font-family: var(--font-inter), system-ui, sans-serif;
+  /* Darker muted text in the panel only: 5.12:1 on --background, 5.25:1 on white
+     (the global #7D7474 is 4.43:1 on --background). Public pages keep the global value. */
+  --text-muted: #736A6A;
 }
 .panel-ui :where(h1, h2, h3) {
   font-family: inherit;

@@ -190,7 +190,7 @@ export default function ScanExperience({
           </div>
           <button
             onClick={() => setStep('rating')}
-            className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20"
+            className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl"
           >
             Calificar mi experiencia →
           </button>
@@ -301,7 +301,7 @@ export default function ScanExperience({
           <button
             onClick={() => handleSubmit(true)}
             disabled={isSending}
-            className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50"
+            className="btn-primary w-full min-h-[56px] text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
           >
             {isSending ? 'Enviando...' : <><span>⭐</span> Publicar en Google</>}
           </button>

@@ -13,7 +13,7 @@ export function StatTile({ label, value, trend }: StatTileProps) {
   return (
     <Card padding="md">
       <p className="text-sm font-medium text-text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-text">{value}</p>
+      <div className="mt-1 text-2xl font-semibold tabular-nums text-text">{value}</div>
       {trend && (
         <p className={`mt-2 flex items-center gap-1 text-xs font-medium ${trend.positive ? 'text-success' : 'text-danger'}`}>
           <TrendIcon size={16} aria-hidden />

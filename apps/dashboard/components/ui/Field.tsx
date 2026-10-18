@@ -18,35 +18,41 @@ export function controlStyles(error?: string, className?: string) {
   );
 }
 
-/** Label + hint + error wrapper; passes ids/aria props to the control via render prop. */
+/**
+ * Label + hint + error wrapper; passes id/aria props to the control via render prop.
+ * `describedBy` is the caller's own aria-describedby, merged with the hint/error ids.
+ */
 export function Field({
   label,
   error,
   hint,
   id,
+  describedBy,
   children,
 }: FieldProps & {
   id?: string;
+  describedBy?: string;
   children: (a11y: { id: string; 'aria-invalid'?: true; 'aria-describedby'?: string }) => ReactNode;
 }) {
   const autoId = useId();
   const controlId = id ?? autoId;
-  const hintId = hint ? `${controlId}-hint` : undefined;
+  const showHint = Boolean(hint) && !error; // only reference ids that are rendered
+  const hintId = showHint ? `${controlId}-hint` : undefined;
   const errorId = error ? `${controlId}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
+  const ariaDescribedBy = [describedBy, hintId, errorId].filter(Boolean).join(' ') || undefined;
 
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={controlId} className="text-sm font-medium text-text">
         {label}
       </label>
-      {children({ id: controlId, 'aria-invalid': error ? true : undefined, 'aria-describedby': describedBy })}
-      {hint && !error && (
+      {children({ id: controlId, 'aria-invalid': error ? true : undefined, 'aria-describedby': ariaDescribedBy })}
+      {showHint && (
         <p id={hintId} className="text-xs text-text-muted">{hint}</p>
       )}
       {error && (
-        <p id={errorId} className="flex items-center gap-1 text-xs text-danger">
-          <AlertCircle size={14} aria-hidden />
+        <p id={errorId} role="alert" className="flex items-center gap-1 text-xs text-danger">
+          <AlertCircle size={16} aria-hidden className="shrink-0" />
           {error}
         </p>
       )}

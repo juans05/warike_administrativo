@@ -42,7 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   { variant = 'primary', size = 'md', loading = false, icon: Icon, className, disabled, children, type = 'button', ...rest },
   ref,
 ) {
-  const iconSize = size === 'sm' ? 16 : 18;
+  const iconSize = size === 'sm' ? 16 : 20;
   return (
     <button
       ref={ref}

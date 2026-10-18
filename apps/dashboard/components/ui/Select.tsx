@@ -7,11 +7,11 @@ import { Field, controlStyles, type FieldProps } from './Field';
 export type SelectProps = FieldProps & SelectHTMLAttributes<HTMLSelectElement>;
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, error, hint, id, className, children, ...rest },
+  { label, error, hint, id, className, 'aria-describedby': describedBy, children, ...rest },
   ref,
 ) {
   return (
-    <Field label={label} error={error} hint={hint} id={id}>
+    <Field label={label} error={error} hint={hint} id={id} describedBy={describedBy}>
       {(a11y) => (
         <div className="relative">
           <select ref={ref} {...rest} {...a11y} className={controlStyles(error, `h-11 appearance-none pr-10 ${className ?? ''}`)}>
