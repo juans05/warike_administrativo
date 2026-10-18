@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi } from '../../../lib/api-client';
-import { SkeletonHeader, SkeletonCard, SkeletonGrid } from '../../../components/SkeletonLoader';
+import { BookOpen, FileUp, Lightbulb, Trash2 } from 'lucide-react';
+import { plural } from '../../../lib/modules';
+import { Badge, Button, Card, DataList, EmptyState, Input, PageHeader, Tabs } from '../../../components/ui';
 import { toast } from 'sonner';
 
 export default function AIKnowledgeBasePage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
   const [knowledgeBases, setKnowledgeBases] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -93,70 +95,44 @@ export default function AIKnowledgeBasePage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="max-w-4xl space-y-10 pb-32">
-        <SkeletonHeader />
-        <SkeletonCard className="h-80" />
-        <div className="space-y-2">
-          <div className="h-6 bg-gray-200 rounded-lg w-1/4 animate-pulse"></div>
-          <SkeletonGrid count={3} />
-        </div>
-      </div>
-    );
-  }
+  const catalog = (activePlace?.verticalConfig?.labels.catalog ?? 'Carta').toLowerCase();
+  const customers = plural(activePlace?.verticalConfig?.labels.customer ?? 'Cliente').toLowerCase();
 
   return (
-    <div className="max-w-4xl space-y-10 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="space-y-2">
-        <h1 className="text-5xl font-black text-text tracking-tight font-warike">Base de Inteligencia Artificial</h1>
-        <p className="text-text-muted font-bold text-lg">Indexa tu menú, FAQs y políticas para entrenar el bot — {knowledgeBases.length} documentos.</p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        title="Base de IA"
+        subtitle={isLoading
+          ? `Indexa tu ${catalog}, preguntas frecuentes y políticas para entrenar al bot.`
+          : `Indexa tu ${catalog}, preguntas frecuentes y políticas para entrenar al bot · ${knowledgeBases.length} ${knowledgeBases.length === 1 ? 'documento' : 'documentos'}.`}
+      />
 
-      {/* Upload Form */}
-      <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
-        <h2 className="font-black text-text">Añadir Documento</h2>
+      <Card padding="lg" className="space-y-5">
+        <h2 className="text-base font-semibold text-text">Añadir documento</h2>
 
-        {/* Tab selector */}
-        <div className="flex gap-2 p-1 bg-gray-100 rounded-2xl">
-          <button
-            onClick={() => setInputMode('file')}
-            className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${inputMode === 'file' ? 'bg-white shadow text-text' : 'text-text-muted'}`}
-          >
-            📄 Archivo
-          </button>
-          <button
-            onClick={() => setInputMode('url')}
-            className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${inputMode === 'url' ? 'bg-white shadow text-text' : 'text-text-muted'}`}
-          >
-            🔗 URL
-          </button>
-        </div>
+        <Tabs
+          tabs={[{ key: 'file', label: 'Archivo' }, { key: 'url', label: 'Página web' }]}
+          value={inputMode}
+          onChange={(key) => setInputMode(key as 'file' | 'url')}
+          aria-label="Tipo de documento"
+        />
 
-        <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
-            Nombre del Documento
-          </label>
-          <input
-            type="text"
-            placeholder="Ej: Menú Buffet 2026"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-        </div>
+        <Input
+          label="Nombre del documento"
+          placeholder="Ej: Menú Buffet 2026"
+          value={fileName}
+          onChange={(e) => setFileName(e.target.value)}
+        />
 
         {inputMode === 'file' ? (
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">
-              Archivo
-            </label>
+          <div className="space-y-1.5">
+            <span className="text-sm font-medium text-text">Archivo</span>
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleFileDrop}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
-                isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary'
+              className={`rounded-card border-2 border-dashed p-8 text-center transition-colors duration-200 motion-reduce:transition-none ${
+                isDragging ? 'border-primary bg-primary-soft' : 'border-border hover:border-primary'
               }`}
             >
               <input
@@ -168,97 +144,88 @@ export default function AIKnowledgeBasePage() {
                     setFileName(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
                   }
                 }}
-                className="hidden"
+                className="peer sr-only"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" className="cursor-pointer block">
-                <p className="text-3xl mb-2">📄</p>
+              <label htmlFor="file-upload" className="block cursor-pointer rounded-control peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40">
+                <FileUp size={24} className="mx-auto mb-2 text-primary" aria-hidden />
                 {selectedFile ? (
                   <>
-                    <p className="font-black text-text">{selectedFile.name}</p>
-                    <p className="text-xs text-text-muted mt-1">Click para cambiar archivo</p>
+                    <p className="text-sm font-semibold text-text">{selectedFile.name}</p>
+                    <p className="mt-1 text-xs text-text-muted">Haz clic para cambiar el archivo</p>
                   </>
                 ) : (
                   <>
-                    <p className="font-black text-text">Arrastra un archivo aquí o haz click</p>
-                    <p className="text-xs text-text-muted mt-1">PDF, TXT, DOC, DOCX, JPG, PNG hasta 50MB</p>
+                    <p className="text-sm font-semibold text-text">Arrastra un archivo aquí o haz clic</p>
+                    <p className="mt-1 text-xs text-text-muted">PDF, TXT, DOC, DOCX, JPG, PNG hasta 50MB</p>
                   </>
                 )}
               </label>
             </div>
           </div>
         ) : (
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
-              URL del sitio web
-            </label>
-            <input
-              type="url"
-              placeholder="https://turestaurante.com/menu"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-            <p className="text-xs text-text-muted mt-2">El sistema leerá el contenido de la página y lo convertirá a Markdown automáticamente.</p>
-          </div>
+          <Input
+            label="URL del sitio web"
+            type="url"
+            placeholder="https://tunegocio.com/menu"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            hint="Leeremos el contenido de la página y lo convertiremos a texto automáticamente."
+          />
         )}
 
-        <button
+        <Button
+          icon={BookOpen}
           onClick={inputMode === 'file' ? handleUpload : handleIndexUrl}
-          disabled={isUploading || (inputMode === 'file' ? (!selectedFile || !fileName) : (!urlInput || !fileName))}
-          className="w-full bg-primary text-white px-8 py-4 rounded-2xl font-black disabled:opacity-50 hover:scale-[1.02] transition-transform active:scale-95"
+          loading={isUploading}
+          disabled={inputMode === 'file' ? (!selectedFile || !fileName) : (!urlInput || !fileName)}
+          className="w-full"
         >
-          {isUploading ? '⏳ Procesando...' : '🧠 Indexar Documento'}
-        </button>
-      </div>
+          {isUploading ? 'Procesando...' : 'Indexar documento'}
+        </Button>
+      </Card>
 
-      {/* List */}
-      <div className="space-y-4">
-        <h2 className="font-black text-text text-lg">Documentos Indexados</h2>
-        {knowledgeBases.length === 0 ? (
-          <div className="bg-white p-12 rounded-[2.5rem] border border-dashed border-border text-center">
-            <p className="text-4xl mb-4">📚</p>
-            <p className="font-bold text-text-muted">Sin documentos aún</p>
-            <p className="text-xs text-text-muted mt-2">Sube tu primer documento para entrenar el bot</p>
-          </div>
-        ) : (
-          knowledgeBases.map(kb => (
-            <div
-              key={kb.id}
-              className="bg-white p-6 rounded-[2rem] border border-border flex items-center justify-between hover:shadow-md transition-all"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-black text-text">{kb.fileName}</h3>
-                  <span className="bg-primary/10 text-primary text-[9px] px-2 py-1 rounded-full font-black">
-                    {kb.chunkCount || 0} fragmentos
-                  </span>
+      <Card padding="lg">
+        <h2 className="text-base font-semibold text-text">Documentos indexados</h2>
+        <div className="mt-2">
+          <DataList
+            items={knowledgeBases}
+            loading={isLoading}
+            empty={
+              <EmptyState
+                icon={BookOpen}
+                title="Sin documentos aún"
+                description="Sube tu primer documento para entrenar al bot."
+                headingLevel="h3"
+              />
+            }
+            renderItem={(kb) => (
+              <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold text-text">{kb.fileName}</h3>
+                    <Badge tone="primary">{kb.chunkCount || 0} fragmentos</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-text-muted">Indexado el {new Date(kb.createdAt).toLocaleDateString('es-PE')}</p>
                 </div>
-                <p className="text-xs text-text-muted">
-                  Indexado el {new Date(kb.createdAt).toLocaleDateString('es-PE')}
-                </p>
+                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(kb.id)}>Eliminar</Button>
               </div>
-              <button
-                onClick={() => handleDelete(kb.id)}
-                className="ml-4 px-4 py-2 bg-red-100 text-red-700 rounded-xl font-black text-sm hover:bg-red-200 transition-all active:scale-95"
-              >
-                🗑️ Eliminar
-              </button>
-            </div>
-          ))
-        )}
-      </div>
+            )}
+          />
+        </div>
+      </Card>
 
-      {/* Info */}
-      <div className="bg-blue-50 border border-blue-200 p-6 rounded-[2.5rem] space-y-3">
-        <p className="font-black text-blue-700">💡 Cómo funciona</p>
-        <ul className="text-sm text-blue-700 space-y-2">
-          <li>• <span className="font-bold">Menú:</span> Sube tu menú en PDF, TXT, DOC o una foto (JPG/PNG) con los platos y precios</li>
-          <li>• <span className="font-bold">FAQs:</span> Incluye preguntas frecuentes sobre horarios, reservas, etc.</li>
-          <li>• <span className="font-bold">Procesamiento:</span> El documento se divide en fragmentos y se indexa automáticamente</li>
-          <li>• <span className="font-bold">Respuestas:</span> El bot usará esto para responder preguntas de los clientes</li>
+      <Card padding="lg">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-text">
+          <Lightbulb size={20} className="text-primary" aria-hidden /> Cómo funciona
+        </h2>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-muted">
+          <li><span className="font-medium text-text">{catalog.charAt(0).toUpperCase() + catalog.slice(1)}:</span> sube tu {catalog} en PDF, TXT, DOC o una foto (JPG/PNG) con lo que ofreces y sus precios.</li>
+          <li><span className="font-medium text-text">Preguntas frecuentes:</span> incluye horarios, reservas, formas de pago, etc.</li>
+          <li><span className="font-medium text-text">Procesamiento:</span> el documento se divide en fragmentos y se indexa automáticamente.</li>
+          <li><span className="font-medium text-text">Respuestas:</span> el bot usará esto para responder las preguntas de tus {customers}.</li>
         </ul>
-      </div>
+      </Card>
     </div>
   );
 }

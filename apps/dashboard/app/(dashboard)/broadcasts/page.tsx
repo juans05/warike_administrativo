@@ -9,11 +9,16 @@ import { CampaignModal } from '../../../components/broadcasts/CampaignModal';
 import { TemplateList } from '../../../components/broadcasts/TemplateList';
 import { TemplateModal } from '../../../components/broadcasts/TemplateModal';
 import { MetaTemplates } from '../../../components/broadcasts/MetaTemplates';
+import Link from 'next/link';
+import { plural } from '../../../lib/modules';
+import { Lock, Plus } from 'lucide-react';
+import { Button, Card, EmptyState, PageHeader, Skeleton, Tabs, buttonStyles } from '../../../components/ui';
 
 type Tab = 'campaigns' | 'templates';
 
 export default function BroadcastsPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const customers = plural(activePlace?.verticalConfig?.labels.customer ?? 'Cliente').toLowerCase();
   const [tab, setTab] = useState<Tab>('campaigns');
   const [loading, setLoading] = useState(true);
 
@@ -46,77 +51,70 @@ export default function BroadcastsPage() {
       .finally(() => setLoading(false));
   }, [activePlaceId]);
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto p-8 space-y-6">
-        <div className="h-10 bg-gray-200 rounded-xl w-1/3 animate-pulse" />
-        <div className="h-12 bg-gray-100 rounded-2xl w-48 animate-pulse" />
-        <div className="h-56 bg-gray-100 rounded-2xl animate-pulse" />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-5xl mx-auto p-6 pb-20 space-y-6">
-      <div>
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Campañas Masivas</h1>
-        <p className="text-gray-500 mt-1 font-medium">Envía mensajes personalizados de WhatsApp a tus clientes.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Campañas"
+        subtitle={`Envía mensajes personalizados de WhatsApp a tus ${customers}.`}
+        action={!subscriptionBlocked && !loading && (
+          <Button icon={Plus} onClick={() => setShowCampaignModal(true)}>Nueva campaña</Button>
+        )}
+      />
 
-      {subscriptionBlocked && (
-        <div className="rounded-2xl p-6 border border-[#F26122]/30 bg-[#F26122]/5 space-y-3">
-          <p className="font-black text-sm text-gray-900">Función disponible en un plan superior</p>
-          <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
-          <a
-            href="/suscripcion"
-            className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-          >
-            Ver planes
-          </a>
+      {loading ? (
+        <div className="space-y-4" role="status" aria-label="Cargando">
+          <Skeleton className="h-11 w-56" />
+          <Skeleton className="h-24 rounded-card" />
+          <Skeleton className="h-24 rounded-card" />
         </div>
-      )}
+      ) : subscriptionBlocked ? (
+        <Card>
+          <EmptyState
+            icon={Lock}
+            title="Función disponible en un plan superior"
+            description={subscriptionBlocked}
+            action={<Link href="/suscripcion" className={buttonStyles('primary')}>Ver planes</Link>}
+          />
+        </Card>
+      ) : (
+        <>
+          <Tabs
+            tabs={[{ key: 'campaigns', label: 'Campañas' }, { key: 'templates', label: 'Plantillas' }]}
+            value={tab}
+            onChange={(key) => setTab(key as Tab)}
+            aria-label="Campañas y plantillas"
+          />
 
-      {!subscriptionBlocked && (
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
-        {([['campaigns', '💬 Campañas'], ['templates', '📋 Plantilla']] as const).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${tab === id ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      )}
+          {tab === 'campaigns' && (
+            <CampaignList
+              broadcasts={broadcasts}
+              customers={customers}
+              onSend={handleSendBroadcast}
+              onNew={() => setShowCampaignModal(true)}
+            />
+          )}
 
-      {!subscriptionBlocked && tab === 'campaigns' && (
-        <CampaignList
-          broadcasts={broadcasts}
-          onSend={handleSendBroadcast}
-          onNew={() => setShowCampaignModal(true)}
-        />
-      )}
+          {tab === 'templates' && activePlaceId && metaEnabled && waNumbers.some(n => n.provider === 'meta') && (
+            <MetaTemplates placeId={activePlaceId} templates={metaTemplates} onChanged={() => loadMetaTemplates(activePlaceId)} />
+          )}
 
-      {!subscriptionBlocked && tab === 'templates' && activePlaceId && metaEnabled && waNumbers.some(n => n.provider === 'meta') && (
-        <MetaTemplates placeId={activePlaceId} templates={metaTemplates} onChanged={() => loadMetaTemplates(activePlaceId)} />
-      )}
-
-      {!subscriptionBlocked && tab === 'templates' && (
-        <TemplateList
-          templates={filteredTemplates}
-          search={templateSearch}
-          onSearch={setTemplateSearch}
-          syncing={syncing}
-          onSync={syncTemplates}
-          onNew={() => { setShowTemplateModal(true); setTemplateStep('info'); }}
-          resendingId={resendingId}
-          deletingId={deletingId}
-          togglingId={togglingId}
-          onResend={handleResend}
-          onDelete={handleDelete}
-          onToggle={handleToggle}
-        />
+          {tab === 'templates' && (
+            <TemplateList
+              templates={filteredTemplates}
+              search={templateSearch}
+              onSearch={setTemplateSearch}
+              syncing={syncing}
+              onSync={syncTemplates}
+              onNew={() => { setShowTemplateModal(true); setTemplateStep('info'); }}
+              resendingId={resendingId}
+              deletingId={deletingId}
+              togglingId={togglingId}
+              onResend={handleResend}
+              onDelete={handleDelete}
+              onToggle={handleToggle}
+            />
+          )}
+        </>
       )}
 
       <CampaignModal

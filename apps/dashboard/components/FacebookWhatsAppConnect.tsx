@@ -2,7 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AlertTriangle, LogIn } from 'lucide-react';
 import { businessApi } from '../lib/api-client';
+import { Button } from './ui';
 
 declare global {
   interface Window {
@@ -121,30 +123,20 @@ export default function FacebookWhatsAppConnect({ placeId, onConnected }: Props)
   };
 
   return (
-    <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm space-y-5">
-      <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-[#1877F2] flex items-center justify-center text-white text-3xl font-black shrink-0">f</div>
-        <div>
-          <h2 className="font-black text-text text-lg">Conecta tu WhatsApp con Facebook</h2>
-          <p className="text-sm text-text-muted mt-1">
-            Inicia sesión con Facebook, elige o crea tu cuenta de WhatsApp Business y tu número. Los mensajes de tus clientes
-            llegarán directo a Wuarikes, sin pasar por terceros.
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-4">
+      <p className="text-sm text-text-muted">
+        Inicia sesión con Facebook, elige o crea tu cuenta de WhatsApp Business y tu número. Los mensajes de tus clientes
+        llegarán directo a Wuarikes, sin pasar por terceros.
+      </p>
       {config && !config.configured ? (
-        <p className="text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3">
+        <p className="flex items-start gap-2 rounded-control border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-text">
+          <AlertTriangle size={20} className="shrink-0 text-text-muted" aria-hidden />
           Esta conexión todavía no está habilitada. Avisa al equipo de Wuarikes para activarla.
         </p>
       ) : (
-        <button
-          onClick={start}
-          disabled={busy || !config}
-          className="bg-[#1877F2] text-white px-8 py-4 rounded-2xl font-black hover:opacity-90 transition-opacity disabled:opacity-50"
-        >
+        <Button icon={LogIn} onClick={start} loading={busy} disabled={!config}>
           {busy ? 'Conectando…' : 'Conectar con Facebook'}
-        </button>
+        </Button>
       )}
     </div>
   );
