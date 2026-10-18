@@ -1,33 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Building2,
-  Star,
-  Camera,
-  UtensilsCrossed,
-  Gift,
+  Home,
   Users,
   Bot,
-  MessagesSquare,
-  Megaphone,
-  Mail,
-  Brain,
   CreditCard,
   Wallet,
   Shield,
   LogOut,
-  UserPlus,
-  BarChart3,
   QrCode,
   FileWarning,
   Flame,
   Settings,
   ChefHat,
-  ClipboardList,
-  LayoutGrid,
+  Lock,
+  Menu,
+  ChevronUp,
+  CircleUser,
+  Clock,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { RestaurantProvider, useRestaurant } from '../../context/RestaurantContext';
@@ -35,6 +29,8 @@ import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
 import TermsGate from '../../components/TermsGate';
 import { businessApi, ordersApi } from '../../lib/api-client';
+import { NAV, accessOf, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
+import { Badge, EmptyState, Sheet, buttonStyles, cn } from '../../components/ui';
 
 interface DashboardUser {
   id: string;
@@ -43,28 +39,35 @@ interface DashboardUser {
   role: 'admin' | 'business';
 }
 
-// Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.
-type SubscriptionTier = 'reputacion' | 'fidelizacion' | 'ia_total';
-const TIER_ORDER: SubscriptionTier[] = ['reputacion', 'fidelizacion', 'ia_total'];
-
-function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier): boolean {
-  if (!ownedTier) return false;
-  const ownedIndex = TIER_ORDER.indexOf(ownedTier as SubscriptionTier);
-  const requiredIndex = TIER_ORDER.indexOf(requiredTier);
-  return ownedIndex !== -1 && ownedIndex >= requiredIndex;
-}
-
 // El plan es de la SEDE activa (lo paga su dueño), no del usuario logueado — un
 // Agente/Supervisor de esa sede lo hereda igual, sin tener suscripción propia.
+// `undefined` = todavía cargando (no se muestran candados hasta saberlo).
 function useSubscriptionTier(placeId: string | null) {
-  const [tier, setTier] = useState<string | null>(null);
+  const [tier, setTier] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     if (!placeId) { setTier(null); return; }
+    setTier(undefined);
     businessApi.getSubscriptionTier(placeId)
       .then((res) => setTier(res?.tier ?? null))
       .catch(() => setTier(null));
   }, [placeId]);
   return tier;
+}
+
+// Chats en modo humano sin responder; se pide al cambiar de local y cada 60 s. Si falla (p. ej. 403), no hay distintivo.
+function usePendingChats(placeId: string | null) {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!placeId) { setCount(null); return; }
+    let cancelled = false;
+    const load = () => businessApi.getToday(placeId)
+      .then((res) => { if (!cancelled) setCount(res?.pendingHumanChats ?? null); })
+      .catch(() => { if (!cancelled) setCount(null); });
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [placeId]);
+  return count;
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -109,17 +112,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
+const ADMIN_NAV: Array<{ href: string; icon: LucideIcon; label: string }> = [
+  { href: '/moderacion', icon: Shield, label: 'Control de Locales' },
+  { href: '/comunidad', icon: Users, label: 'Gestión de Usuarios' },
+  { href: '/suscripciones', icon: CreditCard, label: 'Suscripciones' },
+  { href: '/liquidaciones', icon: CreditCard, label: 'Liquidaciones' },
+  { href: '/moderacion/whatsapp', icon: Bot, label: 'WhatsApp Bot' },
+  { href: '/moderacion/dispositivos', icon: QrCode, label: 'Códigos QR' },
+  { href: '/moderacion/reclamaciones', icon: FileWarning, label: 'Libro de Reclamaciones' },
+  { href: '/moderacion/oportunidades', icon: Flame, label: 'Oportunidades' },
+  { href: '/moderacion/comisiones', icon: Wallet, label: 'Comisiones' },
+  { href: '/configuracion', icon: Settings, label: 'Configuración del Sitio' },
+];
+
+type NavProps = {
+  user: DashboardUser | null;
+  pathname: string;
+  showBusiness: boolean;
+  kitchenOnly: boolean;
+  config: VerticalConfig | undefined;
+  tier: string | null | undefined;
+  pendingChats: number | null;
+  handleLogout: () => void;
+};
+
 function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: DashboardUser | null; handleLogout: () => void }) {
   const pathname = usePathname();
-  const { places, activePlaceId, isLoading: contextLoading, refreshPlaces } = useRestaurant();
-  const tier = useSubscriptionTier(user?.role === 'business' ? activePlaceId : null);
+  const { places, activePlaceId, activePlace, isLoading: contextLoading, refreshPlaces } = useRestaurant();
+  const isBusiness = user?.role === 'business';
+  const tier = useSubscriptionTier(isBusiness ? activePlaceId : null);
 
   const hasSavedPlace = typeof window !== 'undefined' ? localStorage.getItem('activePlaceId') : null;
-  const noPlaces = !contextLoading && places.length === 0 && user?.role === 'business' && !hasSavedPlace;
-
-  const canReputacion = hasTierAccess(tier, 'reputacion');
-  const canFidelizacion = hasTierAccess(tier, 'fidelizacion');
-  const canIaTotal = hasTierAccess(tier, 'ia_total');
+  const noPlaces = !contextLoading && places.length === 0 && isBusiness && !hasSavedPlace;
 
   const router = useRouter();
   const [placeRole, setPlaceRole] = useState<string | null>(null);
@@ -132,237 +156,263 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
     if (kitchenOnly && pathname !== '/cocina') router.replace('/cocina');
   }, [kitchenOnly, pathname, router]);
 
+  const pendingChats = usePendingChats(isBusiness && !kitchenOnly ? activePlaceId : null);
+
+  // Rubro y plan solo aplican al dueño/equipo; cocina sigue viendo solo Cocina, como hoy.
+  const config = activePlace?.verticalConfig;
+  const routeEntry = matchRoute(pathname);
+  const pageAccess = isBusiness && !kitchenOnly && routeEntry ? accessOf(routeEntry, config, tier) : 'open';
+  useEffect(() => {
+    if (pageAccess === 'hidden') router.replace('/inicio');
+  }, [pageAccess, router]);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  const navProps: NavProps = {
+    user, pathname, showBusiness: isBusiness && !noPlaces, kitchenOnly, config, tier, pendingChats, handleLogout,
+  };
+
   return (
-    <div className="flex min-h-screen bg-background texture-paper">
-      {user?.role === 'business' && <TermsGate />}
-      <aside className="w-80 bg-white border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex shadow-sm z-10">
-        <div className="p-8">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-primary tracking-tight">WUARIKE</h1>
-            <p className="text-xs uppercase tracking-widest font-semibold text-gray-400">Global Reputación</p>
-          </div>
-          {user?.role === 'business' && !noPlaces && (
-            <div className="mt-8"><RestaurantSelector /></div>
-          )}
-        </div>
-
-        <div className="relative flex-1 min-h-0">
-          <nav className="h-full overflow-y-auto px-4 pb-6">
-            {user?.role === 'business' && !noPlaces && kitchenOnly && (
-              <div className="pt-2">
-                <SidebarItem href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
-              </div>
-            )}
-            {user?.role === 'business' && !noPlaces && !kitchenOnly && (
-              <>
-                {/* PRINCIPALES */}
-                <div className="pt-2">
-                  <SidebarItem href="/inicio" icon={Building2} label="Mi Establecimiento" active={pathname === '/inicio'} />
-                </div>
-
-                {/* REPUTACIÓN & MARKETING */}
-                {canReputacion && (
-                  <div className="mt-5 pt-5 border-t border-gray-200">
-                    <SidebarLabel>Reputación & Marketing</SidebarLabel>
-                    <SidebarItem href="/reputacion" icon={Star} label="Reputación Google" active={pathname === '/reputacion'} />
-                    <SidebarItem href="/social" icon={Camera} label="Instagram IA" active={pathname === '/social'} />
-                    <SidebarItem href="/carta" icon={UtensilsCrossed} label="Carta Digital" active={pathname === '/carta'} />
-                    <SidebarItem href="/pedidos" icon={ClipboardList} label="Pedidos" badge="NEW" active={pathname === '/pedidos'} />
-                    <SidebarItem href="/cocina" icon={ChefHat} label="Cocina" badge="NEW" active={pathname === '/cocina'} />
-                    <SidebarItem href="/mesas" icon={LayoutGrid} label="Mesas" badge="NEW" active={pathname === '/mesas'} />
-                    {canFidelizacion && <SidebarItem href="/fidelizacion" icon={Gift} label="Fidelización" badge="NEW" active={pathname === '/fidelizacion'} />}
-                  </div>
-                )}
-
-                {/* CLIENTES & COMUNICACIÓN */}
-                {canReputacion && (
-                  <div className="mt-5 pt-5 border-t border-gray-200">
-                    <SidebarLabel>Clientes & Comunicación</SidebarLabel>
-                    {canFidelizacion && <SidebarItem href="/clientes" icon={Users} label="Clientes CRM" active={pathname === '/clientes'} />}
-                    {canIaTotal && <SidebarItem href="/email-marketing" icon={Mail} label="Email Marketing" badge="NEW" active={pathname === '/email-marketing'} />}
-                  </div>
-                )}
-
-                {/* WHATSAPP & IA */}
-                {canIaTotal && (
-                  <div className="mt-5 pt-5 border-t border-gray-200">
-                    <SidebarLabel>WhatsApp & IA</SidebarLabel>
-                    <SidebarItem href="/whatsapp" icon={MessagesSquare} label="Conectar WhatsApp" active={pathname === '/whatsapp'} />
-                    <SidebarItem href="/plazbot" icon={Bot} label="Mi bot" active={pathname === '/plazbot'} />
-                    <SidebarItem href="/chat" icon={MessagesSquare} label="Chat en Vivo" badge="NEW" active={pathname === '/chat'} />
-                    <SidebarItem href="/reportes" icon={BarChart3} label="Reportes" badge="NEW" active={pathname === '/reportes'} />
-                    <SidebarItem href="/equipo" icon={UserPlus} label="Equipo" badge="NEW" active={pathname === '/equipo'} />
-                    <SidebarItem href="/broadcasts" icon={Megaphone} label="Campañas" badge="NEW" active={pathname === '/broadcasts'} />
-                    <SidebarItem href="/ia" icon={Brain} label="Base de IA" badge="NEW" active={pathname === '/ia'} />
-                  </div>
-                )}
-              </>
-            )}
-
-            {user?.role === 'admin' && (
-              <>
-                <div className="mt-5 pt-5 border-t border-gray-200">
-                  <SidebarLabel>Administración</SidebarLabel>
-                  <SidebarItem href="/moderacion" icon={Shield} label="Control de Locales" active={pathname === '/moderacion'} />
-                  <SidebarItem href="/comunidad" icon={Users} label="Gestión de Usuarios" active={pathname === '/comunidad'} />
-                  <SidebarItem href="/suscripciones" icon={CreditCard} label="Suscripciones" active={pathname === '/suscripciones'} />
-                  <SidebarItem href="/liquidaciones" icon={CreditCard} label="Liquidaciones" active={pathname === '/liquidaciones'} />
-                  <SidebarItem href="/moderacion/whatsapp" icon={Bot} label="WhatsApp Bot" active={pathname === '/moderacion/whatsapp'} />
-                  <SidebarItem href="/moderacion/dispositivos" icon={QrCode} label="Códigos QR" active={pathname === '/moderacion/dispositivos'} />
-                  <SidebarItem href="/moderacion/reclamaciones" icon={FileWarning} label="Libro de Reclamaciones" active={pathname === '/moderacion/reclamaciones'} />
-                  <SidebarItem href="/moderacion/oportunidades" icon={Flame} label="Oportunidades" active={pathname === '/moderacion/oportunidades'} />
-                  <SidebarItem href="/moderacion/comisiones" icon={Wallet} label="Comisiones" active={pathname === '/moderacion/comisiones'} />
-                  <SidebarItem href="/configuracion" icon={Settings} label="Configuración del Sitio" active={pathname === '/configuracion'} />
-                </div>
-              </>
-            )}
-          </nav>
-          {/* Fade cue: signals there's more nav content below the fold */}
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
-        </div>
-
-        <div className="p-6 border-t border-gray-200 flex flex-col gap-3">
-          {user?.role === 'business' && !noPlaces && (
-            <SidebarItem href="/suscripcion" icon={CreditCard} label="Suscripción" active={pathname === '/suscripcion'} />
-          )}
-          <Link href="/mi-cuenta" className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-              {user?.fullName?.charAt(0) || 'A'}
-            </div>
-            <div className="overflow-hidden min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'Administrador'}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-medium">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</p>
-            </div>
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all active:scale-95 duration-200"
-          >
-            <LogOut size={16} /> Cerrar Sesión
-          </button>
-        </div>
+    <div className="flex min-h-screen bg-background">
+      {isBusiness && <TermsGate />}
+      <aside className="sticky top-0 z-10 hidden h-screen w-60 shrink-0 border-r border-border bg-surface lg:flex">
+        <SidebarContent {...navProps} />
       </aside>
 
-      <main className="flex-1 p-6 md:p-10 lg:p-16">
-        {user?.role === 'business' && places.find((p) => p.id === activePlaceId)?.status === 'pending' && (
-          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 flex items-start gap-3">
-            <span className="text-2xl">⏳</span>
-            <div>
-              <p className="font-black text-amber-800 text-sm">Tu local está en revisión</p>
-              <p className="text-amber-700 text-xs font-bold leading-relaxed">
-                Ya puedes configurar tu panel, pero tu local aparecerá en el mapa y en las búsquedas de Wuarikes en cuanto nuestro equipo lo apruebe.
-              </p>
-            </div>
-          </div>
-        )}
-        {noPlaces ? <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} /> : children}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
+          <Logo />
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir menú"
+            aria-expanded={menuOpen}
+            className={buttonStyles('ghost', 'md', 'w-11 px-0')}
+          >
+            <Menu size={20} aria-hidden />
+          </button>
+        </header>
+        <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} side="left" title="Menú">
+          <SidebarContent {...navProps} hideLogo />
+        </Sheet>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-24 bg-white/80 backdrop-blur-2xl border-t border-border flex items-center justify-around px-4 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-        {user?.role === 'business' && !noPlaces && (
-          <>
-            <MobileNavItem href="/inicio" icon={Building2} label="Local" active={pathname === '/inicio'} />
-            <MobileNavItem href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
-            {canIaTotal && (
-              <>
-                <MobileNavItem href="/chat" icon={MessagesSquare} label="Chat" badge="NEW" active={pathname === '/chat'} />
-                <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes" badge="NEW" active={pathname === '/reportes'} />
-                <MobileNavItem href="/equipo" icon={UserPlus} label="Equipo" badge="NEW" active={pathname === '/equipo'} />
-                <MobileNavItem href="/broadcasts" icon={Megaphone} label="Camp" badge="NEW" active={pathname === '/broadcasts'} />
-                <MobileNavItem href="/email-marketing" icon={Mail} label="Email" badge="NEW" active={pathname === '/email-marketing'} />
-                <MobileNavItem href="/ia" icon={Brain} label="IA" badge="NEW" active={pathname === '/ia'} />
-              </>
-            )}
-          </>
-        )}
-        {user?.role === 'admin' && (
-          <>
-            <MobileNavItem href="/moderacion" icon={Shield} label="Locales" active={pathname === '/moderacion'} />
-            <MobileNavItem href="/comunidad" icon={Users} label="Usuarios" active={pathname === '/comunidad'} />
-          </>
-        )}
-        <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-text-muted hover:text-primary transition-colors active:scale-95 duration-200">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shadow-sm">
-            <LogOut size={18} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-tighter">Salir</span>
-        </button>
-      </nav>
+        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 md:px-8 md:py-8">
+          {isBusiness && activePlace?.status === 'pending' && (
+            <div role="status" className="mb-6 flex items-start gap-3 rounded-card border border-secondary bg-secondary/20 px-4 py-3">
+              <Clock size={20} aria-hidden className="mt-0.5 shrink-0 text-text" />
+              <div>
+                <p className="text-sm font-semibold text-text">Tu local está en revisión</p>
+                <p className="text-sm text-text">
+                  Ya puedes configurar tu panel, pero tu local aparecerá en el mapa y en las búsquedas de Wuarikes en cuanto nuestro equipo lo apruebe.
+                </p>
+              </div>
+            </div>
+          )}
+          {noPlaces ? (
+            <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} />
+          ) : pageAccess === 'hidden' ? null : pageAccess === 'locked' ? (
+            <EmptyState
+              icon={Lock}
+              title="Esta sección no está en tu plan"
+              description="Mejora tu plan para usarla con tu negocio."
+              action={<Link href="/suscripcion" className={buttonStyles('primary')}>Ver planes</Link>}
+            />
+          ) : children}
+        </main>
+      </div>
     </div>
+  );
+}
+
+function Logo() {
+  return (
+    <Link href="/inicio" className="rounded-control text-lg font-bold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+      WUARIKE
+    </Link>
+  );
+}
+
+function SidebarContent({ user, pathname, showBusiness, kitchenOnly, config, tier, pendingChats, handleLogout, hideLogo }: NavProps & { hideLogo?: boolean }) {
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <div className="flex h-full w-full flex-col">
+      {!hideLogo && <div className="px-5 py-5"><Logo /></div>}
+
+      <nav aria-label="Menú principal" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+        {showBusiness && kitchenOnly && (
+          <ul className="pt-2">
+            <SidebarLink href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
+          </ul>
+        )}
+
+        {showBusiness && !kitchenOnly && (
+          <>
+            <ul className="pt-2">
+              <SidebarLink href="/inicio" icon={Home} label="Inicio" active={pathname === '/inicio'} />
+            </ul>
+            {NAV.map((group) => {
+              const items = group.items.filter((item) => accessOf(item, config, tier) !== 'hidden');
+              if (items.length === 0) return null;
+              return (
+                <NavSection key={group.group} title={group.group} subtitle={group.subtitle}>
+                  {items.map((item) => {
+                    const children = (item.children ?? []).filter((c) => accessOf(c, config, tier) !== 'hidden');
+                    return (
+                      <SidebarLink
+                        key={item.href}
+                        href={item.href}
+                        icon={item.icon}
+                        label={navLabel(item.label, config)}
+                        active={isActive(item.href)}
+                        locked={accessOf(item, config, tier) === 'locked'}
+                      >
+                        {children.length > 0 && (
+                          <ul className="mt-0.5 space-y-0.5">
+                            {children.map((child) => (
+                              <SidebarLink
+                                key={child.href}
+                                href={child.href}
+                                label={navLabel(child.label, config)}
+                                active={isActive(child.href)}
+                                locked={accessOf(child, config, tier) === 'locked'}
+                                count={child.href === '/chat' ? pendingChats : null}
+                                nested
+                              />
+                            ))}
+                          </ul>
+                        )}
+                      </SidebarLink>
+                    );
+                  })}
+                </NavSection>
+              );
+            })}
+          </>
+        )}
+
+        {user?.role === 'admin' && (
+          <NavSection title="Plataforma">
+            {ADMIN_NAV.map((item) => (
+              <SidebarLink key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} />
+            ))}
+          </NavSection>
+        )}
+      </nav>
+
+      <div className="space-y-3 border-t border-border p-3">
+        {showBusiness && <RestaurantSelector />}
+        <UserMenu user={user} pathname={pathname} showBusiness={showBusiness} handleLogout={handleLogout} />
+      </div>
+    </div>
+  );
+}
+
+function NavSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const id = useId();
+  return (
+    <div className="mt-5">
+      <div className="px-3 pb-2">
+        <p id={id} className="text-xs font-semibold uppercase tracking-wide text-text-muted">{title}</p>
+        {subtitle && <p className="text-xs text-text-muted">{subtitle}</p>}
+      </div>
+      <ul aria-labelledby={id} className="space-y-0.5">{children}</ul>
+    </div>
+  );
+}
+
+function SidebarLink({
+  href, icon: Icon, label, active, locked, count, nested, children,
+}: {
+  href: string; icon?: LucideIcon; label: string; active?: boolean; locked?: boolean; count?: number | null; nested?: boolean; children?: React.ReactNode;
+}) {
+  return (
+    <li>
+      <Link
+        href={locked ? '/suscripcion' : href}
+        aria-current={active && !locked ? 'page' : undefined}
+        aria-label={locked ? `${label} (requiere mejorar tu plan)` : undefined}
+        className={cn(
+          'flex min-h-11 items-center gap-3 rounded-control px-3 text-sm transition-colors duration-200 motion-reduce:transition-none',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          nested && 'pl-10',
+          active && !locked ? 'bg-primary-soft font-semibold text-primary-hover' : 'font-medium text-text hover:bg-background',
+          locked && 'text-text-muted',
+        )}
+      >
+        {Icon && <Icon size={20} aria-hidden className="shrink-0" />}
+        <span className="flex-1 truncate">{label}</span>
+        {locked ? (
+          <Lock size={16} aria-hidden className="shrink-0" />
+        ) : count ? (
+          <Badge tone="primary">{count}<span className="sr-only"> pendientes</span></Badge>
+        ) : null}
+      </Link>
+      {children}
+    </li>
+  );
+}
+
+function UserMenu({ user, pathname, showBusiness, handleLogout }: { user: DashboardUser | null; pathname: string; showBusiness: boolean; handleLogout: () => void }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => { if (ref.current) ref.current.open = false; }, [pathname]);
+
+  const itemClass = 'flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-text hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+
+  return (
+    <details ref={ref} className="group relative">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control px-2 py-1.5 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-hover">
+          {user?.fullName?.charAt(0) || 'A'}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-text">{user?.fullName || 'Administrador'}</span>
+          <span className="block text-xs text-text-muted">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</span>
+        </span>
+        <ChevronUp size={16} aria-hidden className="shrink-0 text-text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+      </summary>
+      <div className="absolute bottom-full left-0 right-0 mb-2 rounded-card border border-border bg-surface p-1 shadow-card">
+        <Link href="/mi-cuenta" className={itemClass}><CircleUser size={20} aria-hidden /> Mi cuenta</Link>
+        {showBusiness && <Link href="/suscripcion" className={itemClass}><CreditCard size={20} aria-hidden /> Suscripción</Link>}
+        <button type="button" onClick={handleLogout} className={cn(itemClass, 'hover:text-danger')}>
+          <LogOut size={20} aria-hidden /> Cerrar sesión
+        </button>
+      </div>
+    </details>
   );
 }
 
 function NoPlacesScreen({ userName, onComplete }: { userName?: string; onComplete: () => void }) {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full text-center space-y-12">
-        <div className="space-y-4">
-          <div className="text-7xl">👨‍🍳</div>
-          <h1 className="text-5xl font-black text-text font-warike tracking-tight italic">
-            Bienvenido{userName ? `, Chef ${userName.split(' ')[0]}` : ''}
+    <div className="flex min-h-[80vh] items-center justify-center p-4">
+      <div className="w-full max-w-2xl space-y-10 text-center">
+        <div className="space-y-3">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <ChefHat size={24} aria-hidden />
+          </div>
+          <h1 className="text-2xl font-bold text-text">
+            Bienvenido{userName ? `, ${userName.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-text-muted font-bold text-xl leading-relaxed max-w-lg mx-auto">
-            Configura tu restaurante para empezar a gestionar tu reputación y redes sociales.
+          <p className="mx-auto max-w-lg text-base text-text-muted">
+            Configura tu negocio para empezar a gestionar tu reputación y redes sociales.
           </p>
         </div>
 
         <OnboardingSearch onComplete={onComplete} />
 
-        <div className="pt-10 border-t border-border">
-          <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.4em] mb-6">¿Necesitas ayuda personalizada?</p>
+        <div className="border-t border-border pt-8">
+          <p className="mb-4 text-sm text-text-muted">¿Necesitas ayuda personalizada?</p>
           <a
             href="https://wa.me/51902191948?text=Hola!%20Soy%20un%20Chef%20nuevo%20y%20necesito%20ayuda%20con%20mi%20registro."
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-white border-2 border-border text-text px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1 active:scale-95"
+            className={buttonStyles('secondary')}
           >
-            <span className="text-xl">💬</span> Hablar con Soporte Wuarike
+            <MessageCircle size={20} aria-hidden /> Hablar con soporte Wuarikes
           </a>
         </div>
       </div>
     </div>
-  );
-}
-
-
-const SidebarLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-4 py-3 mb-2">
-    {children}
-  </p>
-);
-
-function SidebarItem({ href, icon: Icon, label, active, badge }: { href: string, icon: LucideIcon, label: string, active?: boolean, badge?: string }) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-all duration-200 group ${
-        active
-          ? 'bg-primary/10 text-primary font-semibold'
-          : 'text-gray-700 hover:bg-gray-50 font-medium'
-      }`}
-    >
-      <Icon size={18} className="flex-shrink-0" />
-      <span className="flex-1 text-sm truncate">{label}</span>
-      {badge && (
-        <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-md flex-shrink-0 group-hover:bg-gray-200 transition-colors">
-          {badge}
-        </span>
-      )}
-    </Link>
-  );
-}
-
-function MobileNavItem({ href, icon: Icon, label, active, badge }: { href: string, icon: LucideIcon, label: string, active?: boolean, badge?: string }) {
-  return (
-    <Link
-      href={href}
-      className={`flex flex-col items-center gap-1.5 relative transition-colors duration-300 active:scale-95 ${active ? 'text-primary' : 'text-text-muted hover:text-primary'}`}
-    >
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${active ? 'bg-primary/10 shadow-inner' : 'bg-gray-50 shadow-sm hover:shadow-md'}`}>
-        <Icon size={22} />
-      </div>
-      <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
-      {badge && <span className="absolute top-0 right-0 bg-primary text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-md">{badge}</span>}
-    </Link>
   );
 }

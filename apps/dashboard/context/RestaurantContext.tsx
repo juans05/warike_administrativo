@@ -2,17 +2,22 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { businessApi } from '../lib/api-client';
+import type { VerticalConfig } from '../lib/modules';
 
 interface Place {
   id: string;
   name: string;
   coverImageUrl?: string;
   status?: 'active' | 'inactive' | 'pending';
+  businessType?: string;
+  vertical?: string;
+  verticalConfig?: VerticalConfig;
 }
 
 interface RestaurantContextValue {
   places: Place[];
   activePlaceId: string | null;
+  activePlace: Place | undefined;
   setActivePlaceId: (id: string) => void;
   isLoading: boolean;
   refreshPlaces: () => Promise<void>;
@@ -66,6 +71,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       value={{ 
         places, 
         activePlaceId, 
+        activePlace: places.find((p) => p.id === activePlaceId),
         setActivePlaceId, 
         isLoading, 
         refreshPlaces 

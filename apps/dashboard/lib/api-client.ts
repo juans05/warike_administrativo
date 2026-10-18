@@ -257,6 +257,7 @@ export const businessApi = {
   // Places & Profile
   getMyPlaces: () => fetchWithAuth('/business/my-places'),
   getSubscriptionTier: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription-tier`),
+  getToday: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/today`) as Promise<{ pendingHumanChats?: number }>,
   getProfile: (id: string) => fetchWithAuth(`/business/places/${id}/profile`),
   updateProfile: (id: string, data: ProfileUpdate) =>
     fetchWithAuth(`/business/places/${id}/profile`, {
