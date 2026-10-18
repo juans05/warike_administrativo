@@ -148,6 +148,17 @@ export interface ContactImport {
   createdAt: string;
 }
 
+/** GET business/places/:id/today — pendientes y números de la semana para Inicio. */
+export interface TodaySummary {
+  botChatsSince24h: number;
+  pendingHumanChats: number;
+  inactiveLoyalCustomers: number;
+  winbackEnabled: boolean;
+  winbacksSentThisWeek: number;
+  newOrders: number;
+  weekStats: { chats: number; returningCustomers: number; googleRating: number | null };
+}
+
 // ── Core fetch helper ────────────────────────────────────────────────────────
 
 export async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
@@ -267,7 +278,10 @@ export const businessApi = {
   // Places & Profile
   getMyPlaces: () => fetchWithAuth('/business/my-places'),
   getSubscriptionTier: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription-tier`),
-  getToday: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/today`) as Promise<{ pendingHumanChats?: number }>,
+  getToday: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/today`) as Promise<TodaySummary>,
+  // Aparte de getToday: consulta a Google (con caché), puede tardar.
+  getTodayReviews: (placeId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/today/reviews`) as Promise<{ connected: boolean; unanswered: number }>,
   getProfile: (id: string) => fetchWithAuth(`/business/places/${id}/profile`),
   updateProfile: (id: string, data: ProfileUpdate) =>
     fetchWithAuth(`/business/places/${id}/profile`, {
