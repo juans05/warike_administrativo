@@ -14,6 +14,16 @@
   --text-muted: #7D7474;
   --border: #E8E2D9;     /* Subtle Sand Border */
   
+  /* Panel redesign tokens (added; existing values above are untouched) */
+  --primary-hover: #A93D27;
+  --danger: #B42318;
+  /* RGB channels so Tailwind opacity modifiers work (bg-primary/10, ring-primary/40) */
+  --primary-rgb: 200 75 49;
+  --primary-hover-rgb: 169 61 39;
+  --secondary-rgb: 236 179 101;
+  --success-rgb: 96 108 56;  /* = --accent */
+  --danger-rgb: 180 35 24;
+
   --radius-xl: 2.5rem;
   --radius-lg: 1.5rem;
 }
@@ -31,6 +41,14 @@ h1, h2, h3, .font-warike {
 
 .font-accent {
   font-family: 'Caveat', cursive;
+}
+
+/* Panel (dashboard + auth): Inter only. Scoped so public pages keep Lora headings. */
+.panel-ui {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+.panel-ui :where(h1, h2, h3) {
+  font-family: inherit;
 }
 
 /* Custom Utilities */

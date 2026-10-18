@@ -99,11 +99,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isLoaded) return null;
 
   return (
-    <RestaurantProvider>
-      <InnerLayout user={user} handleLogout={handleLogout}>
-        {children}
-      </InnerLayout>
-    </RestaurantProvider>
+    <div className="panel-ui">
+      <RestaurantProvider>
+        <InnerLayout user={user} handleLogout={handleLogout}>
+          {children}
+        </InnerLayout>
+      </RestaurantProvider>
+    </div>
   );
 }
 
