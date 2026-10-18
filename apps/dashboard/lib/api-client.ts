@@ -24,7 +24,13 @@ export interface ProfileUpdate {
   spainCommunity?: string | null;
   spainProvince?: string | null;
   spainMunicipality?: string | null;
+  businessType?: string;
   [key: string]: unknown;
+}
+
+/** `GET /places/business-types`: rubros (vertical) con sus tipos de negocio. */
+export interface BusinessTypesResponse {
+  verticals: { key: string; label: string; catalogLabel: string; types: { key: string; label: string }[] }[];
 }
 
 export interface BotSettingsUpdate {
@@ -244,12 +250,16 @@ export const botApi = {
 export const businessApi = {
   // Onboarding (registration)
   searchOnboarding: (q: string) => fetchWithAuth(`/business/onboarding/search?q=${encodeURIComponent(q)}`),
-  claimPlace: (id: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, { method: 'POST' }),
-  importPlace: (googlePlaceId: string) => fetchWithAuth('/business/onboarding/import', {
+  getBusinessTypes: () => fetchPublic('/places/business-types') as Promise<BusinessTypesResponse>,
+  claimPlace: (id: string, businessType: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, {
     method: 'POST',
-    body: JSON.stringify({ googlePlaceId }),
+    body: JSON.stringify({ businessType }),
   }),
-  createPlace: (data: { name: string; address?: string }) => fetchWithAuth('/business/onboarding/create', {
+  importPlace: (googlePlaceId: string, businessType: string) => fetchWithAuth('/business/onboarding/import', {
+    method: 'POST',
+    body: JSON.stringify({ googlePlaceId, businessType }),
+  }),
+  createPlace: (data: { name: string; address?: string; businessType: string }) => fetchWithAuth('/business/onboarding/create', {
     method: 'POST',
     body: JSON.stringify(data),
   }),

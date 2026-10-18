@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { businessApi } from '../lib/api-client';
+import {
+  AlertCircle, ArrowLeft, Car, CheckCircle2, Gamepad2, Loader2, MapPin, PawPrint, Scissors, Search,
+  ShoppingBag, Stethoscope, Store, UtensilsCrossed, Wrench, type LucideIcon,
+} from 'lucide-react';
+import { businessApi, type BusinessTypesResponse } from '../lib/api-client';
+import { Badge, Button, EmptyState, Skeleton, cn } from './ui';
 
 interface OnboardingResult {
   id?: string;
@@ -12,12 +17,46 @@ interface OnboardingResult {
   isClaimed?: boolean;
 }
 
+type Vertical = BusinessTypesResponse['verticals'][number];
+
+// Keys mirror backend VERTICALS (huarique_backend/src/modules/places/business-types.ts); unknown keys fall back to Store.
+const VERTICAL_ICONS: Record<string, LucideIcon> = {
+  gastronomia: UtensilsCrossed,
+  comercio: ShoppingBag,
+  belleza: Scissors,
+  salud: Stethoscope,
+  mascotas: PawPrint,
+  automotriz: Car,
+  servicios: Wrench,
+  entretenimiento: Gamepad2,
+};
+
+const tileClass = cn(
+  'flex min-h-11 items-center gap-3 rounded-card border border-border bg-surface p-4 text-left shadow-card',
+  'transition-colors duration-200 motion-reduce:transition-none hover:border-primary',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+);
+
 export default function OnboardingSearch({ onComplete }: { onComplete: () => void }) {
+  const [verticals, setVerticals] = useState<Vertical[] | null>(null);
+  const [typesError, setTypesError] = useState(false);
+  const [vertical, setVertical] = useState<Vertical | null>(null);
+  const [businessType, setBusinessType] = useState<{ key: string; label: string } | null>(null);
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ wuarike: OnboardingResult[], google: OnboardingResult[] }>({ wuarike: [], google: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const loadTypes = useCallback(() => {
+    setTypesError(false);
+    businessApi.getBusinessTypes()
+      .then((res) => setVerticals(res.verticals ?? []))
+      .catch(() => setTypesError(true));
+  }, []);
+
+  useEffect(loadTypes, [loadTypes]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (abortRef.current) {
@@ -59,19 +98,20 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
   }, []);
 
   const handleAction = async (item: OnboardingResult) => {
+    if (!businessType) return; // sin tipo no se puede reclamar, importar ni crear
     setIsLoading(true);
     setStatus(null);
     try {
       let placeId: string | undefined;
 
       if (item.source === 'wuarike') {
-        const res = await businessApi.claimPlace(item.id!);
+        const res = await businessApi.claimPlace(item.id!, businessType.key);
         placeId = res.placeId || item.id;
       } else if (item.source === 'google') {
-        const res = await businessApi.importPlace(item.googlePlaceId);
+        const res = await businessApi.importPlace(item.googlePlaceId, businessType.key);
         placeId = res.placeId;
       } else {
-        const res = await businessApi.createPlace({ name: item.name, address: item.address });
+        const res = await businessApi.createPlace({ name: item.name, address: item.address, businessType: businessType.key });
         placeId = res.placeId;
       }
 
@@ -88,36 +128,103 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
     }
   };
 
+  // Paso 1: rubro
+  if (!vertical) {
+    if (typesError) {
+      return (
+        <EmptyState
+          icon={AlertCircle}
+          title="No pudimos cargar los tipos de negocio"
+          description="Revisa tu conexión e intenta de nuevo."
+          action={<Button variant="secondary" onClick={loadTypes}>Reintentar</Button>}
+        />
+      );
+    }
+    return (
+      <section className="space-y-4 text-left">
+        <h2 className="text-base font-semibold text-text">¿Qué tipo de negocio tienes?</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {verticals === null
+            ? Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-24 rounded-card" />)
+            : verticals.map((v) => {
+                const Icon = VERTICAL_ICONS[v.key] ?? Store;
+                return (
+                  <button key={v.key} type="button" onClick={() => setVertical(v)} className={cn(tileClass, 'flex-col justify-center text-center')}>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+                      <Icon size={20} aria-hidden />
+                    </span>
+                    <span className="text-sm font-medium text-text">{v.label}</span>
+                  </button>
+                );
+              })}
+        </div>
+      </section>
+    );
+  }
+
+  // Paso 2: tipo dentro del rubro
+  if (!businessType) {
+    return (
+      <section className="space-y-4 text-left">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => setVertical(null)}>Rubros</Button>
+          <h2 className="text-base font-semibold text-text">{vertical.label}: elige el tipo</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {vertical.types.map((t) => (
+            <button key={t.key} type="button" onClick={() => setBusinessType(t)} className={tileClass}>
+              <span className="text-sm font-medium text-text">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // Paso 3: buscar y reclamar / importar / crear
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 text-left">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm text-text-muted">
+          Tipo de negocio: <Badge tone="primary">{vertical.label} · {businessType.label}</Badge>
+        </p>
+        <Button variant="ghost" size="sm" onClick={() => { setBusinessType(null); setStatus(null); }} disabled={isLoading}>
+          Cambiar
+        </Button>
+      </div>
+
       <div className="relative">
-        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl">🔍</span>
+        <Search size={20} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Busca el nombre de tu local..."
-          className="w-full bg-white border-2 border-[var(--border)] rounded-[2.5rem] py-6 pl-16 pr-8 text-lg font-bold focus:border-[var(--primary)] outline-none shadow-xl shadow-black/5 transition-all"
+          aria-label="Nombre de tu local"
+          className="h-12 w-full rounded-control border border-border bg-surface pl-10 pr-10 text-base text-text placeholder:text-text-muted focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         />
         {isLoading && (
-          <div className="absolute right-6 top-1/2 -translate-y-1/2">
-            <div className="w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
-          </div>
+          <Loader2 size={20} aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary motion-reduce:animate-none" />
         )}
       </div>
 
       {status && (
-        <div className={`p-6 rounded-3xl font-black text-center text-sm uppercase tracking-widest ${
-          status.type === 'success' ? 'bg-green-50 text-green-600 border-2 border-green-100' : 'bg-red-50 text-red-600 border-2 border-red-100'
-        }`}>
-          {status.type === 'success' ? '✨' : '⚠️'} {status.message}
-        </div>
+        <p
+          role={status.type === 'error' ? 'alert' : 'status'}
+          className={cn(
+            'flex items-center justify-center gap-2 rounded-control p-3 text-sm font-medium',
+            status.type === 'success' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger',
+          )}
+        >
+          {status.type === 'success' ? <CheckCircle2 size={16} aria-hidden /> : <AlertCircle size={16} aria-hidden />}
+          {status.message}
+        </p>
       )}
 
       <div className="space-y-6">
         {results.wuarike.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] ml-4">Encontrados en Wuarike</h3>
+          <div className="space-y-3">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-text-muted">Encontrados en Wuarike</h3>
             {results.wuarike.map((item) => (
               <ResultItem key={`wu-${item.id}`} item={item} onAction={handleAction} disabled={isLoading} />
             ))}
@@ -125,8 +232,8 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
         )}
 
         {results.google.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] ml-4">Disponibles en Google Maps</h3>
+          <div className="space-y-3">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-text-muted">Disponibles en Google Maps</h3>
             {results.google.map((item) => (
               <ResultItem key={`gm-${item.googlePlaceId}`} item={item} onAction={handleAction} disabled={isLoading} />
             ))}
@@ -134,24 +241,31 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
         )}
 
         {query.length >= 3 && !isLoading && results.wuarike.length === 0 && results.google.length === 0 && !status && (
-          <div className="text-center py-12 bg-white rounded-[3rem] border-2 border-dashed border-[var(--border)] space-y-6">
-             <span className="text-5xl block">🍳</span>
-             <div className="space-y-2">
-               <p className="text-[var(--text)] font-black uppercase tracking-widest text-sm font-warike">¿Tu local es nuevo?</p>
-               <p className="text-[var(--text-muted)] font-bold text-xs">No lo encontramos en Wuarike ni en Google Maps.</p>
-             </div>
-             <button
-              onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' })}
-              className="bg-[var(--primary)] text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[var(--primary)]/20 hover:scale-105 transition-all"
-             >
-                Registrar &ldquo;{query}&rdquo; Manualmente
-             </button>
+          <div className="rounded-card border border-dashed border-border bg-surface">
+            <EmptyState
+              icon={Store}
+              headingLevel="h3"
+              title="¿Tu local es nuevo?"
+              description="No lo encontramos en Wuarike ni en Google Maps."
+              action={
+                <Button onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' })}>
+                  Registrar &ldquo;{query}&rdquo;
+                </Button>
+              }
+            />
           </div>
         )}
 
         {query.length >= 3 && !isLoading && !status && (results.wuarike.length > 0 || results.google.length > 0) && (
-          <p className="text-center text-[10px] font-bold text-[var(--text-muted)] pt-4">
-            ¿No es ninguno de estos? <button onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' })} className="text-[var(--primary)] font-black underline ml-1 uppercase">Regístralo manualmente</button>
+          <p className="text-center text-sm text-text-muted">
+            ¿No es ninguno de estos?{' '}
+            <button
+              type="button"
+              onClick={() => handleAction({ name: query, address: '', googlePlaceId: '', source: 'manual' })}
+              className="min-h-11 font-medium text-primary underline hover:text-primary-hover"
+            >
+              Regístralo manualmente
+            </button>
           </p>
         )}
       </div>
@@ -161,29 +275,26 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
 
 function ResultItem({ item, onAction, disabled }: { item: OnboardingResult, onAction: (i: OnboardingResult) => void, disabled?: boolean }) {
   const isWuarike = item.source === 'wuarike';
+  const Icon = isWuarike ? Store : MapPin;
 
   return (
-    <div className="bg-white p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm flex items-center justify-between group hover:shadow-xl hover:border-[var(--primary)] transition-all">
-      <div className="flex items-center gap-6">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner ${isWuarike ? 'bg-orange-50' : 'bg-blue-50'}`}>
-          {isWuarike ? '🍽️' : '📍'}
-        </div>
-        <div className="max-w-[250px] md:max-w-md">
-          <h4 className="font-black text-[var(--text)] text-lg leading-tight uppercase font-warike">{item.name}</h4>
-          <p className="text-[11px] text-[var(--text-muted)] font-bold mt-1 line-clamp-1">{item.address}</p>
+    <div className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <Icon size={20} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h4 className="truncate text-sm font-semibold text-text">{item.name}</h4>
+          <p className="truncate text-xs text-text-muted">{item.address}</p>
         </div>
       </div>
 
       {item.isClaimed ? (
-        <span className="bg-gray-100 text-gray-400 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Ya Reclamado</span>
+        <Badge>Ya reclamado</Badge>
       ) : (
-        <button
-          onClick={() => onAction(item)}
-          disabled={disabled}
-          className="bg-[var(--text)] text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[var(--primary)] transition-all shadow-lg shadow-black/10 active:scale-95"
-        >
+        <Button size="sm" onClick={() => onAction(item)} disabled={disabled}>
           {isWuarike ? 'Reclamar' : 'Importar'}
-        </button>
+        </Button>
       )}
     </div>
   );
