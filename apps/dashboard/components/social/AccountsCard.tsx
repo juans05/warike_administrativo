@@ -23,7 +23,7 @@ export function AccountsCard({ accounts, activeAccountId, onToggleFilter, onDisc
                 type="button"
                 aria-pressed={active}
                 onClick={() => onToggleFilter(account.id)}
-                className="flex min-h-12 items-center gap-3 rounded-card px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex min-h-12 items-center gap-3 rounded-card px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span aria-hidden className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-primary">
                   <Instagram size={20} />
@@ -38,7 +38,7 @@ export function AccountsCard({ accounts, activeAccountId, onToggleFilter, onDisc
                 onClick={() => onDisconnect(account)}
                 aria-label={`Desvincular ${account.username}`}
                 title="Desvincular"
-                className="mr-1 flex h-11 w-11 items-center justify-center rounded-control text-text-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="mr-1 flex h-11 w-11 items-center justify-center rounded-control text-text-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Unlink size={16} aria-hidden />
               </button>
@@ -50,7 +50,7 @@ export function AccountsCard({ accounts, activeAccountId, onToggleFilter, onDisc
         <button
           type="button"
           onClick={() => onToggleFilter(activeAccountId)}
-          className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-control text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-control text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <X size={16} aria-hidden />
           Quitar filtro y ver todas las cuentas

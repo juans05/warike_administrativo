@@ -54,7 +54,7 @@ export function QrRowActions({ actions }: { actions: QrAction[] }) {
                   onClick();
                   setOpen(false);
                 }}
-                className="flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm text-text hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+                className="flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm text-text hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <Icon size={16} aria-hidden />
                 {label}

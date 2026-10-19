@@ -433,7 +433,7 @@ export default function MiFichaPage() {
                   })}
                   className={cn(
                     'inline-flex min-h-11 items-center gap-1.5 rounded-control border px-3 text-sm transition-colors duration-200 motion-reduce:transition-none',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     selected ? 'border-primary bg-primary-soft text-primary-hover' : 'border-border bg-surface text-text hover:border-primary',
                   )}
                 >

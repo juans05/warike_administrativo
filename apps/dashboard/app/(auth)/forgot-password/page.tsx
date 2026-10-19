@@ -65,7 +65,7 @@ function ForgotPasswordContent() {
             ? <>Elige la contraseña para <span className="font-semibold text-text">{email}</span></>
             : <>Te mandamos un código de 6 dígitos a <span className="font-semibold text-text">{email}</span></>
       }
-      footer={<Link href="/login" className="inline-flex min-h-11 items-center rounded-control font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">Volver a iniciar sesión</Link>}
+      footer={<Link href="/login" className="inline-flex min-h-11 items-center rounded-control font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Volver a iniciar sesión</Link>}
     >
       {step === 'request' ? (
         <form onSubmit={handleRequest} className="space-y-4">

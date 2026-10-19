@@ -68,7 +68,7 @@ export function CategorySection({ category, catalog, onAddItem, onEditItem, onDe
               type="button"
               onClick={() => onEditItem(item)}
               aria-label={`Editar ${item.name}`}
-              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
             >
               <ItemThumb item={item} catalog={catalog} />
               <span className="min-w-0 flex-1">

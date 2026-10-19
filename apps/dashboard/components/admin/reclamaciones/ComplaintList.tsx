@@ -47,7 +47,7 @@ export function ComplaintList({ complaints, pendingCount, resolvedCount, tab, on
             aria-current={c.id === selectedId || undefined}
             className={cn(
               'flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
               c.id === selectedId ? 'bg-primary-soft' : 'hover:bg-background',
             )}
           >

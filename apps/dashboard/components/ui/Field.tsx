@@ -11,7 +11,7 @@ export function controlStyles(error?: string, className?: string) {
   return cn(
     'w-full rounded-control border bg-surface px-3 text-sm text-text placeholder:text-text-muted',
     'transition-colors duration-200 motion-reduce:transition-none',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus:border-primary',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus:border-primary',
     'disabled:bg-background disabled:cursor-not-allowed disabled:opacity-60',
     error ? 'border-danger' : 'border-border',
     className,

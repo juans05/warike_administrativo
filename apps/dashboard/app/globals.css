@@ -17,7 +17,7 @@
   /* Panel redesign tokens (added; existing values above are untouched) */
   --primary-hover: #A93D27;
   --danger: #B42318;
-  /* RGB channels so Tailwind opacity modifiers work (bg-primary/10, ring-primary/40) */
+  /* RGB channels so Tailwind opacity modifiers work (bg-primary/10, border-primary/40) */
   --primary-rgb: 200 75 49;
   --primary-hover-rgb: 169 61 39;
   --secondary-rgb: 236 179 101;

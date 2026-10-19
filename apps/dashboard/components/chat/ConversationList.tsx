@@ -84,7 +84,7 @@ export function ConversationList({
                   type="button"
                   onClick={() => onSelect(conv)}
                   aria-current={selected || undefined}
-                  className={`flex w-full gap-3 border-l-2 px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 ${
+                  className={`flex w-full gap-3 border-l-2 px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
                     selected ? 'border-l-primary bg-primary-soft' : conv.awaitingReply ? 'border-l-secondary hover:bg-background' : 'border-l-transparent hover:bg-background'
                   }`}
                 >

@@ -28,6 +28,7 @@ import { RestaurantProvider, useRestaurant } from '../../context/RestaurantConte
 import RestaurantSelector from '../../components/RestaurantSelector';
 import OnboardingSearch from '../../components/OnboardingSearch';
 import TermsGate from '../../components/TermsGate';
+import { AuthLogo } from '../../components/AuthCard';
 import { businessApi, ordersApi } from '../../lib/api-client';
 import { NAV, accessOf, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
 import { Badge, EmptyState, Sheet, buttonStyles, cn } from '../../components/ui';
@@ -234,8 +235,8 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
 function Logo() {
   return (
-    <Link href="/inicio" className="inline-flex min-h-11 items-center rounded-control text-lg font-bold tracking-tight text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-      WUARIKE
+    <Link href="/inicio" aria-label="wuarikes, ir al inicio" className="inline-flex min-h-11 items-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      <AuthLogo className="text-xl" />
     </Link>
   );
 }
@@ -345,7 +346,7 @@ function SidebarLink({
         aria-label={locked ? `${label} (requiere mejorar tu plan)` : undefined}
         className={cn(
           'flex min-h-11 items-center gap-3 rounded-control px-3 text-sm transition-colors duration-200 motion-reduce:transition-none',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           nested && 'pl-10',
           active && !locked ? 'bg-primary-soft font-semibold text-primary-hover' : 'font-medium text-text hover:bg-background',
           locked && 'text-text-muted',
@@ -368,11 +369,11 @@ function UserMenu({ user, pathname, showBusiness, handleLogout }: { user: Dashbo
   const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => { if (ref.current) ref.current.open = false; }, [pathname]);
 
-  const itemClass = 'flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-text hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
+  const itemClass = 'flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-text hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
   return (
     <details ref={ref} className="group relative">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control px-2 py-1.5 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control px-2 py-1.5 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-hover">
           {user?.fullName?.charAt(0) || 'A'}
         </span>

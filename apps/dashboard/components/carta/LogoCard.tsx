@@ -58,7 +58,7 @@ export function LogoCard({ placeId, logoUrl, onLogoChange, showLogoOnQr, onShowL
             Aparece centrado arriba de tu página pública para que te reconozcan de un vistazo.
           </p>
         </div>
-        <label className={buttonStyles('secondary', 'md', 'shrink-0 cursor-pointer focus-within:ring-2 focus-within:ring-primary/40')}>
+        <label className={buttonStyles('secondary', 'md', 'shrink-0 cursor-pointer focus-within:ring-2 focus-within:ring-primary')}>
           {uploading && <Loader2 size={20} className="animate-spin motion-reduce:animate-none" aria-hidden />}
           {uploading ? 'Subiendo...' : logoUrl ? 'Cambiar' : 'Subir logo'}
           <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={handleLogoUpload} disabled={uploading} />

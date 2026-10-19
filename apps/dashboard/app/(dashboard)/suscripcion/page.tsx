@@ -93,7 +93,6 @@ export default function SuscripcionPage() {
     if (!CULQI_PUBLIC_KEY) { toast.error('Falta NEXT_PUBLIC_CULQI_PUBLIC_KEY: los pagos no están configurados.'); return; }
     if (!window.CulqiCheckout) { toast.warning('Cargando procesador de pagos...'); return; }
     const plan = selectedPlan;
-    console.log('[Culqi] public key:', CULQI_PUBLIC_KEY, '| plan:', plan.tier, '| amount:', Math.round(plan.price * 100)); // TODO: quitar debug
     const checkout = new window.CulqiCheckout(CULQI_PUBLIC_KEY, {
       settings: {
         title: plan.name,
@@ -113,7 +112,6 @@ export default function SuscripcionPage() {
       appearance: { menuType: 'sidebar', buttonCardPayText: 'Suscribirme' },
     });
     checkout.culqi = async () => {
-      console.log('[Culqi] token:', checkout.token, '| error:', checkout.error); // TODO: quitar debug
       if (checkout.token) {
         if (!activePlaceId) return;
         const token = checkout.token.id;

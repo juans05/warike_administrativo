@@ -38,7 +38,7 @@ function Option({ icon: Icon, title, description, onClick, disabled, selected, h
       aria-pressed={selected}
       className={cn(
         'flex flex-col items-start rounded-card border p-5 text-left transition-colors duration-200 motion-reduce:transition-none',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60',
         highlight ? 'border-primary bg-primary-soft' : selected ? 'border-text bg-background' : 'border-border bg-surface hover:bg-background',
       )}
     >

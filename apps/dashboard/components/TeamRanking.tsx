@@ -78,7 +78,7 @@ export default function TeamRanking({ placeId }: { placeId: string }) {
                   <button
                     type="button"
                     onClick={() => { setEditing(row.id); setDraft(row.name); }}
-                    className="min-h-11 truncate rounded-control text-left text-sm font-medium text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="min-h-11 truncate rounded-control text-left text-sm font-medium text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     title="Cambiar nombre"
                   >
                     {row.name}

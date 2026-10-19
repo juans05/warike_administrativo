@@ -15,7 +15,7 @@ const NAME_EXAMPLE: Record<CatalogCtx['catalogKind'], string> = {
 };
 
 const dropzone =
-  'cursor-pointer items-center justify-center rounded-control border border-dashed border-border text-text-muted transition-colors duration-200 motion-reduce:transition-none hover:border-primary hover:text-primary focus-within:ring-2 focus-within:ring-primary/40';
+  'cursor-pointer items-center justify-center rounded-control border border-dashed border-border text-text-muted transition-colors duration-200 motion-reduce:transition-none hover:border-primary hover:text-primary focus-within:ring-2 focus-within:ring-primary';
 
 interface Props {
   open: boolean;
@@ -202,7 +202,7 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
                   type="button"
                   aria-label={`Quitar foto ${i + 1}`}
                   onClick={() => patch({ images: form.images.filter((_, j) => j !== i) })}
-                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-white after:absolute after:-inset-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-white after:absolute after:-inset-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <X size={16} aria-hidden />
                 </button>

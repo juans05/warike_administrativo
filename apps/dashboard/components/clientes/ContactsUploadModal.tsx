@@ -85,7 +85,7 @@ export function ContactsUploadModal({ open, onClose, onUpload, uploading, lastRe
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex min-h-32 w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-border p-6 text-center transition-colors duration-200 hover:border-primary hover:bg-primary-soft motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="flex min-h-32 w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-border p-6 text-center transition-colors duration-200 hover:border-primary hover:bg-primary-soft motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {selectedFile ? (
                 <>

@@ -27,7 +27,7 @@ export function PlatformModal({ open, accounts, onClose, onPick }: {
               <button
                 type="button"
                 onClick={() => onPick(key)}
-                className="flex min-h-14 w-full items-center gap-3 rounded-card border border-border px-4 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex min-h-14 w-full items-center gap-3 rounded-card border border-border px-4 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
                   <Icon size={20} />

@@ -33,7 +33,7 @@ export default function TermsGate() {
     }
   };
 
-  const linkStyles = 'font-medium text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm';
+  const linkStyles = 'font-medium text-primary underline underline-offset-2 hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm';
 
   return (
     <div className="fixed inset-0 z-[100] flex overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="terms-title">

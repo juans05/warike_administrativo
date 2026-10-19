@@ -34,7 +34,7 @@ const VERTICAL_ICONS: Record<string, LucideIcon> = {
 const tileClass = cn(
   'flex min-h-11 items-center gap-3 rounded-card border border-border bg-surface p-4 text-left shadow-card',
   'transition-colors duration-200 motion-reduce:transition-none hover:border-primary',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
 );
 
 export default function OnboardingSearch({ onComplete }: { onComplete: () => void }) {
@@ -201,7 +201,7 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Busca el nombre de tu local..."
           aria-label="Nombre de tu local"
-          className="h-12 w-full rounded-control border border-border bg-surface pl-10 pr-10 text-base text-text placeholder:text-text-muted focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="h-12 w-full rounded-control border border-border bg-surface pl-10 pr-10 text-base text-text placeholder:text-text-muted focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         />
         {isLoading && (
           <Loader2 size={20} aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary motion-reduce:animate-none" />

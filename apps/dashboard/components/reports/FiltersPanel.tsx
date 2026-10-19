@@ -36,7 +36,7 @@ export function FiltersPanel({ statusFilter, onChangeStatusFilter, agentFilter, 
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-14 w-full items-center justify-between gap-3 rounded-card px-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+        className="flex min-h-14 w-full items-center justify-between gap-3 rounded-card px-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-text">
           <Filter size={16} aria-hidden className="text-text-muted" />
@@ -59,7 +59,7 @@ export function FiltersPanel({ statusFilter, onChangeStatusFilter, agentFilter, 
                     type="button"
                     aria-pressed={active}
                     onClick={() => toggleStatus(status)}
-                    className="flex min-h-11 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex min-h-11 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Badge tone={active ? STATUS_TONE[status] : 'neutral'}>
                       {active && <Check size={16} aria-hidden />}
@@ -90,16 +90,16 @@ export function FiltersPanel({ statusFilter, onChangeStatusFilter, agentFilter, 
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <span className="text-xs text-text-muted">Filtros activos:</span>
               {statusFilter.map((s) => (
-                <button key={s} type="button" onClick={() => toggleStatus(s)} aria-label={`Quitar filtro ${STATUS_LABELS[s]}`} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button key={s} type="button" onClick={() => toggleStatus(s)} aria-label={`Quitar filtro ${STATUS_LABELS[s]}`} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <Badge>{STATUS_LABELS[s]}<X size={16} aria-hidden /></Badge>
                 </button>
               ))}
               {agentName && (
-                <button type="button" onClick={() => onChangeAgentFilter(null)} aria-label={`Quitar filtro ${agentName}`} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button type="button" onClick={() => onChangeAgentFilter(null)} aria-label={`Quitar filtro ${agentName}`} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <Badge>{agentName}<X size={16} aria-hidden /></Badge>
                 </button>
               )}
-              <button type="button" onClick={onClear} className="ml-auto min-h-11 rounded-control px-2 text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <button type="button" onClick={onClear} className="ml-auto min-h-11 rounded-control px-2 text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 Limpiar filtros
               </button>
             </div>

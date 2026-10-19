@@ -91,7 +91,7 @@ export function TapsRequestCard({ placeId }: { placeId: string }) {
                 onClick={() => setTapType(t.key)}
                 className={cn(
                   'min-h-11 rounded-card border p-4 text-left transition-colors',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   tapType === t.key ? 'border-primary bg-primary-soft' : 'border-border bg-surface hover:bg-background',
                 )}
               >

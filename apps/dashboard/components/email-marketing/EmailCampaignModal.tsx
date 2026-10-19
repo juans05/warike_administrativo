@@ -132,7 +132,7 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
                   key={t.id}
                   type="button"
                   onClick={() => applyTemplate(t)}
-                  className="rounded-control border border-border px-3 py-3 text-left transition-colors duration-200 motion-reduce:transition-none hover:border-primary hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="rounded-control border border-border px-3 py-3 text-left transition-colors duration-200 motion-reduce:transition-none hover:border-primary hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span className="block text-sm font-semibold text-text">{t.label}</span>
                   <span className="mt-0.5 block text-xs text-text-muted">{t.description}</span>
@@ -208,7 +208,7 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
                     type="button"
                     aria-pressed={form.sendMode === id}
                     onClick={() => onChange(p => ({ ...p, sendMode: id }))}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-control px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-control px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                       form.sendMode === id ? 'bg-surface text-primary shadow-card' : 'text-text-muted hover:text-text'
                     }`}
                   >

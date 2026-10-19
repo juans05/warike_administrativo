@@ -34,7 +34,7 @@ export function ChecklistCard({ title, steps, onDismiss }: ChecklistCardProps) {
             type="button"
             onClick={onDismiss}
             aria-label="Ocultar lista de pasos"
-            className="-mr-2 -mt-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-text-muted transition-colors duration-200 motion-reduce:transition-none hover:bg-background hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="-mr-2 -mt-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-text-muted transition-colors duration-200 motion-reduce:transition-none hover:bg-background hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X size={20} aria-hidden />
           </button>

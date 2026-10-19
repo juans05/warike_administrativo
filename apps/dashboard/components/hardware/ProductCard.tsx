@@ -25,7 +25,7 @@ export function ProductCard({ product, selected, onSelect }: { product: Hardware
       onClick={onSelect}
       className={cn(
         'space-y-3 rounded-card border bg-surface p-4 text-left shadow-card transition-colors duration-200 motion-reduce:transition-none',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         selected ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:bg-background',
       )}
     >

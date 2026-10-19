@@ -93,7 +93,7 @@ export function GooglePlaceConnect({ placeId, googlePlaceId, onChangeGooglePlace
               <button
                 type="button"
                 onClick={() => { onChangeGooglePlaceId(c.googlePlaceId); setCandidates([]); }}
-                className="w-full px-4 py-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+                className="w-full px-4 py-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <p className="text-sm font-medium text-text">{c.name}</p>
                 <p className="text-xs text-text-muted">{c.address}</p>

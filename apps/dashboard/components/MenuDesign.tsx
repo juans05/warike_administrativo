@@ -87,7 +87,7 @@ export default function MenuDesign({ placeId, logoUrl, placeName, catalog }: { p
                   key={p.id}
                   type="button"
                   onClick={() => set(p.theme)}
-                  className="flex min-h-11 items-center gap-2 rounded-control border border-border px-3 text-sm font-medium text-text transition-colors duration-200 motion-reduce:transition-none hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex min-h-11 items-center gap-2 rounded-control border border-border px-3 text-sm font-medium text-text transition-colors duration-200 motion-reduce:transition-none hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span aria-hidden className="flex overflow-hidden rounded-md border border-border">
                     {[p.theme.headerBg, p.theme.bodyBg, p.theme.accent].map((c, i) => <span key={i} className="h-5 w-4" style={{ background: c }} />)}

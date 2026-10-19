@@ -53,7 +53,7 @@ export function DateRangeSelector({ preset, onChangePreset, customFrom, customTo
               onClick={() => { onChangePreset(p); setOpen(false); }}
               className={cn(
                 'flex min-h-11 w-full items-center rounded-control px-3 text-left text-sm font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
                 preset === p ? 'bg-primary-soft text-primary-hover' : 'text-text hover:bg-background',
               )}
             >

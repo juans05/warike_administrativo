@@ -244,7 +244,7 @@ export default function GoogleReviews({ refreshKey, connectSlot }: { refreshKey?
               type="button"
               onClick={() => handlePickLocation(loc.locationName)}
               disabled={isBusy}
-              className="w-full space-y-0.5 px-5 py-4 text-left transition-colors hover:bg-background disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+              className="w-full space-y-0.5 px-5 py-4 text-left transition-colors hover:bg-background disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
             >
               <p className="text-sm font-medium text-text">{loc.title}</p>
               {loc.address && <p className="text-sm text-text-muted">{loc.address}</p>}

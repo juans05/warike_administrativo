@@ -33,7 +33,7 @@ export function SortTh<K extends string>({ label, sortKey, active, dir, onSort, 
         onClick={() => onSort(sortKey)}
         className={cn(
           'inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded-control hover:text-text',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
           align === 'right' && 'flex-row-reverse',
         )}
       >

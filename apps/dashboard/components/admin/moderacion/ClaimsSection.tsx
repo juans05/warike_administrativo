@@ -67,7 +67,7 @@ export function ClaimsSection({ claims, onVerify, onReject }: {
                                   href={url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex min-h-11 items-center gap-2 rounded-control text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:min-h-8"
+                                  className="inline-flex min-h-11 items-center gap-2 rounded-control text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:min-h-8"
                                 >
                                   <FileText size={16} aria-hidden className="shrink-0" />
                                   <span className="truncate">{documentName(url)}</span>

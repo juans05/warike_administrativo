@@ -26,7 +26,7 @@ interface CampaignModalProps {
 const notice = 'rounded-control border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-text';
 
 function optionStyles(selected: boolean) {
-  return `w-full rounded-control border px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+  return `w-full rounded-control border px-4 py-3 text-left transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
     selected ? 'border-primary bg-primary-soft' : 'border-border hover:bg-background'
   }`;
 }
@@ -192,7 +192,7 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
                           type="button"
                           aria-pressed={on}
                           onClick={() => onChange(p => ({ ...p, levels: on ? p.levels.filter(x => x !== l) : [...p.levels, l] }))}
-                          className={`inline-flex h-11 items-center gap-1.5 rounded-control border px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                          className={`inline-flex h-11 items-center gap-1.5 rounded-control border px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                             on ? 'border-primary bg-primary-soft text-primary-hover' : 'border-border text-text hover:bg-background'
                           }`}
                         >

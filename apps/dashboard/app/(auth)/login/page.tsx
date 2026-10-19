@@ -115,7 +115,7 @@ function LoginContent() {
             required
           />
           <div className="mt-1 text-right">
-            <Link href="/forgot-password" className="inline-flex min-h-11 items-center rounded-control text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center rounded-control text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               ¿Olvidaste tu contraseña?
             </Link>
           </div>

@@ -84,7 +84,7 @@ export function TemplateModal({
                       type="button"
                       aria-pressed={form.category === cat}
                       onClick={() => onChange(p => ({ ...p, category: cat }))}
-                      className={`h-11 rounded-control border px-2 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                      className={`h-11 rounded-control border px-2 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         form.category === cat ? 'border-primary bg-primary-soft text-primary-hover' : 'border-border text-text hover:bg-background'
                       }`}
                     >

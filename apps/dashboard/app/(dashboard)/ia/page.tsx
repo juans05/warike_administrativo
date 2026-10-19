@@ -147,7 +147,7 @@ export default function AIKnowledgeBasePage() {
                 className="peer sr-only"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" className="block cursor-pointer rounded-control peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40">
+              <label htmlFor="file-upload" className="block cursor-pointer rounded-control peer-focus-visible:ring-2 peer-focus-visible:ring-primary">
                 <FileUp size={24} className="mx-auto mb-2 text-primary" aria-hidden />
                 {selectedFile ? (
                   <>

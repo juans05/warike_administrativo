@@ -66,7 +66,7 @@ export function CreateUserModal({ onClose, onCreated }: { onClose(): void; onCre
                   key={value}
                   className={cn(
                     'flex min-h-11 cursor-pointer items-center gap-2 rounded-control border px-3 text-sm transition-colors duration-200 motion-reduce:transition-none',
-                    'focus-within:ring-2 focus-within:ring-primary/40',
+                    'focus-within:ring-2 focus-within:ring-primary',
                     checked ? 'border-primary bg-primary-soft font-medium text-text' : 'border-border text-text-muted hover:bg-background',
                   )}
                 >

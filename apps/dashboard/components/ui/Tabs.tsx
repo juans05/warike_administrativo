@@ -47,7 +47,7 @@ export function Tabs({ tabs, value, onChange, 'aria-label': ariaLabel }: TabsPro
             tabIndex={tab.key === tabbableKey ? 0 : -1}
             onClick={() => onChange(tab.key)}
             onKeyDown={(e) => onKeyDown(e, i)}
-            className={`-mb-px inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 ${
+            className={`-mb-px inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
               selected ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text'
             }`}
           >

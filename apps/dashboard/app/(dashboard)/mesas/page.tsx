@@ -102,7 +102,7 @@ function TableTile({ row: r, selected, onSelect }: { row: any; selected: boolean
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={`${r.table.name}: ${style.label}`}
-      className={`rounded-card border-2 p-4 text-left transition-shadow duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${style.className} ${style.pulse ? 'motion-safe:animate-pulse' : ''} ${selected ? 'shadow-modal ring-2 ring-text ring-offset-2' : ''}`}
+      className={`rounded-card border-2 p-4 text-left transition-shadow duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${style.className} ${style.pulse ? 'motion-safe:animate-pulse' : ''} ${selected ? 'shadow-modal ring-2 ring-text ring-offset-2' : ''}`}
     >
       <p className="text-lg font-semibold">{r.table.name}</p>
       <p className="text-sm">{r.table.capacity} personas</p>

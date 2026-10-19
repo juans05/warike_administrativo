@@ -225,7 +225,7 @@ export default function FidelizacionPage() {
                   onClick={() => set({ type: value })}
                   className={cn(
                     'flex min-h-11 flex-col items-center gap-1 rounded-card border-2 p-4 text-center transition-colors duration-200 motion-reduce:transition-none',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                     form.type === value ? 'border-primary bg-primary-soft' : 'border-border hover:border-primary',
                   )}
                 >

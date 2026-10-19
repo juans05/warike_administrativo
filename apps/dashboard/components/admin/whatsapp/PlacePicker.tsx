@@ -32,7 +32,7 @@ export function PlacePicker({ places, search, onSearch, selectedId, onSelect }: 
                 aria-current={selected || undefined}
                 className={cn(
                   'w-full rounded-control px-3 py-2 text-left transition-colors duration-200 motion-reduce:transition-none',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   selected ? 'bg-primary-soft' : 'hover:bg-background',
                 )}
               >

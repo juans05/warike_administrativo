@@ -45,7 +45,7 @@ export default function ReviewGoal({ rating, total }: { rating: number; total: n
               onClick={() => setTarget(t)}
               className={cn(
                 'min-h-11 rounded-control border px-4 text-sm font-medium transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 t === goal ? 'border-primary bg-primary text-white' : 'border-border bg-surface text-text hover:bg-background',
               )}
             >

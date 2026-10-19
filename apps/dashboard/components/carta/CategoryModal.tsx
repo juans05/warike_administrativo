@@ -90,7 +90,7 @@ export function CategoryModal({ open, onClose, placeId, category, categoryCount,
                     onClick={() => setType(key)}
                     className={cn(
                       'flex min-h-11 flex-col items-center gap-1 rounded-control border py-2 text-xs font-medium transition-colors duration-200 motion-reduce:transition-none',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       selected ? 'border-primary bg-primary-soft text-primary-hover' : 'border-border text-text hover:bg-background',
                     )}
                   >

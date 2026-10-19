@@ -50,7 +50,7 @@ export function ConversationsByDayChart({ data, loading }: { data: DayPoint[]; l
           onClick={() => toggle(s.key)}
           className={cn(
             'flex min-h-11 items-center gap-1.5 rounded-control px-2 text-xs font-medium text-text transition-opacity',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
             hidden[s.key] && 'opacity-40',
           )}
         >

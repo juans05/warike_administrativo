@@ -16,7 +16,7 @@ export function Switch({ label, checked, onChange, disabled }: SwitchProps) {
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control text-left text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control text-left text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span>{label}</span>
       <span
