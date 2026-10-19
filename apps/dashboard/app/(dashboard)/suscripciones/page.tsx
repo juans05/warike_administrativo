@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { AlertCircle, Check, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
 import { subscriptionApi } from '../../../lib/api-client';
-import { SkeletonPage } from '../../../components/SkeletonLoader';
+import { Badge, EmptyState, PageHeader, Skeleton, StatTile, type BadgeProps } from '../../../components/ui';
+import { Pager } from '../../../components/clientes/parts';
+import { SectionCard } from '../../../components/admin/SectionCard';
+import { LoadingRows, Table, Td, Tr } from '../../../components/admin/Table';
 
 interface SubscriptionRecord {
   id: string;
@@ -31,11 +36,22 @@ interface Stats {
   planAmount: number;
 }
 
-const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
-  active: { label: 'Activa', cls: 'bg-green-50 text-green-600' },
-  canceled: { label: 'Cancelada', cls: 'bg-gray-100 text-gray-500' },
-  past_due: { label: 'Vencida', cls: 'bg-red-50 text-red-500' },
-};
+const soles = (n: number) => `S/ ${n.toLocaleString('es-PE')}`;
+
+const fmt = (date: string) =>
+  new Date(date).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+
+function StatusBadge({ status }: { status: string }) {
+  const tones: Record<string, NonNullable<BadgeProps['tone']>> = { active: 'success', past_due: 'danger', canceled: 'neutral' };
+  const labels: Record<string, string> = { active: 'Activa', canceled: 'Cancelada', past_due: 'Vencida' };
+  return (
+    <Badge tone={tones[status] ?? 'neutral'}>
+      {status === 'active' && <Check size={16} aria-hidden />}
+      {status === 'past_due' && <AlertCircle size={16} aria-hidden />}
+      {labels[status] ?? status}
+    </Badge>
+  );
+}
 
 export default function SuscripcionesPage() {
   const [subs, setSubs] = useState<SubscriptionRecord[]>([]);
@@ -56,6 +72,7 @@ export default function SuscripcionesPage() {
       setStats(statsData);
     } catch (err) {
       console.error('Error loading subscriptions', err);
+      toast.error('No se pudieron cargar las suscripciones');
     } finally {
       setLoading(false);
     }
@@ -63,174 +80,51 @@ export default function SuscripcionesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const fmt = (date: string) =>
-    new Date(date).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
-
   return (
-    <div className="space-y-10 pb-20 max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header>
-        <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">Suscripciones</h1>
-        <p className="text-[#6B7280] font-medium">Ingresos recurrentes y estado de pagos de la plataforma.</p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader title="Suscripciones" subtitle="Ingresos recurrentes y estado de pagos de la plataforma." />
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Suscripciones activas"
-            value={stats.activeSubscriptions.toString()}
-            icon="✅"
-            color="green"
-          />
-          <StatCard
-            label="Ingresos este mes"
-            value={`S/. ${stats.monthlyRevenue.toLocaleString()}`}
-            icon="📈"
-            color="orange"
-          />
-          <StatCard
-            label="Ingresos totales"
-            value={`S/. ${stats.totalRevenue.toLocaleString()}`}
-            icon="💰"
-            color="blue"
-          />
-          <StatCard
-            label="Canceladas"
-            value={stats.canceledSubscriptions.toString()}
-            icon="⏸️"
-            color="gray"
-          />
-        </div>
-      )}
-
-      {/* Table */}
-      <section className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-10 py-8 border-b border-gray-50 flex items-center justify-between">
-          <h2 className="text-xl font-black text-[#1A1A1A]">Todas las suscripciones</h2>
-          <span className="text-sm font-bold text-gray-400">
-            {stats ? `${stats.activeSubscriptions} activas` : ''}
-          </span>
-        </div>
-
-        {loading && subs.length === 0 ? (
-          <div className="p-8"><SkeletonPage type="table" /></div>
-        ) : (
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {stats ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#F7F8FA] border-b border-gray-100">
-                    <th className="px-10 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sede</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Usuario</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tarjeta</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Próximo cobro</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto/mes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {subs.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-10 py-16 text-center text-gray-400 font-medium text-sm">
-                        No hay suscripciones registradas aún.
-                      </td>
-                    </tr>
-                  )}
-                  {subs.map((sub) => {
-                    const st = STATUS_LABELS[sub.status] || { label: sub.status, cls: 'bg-gray-100 text-gray-500' };
-                    return (
-                      <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-10 py-5">
-                          <p className="font-bold text-[#1A1A1A] text-sm">{sub.place?.name || '—'}</p>
-                        </td>
-                        <td className="px-6 py-5">
-                          <p className="font-bold text-[#1A1A1A] text-sm">{sub.user?.fullName || '—'}</p>
-                          <p className="text-xs text-gray-400 font-medium">{sub.user?.email || '—'}</p>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${st.cls}`}>
-                            {st.label}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          {sub.cardLast4 ? (
-                            <p className="font-bold text-sm text-[#1A1A1A]">
-                              {sub.cardBrand} •••• {sub.cardLast4}
-                            </p>
-                          ) : (
-                            <span className="text-gray-300 font-medium text-sm">—</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-5">
-                          {sub.status === 'active' && sub.currentPeriodEnd ? (
-                            <p className="font-bold text-sm text-[#1A1A1A]">{fmt(sub.currentPeriodEnd)}</p>
-                          ) : (
-                            <span className="text-gray-300 font-medium text-sm">—</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <p className="font-black text-[#F26122]">
-                            S/. {(sub.amount / 100).toFixed(0)}
-                          </p>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-10 py-6 border-t border-gray-50 flex items-center justify-between">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="text-xs font-black text-gray-400 hover:text-[#F26122] disabled:opacity-30 transition-colors"
-                >
-                  ← Anterior
-                </button>
-                <p className="text-xs font-bold text-gray-400">
-                  Página {page} de {totalPages}
-                </p>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="text-xs font-black text-gray-400 hover:text-[#F26122] disabled:opacity-30 transition-colors"
-                >
-                  Siguiente →
-                </button>
-              </div>
-            )}
+            <StatTile label="Suscripciones activas" value={stats.activeSubscriptions} />
+            <StatTile label="Ingresos este mes" value={soles(stats.monthlyRevenue)} />
+            <StatTile label="Ingresos totales" value={soles(stats.totalRevenue)} />
+            <StatTile label="Canceladas" value={stats.canceledSubscriptions} />
           </>
+        ) : (
+          [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-card" />)
         )}
-      </section>
-    </div>
-  );
-}
+      </div>
 
-function StatCard({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: string;
-  icon: string;
-  color: 'green' | 'orange' | 'blue' | 'gray';
-}) {
-  const colorMap = {
-    green: 'bg-green-50',
-    orange: 'bg-[#F26122]/5',
-    blue: 'bg-blue-50',
-    gray: 'bg-gray-50',
-  };
-  return (
-    <div className={`${colorMap[color]} rounded-3xl p-6`}>
-      <div className="text-2xl mb-3">{icon}</div>
-      <p className="text-2xl font-black text-[#1A1A1A] tracking-tight">{value}</p>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{label}</p>
+      <SectionCard title="Todas las suscripciones" subtitle={stats ? `${stats.activeSubscriptions} activas` : undefined}>
+        {loading && subs.length === 0 ? (
+          <LoadingRows rows={5} />
+        ) : subs.length === 0 ? (
+          <EmptyState icon={CreditCard} headingLevel="h3" title="No hay suscripciones registradas aún" description="Cuando un local se suscriba, lo verás aquí." />
+        ) : (
+          <div aria-busy={loading}>
+            <Table columns={['Sede', 'Usuario', 'Estado', 'Tarjeta', 'Próximo cobro', { label: 'Monto/mes', align: 'right' }]}>
+              {subs.map((sub) => (
+                <Tr key={sub.id}>
+                  <Td className="font-semibold">{sub.place?.name || '—'}</Td>
+                  <Td>
+                    <p>{sub.user?.fullName || '—'}</p>
+                    <p className="text-xs text-text-muted">{sub.user?.email || '—'}</p>
+                  </Td>
+                  <Td><StatusBadge status={sub.status} /></Td>
+                  <Td className="whitespace-nowrap">{sub.cardLast4 ? `${sub.cardBrand} •••• ${sub.cardLast4}` : <span className="text-text-muted">—</span>}</Td>
+                  <Td className="whitespace-nowrap">
+                    {sub.status === 'active' && sub.currentPeriodEnd ? fmt(sub.currentPeriodEnd) : <span className="text-text-muted">—</span>}
+                  </Td>
+                  <Td right className="whitespace-nowrap font-semibold">S/ {(sub.amount / 100).toFixed(0)}</Td>
+                </Tr>
+              ))}
+            </Table>
+          </div>
+        )}
+        <Pager page={page} totalPages={totalPages} onPage={setPage} />
+      </SectionCard>
     </div>
   );
 }

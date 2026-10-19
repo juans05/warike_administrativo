@@ -677,7 +677,8 @@ export const publicApi = {
   getPlatformSettings: () => fetchPublic('/platform-settings'),
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
   getScanPromo: (id: string) => fetchPublic(`/places/${id}/scan-promo`),
-  getCategories: () => fetchPublic('/places/categories'),
+  /** Sin `vertical` el backend devuelve solo gastronomía; con `vertical` (o `all`) las del rubro pedido. */
+  getCategories: (vertical?: string) => fetchPublic(`/places/categories${vertical ? `?vertical=${encodeURIComponent(vertical)}` : ''}`),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   recommendDish: (id: string, message: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     fetchPublic(`/places/${id}/menu/recommend`, { method: 'POST', body: JSON.stringify({ message, history }) }),
@@ -816,6 +817,12 @@ export const adminApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+
+  /** Fija el tipo de negocio de un local; si cambia de rubro, el backend le quita la categoría de otro rubro. */
+  setPlaceBusinessType: (id: string, businessType: string) => fetchWithAuth(`/admin/places/${id}/business-type`, {
+    method: 'PATCH',
+    body: JSON.stringify({ businessType }),
+  }) as Promise<{ message: string; businessType: string }>,
 
   getDeviceRequests: () => fetchWithAuth('/admin/device-requests'),
   updateDeviceRequestStatus: (id: string, status: 'pending' | 'fulfilled' | 'rejected') =>

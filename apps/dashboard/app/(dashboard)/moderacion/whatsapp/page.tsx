@@ -1,25 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { adminApi } from '../../../../lib/api-client';
 import { toast } from 'sonner';
-
-interface Place {
-  id: string;
-  name: string;
-  category?: { name: string };
-  district?: { district: string };
-}
-
-type WaNumber = {
-  id: string;
-  phoneNumber: string;
-  phoneNumberId: string;
-  provider?: 'meta' | 'plazbot';
-  isActive: boolean;
-  verificationStatus: string;
-  createdAt: string;
-};
+import { Card, EmptyState, PageHeader } from '../../../../components/ui';
+import { ConnectExistingForm } from '../../../../components/admin/whatsapp/ConnectExistingForm';
+import { NumbersList, type WaNumber } from '../../../../components/admin/whatsapp/NumbersList';
+import { PlacePicker, type Place } from '../../../../components/admin/whatsapp/PlacePicker';
+import { RegisterNumberForm } from '../../../../components/admin/whatsapp/RegisterNumberForm';
+import { TestMessageCard } from '../../../../components/admin/whatsapp/TestMessageCard';
+import { WebhookNotice } from '../../../../components/admin/whatsapp/WebhookNotice';
 
 export default function AdminWhatsappConfigPage() {
   const [search, setSearch] = useState('');
@@ -29,14 +20,6 @@ export default function AdminWhatsappConfigPage() {
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [metaWebhookUrl, setMetaWebhookUrl] = useState('');
-  const [test, setTest] = useState({ to: '', text: 'Hola desde Wuarikes 👋', whatsappNumberId: '' });
-  const [testSending, setTestSending] = useState(false);
-  const [existing, setExisting] = useState({ phoneNumberId: '', wabaId: '', token: '' });
-  const [existingSaving, setExistingSaving] = useState(false);
-  const [waForm, setWaForm] = useState({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-  const [waRegistering, setWaRegistering] = useState(false);
-  const [waError, setWaError] = useState('');
-  const [waSuccess, setWaSuccess] = useState('');
 
   useEffect(() => {
     adminApi.getPlaces(1, search).then(res => setPlaces(res.data || [])).catch(() => setPlaces([]));
@@ -55,27 +38,7 @@ export default function AdminWhatsappConfigPage() {
 
   const selectPlace = (place: Place) => {
     setSelectedPlace(place);
-    setWaError(''); setWaSuccess('');
-    setWaForm({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
     loadWaNumbers(place.id);
-  };
-
-  const handleRegisterWaNumber = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlace) return;
-    if (!waForm.phoneNumber || !waForm.phoneNumberId) {
-      setWaError('Completa el número y el Phone Number ID'); return;
-    }
-    setWaRegistering(true); setWaError(''); setWaSuccess('');
-    try {
-      const res = await adminApi.createWhatsappNumber({ placeId: selectedPlace.id, ...waForm });
-      setWaForm({ phoneNumber: '', phoneNumberId: '', whatsappApiToken: '' });
-      setWebhookUrl(res?.webhookUrl || webhookUrl);
-      setWaSuccess('✅ Número registrado. Falta configurar el webhook manualmente en PlazBot (ver abajo).');
-      await loadWaNumbers(selectedPlace.id);
-    } catch (err: any) {
-      setWaError(err.message || 'Error al registrar número');
-    } finally { setWaRegistering(false); }
   };
 
   const handleDeleteWaNumber = async (numberId: string) => {
@@ -100,302 +63,55 @@ export default function AdminWhatsappConfigPage() {
     }
   };
 
-  const handleConnectExisting = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlace) return;
-    setExistingSaving(true);
-    try {
-      const res = await adminApi.connectExistingWhatsappNumber({ placeId: selectedPlace.id, ...existing });
-      toast.success(`Conectado: +${res.phoneNumber}${res.verifiedName ? ` (${res.verifiedName})` : ''}`);
-      setExisting({ phoneNumberId: '', wabaId: '', token: '' });
-      await loadWaNumbers(selectedPlace.id);
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo conectar el número');
-    } finally {
-      setExistingSaving(false);
-    }
-  };
-
-  const handleSendTest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTestSending(true);
-    try {
-      const res = await adminApi.sendWhatsappTestMessage({
-        to: test.to,
-        text: test.text,
-        whatsappNumberId: test.whatsappNumberId || undefined,
-      });
-      toast.success(`Mensaje enviado a ${res.to} (id ${res.messageId ?? '—'})`);
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo enviar');
-    } finally {
-      setTestSending(false);
-    }
-  };
-
-  const copyMetaWebhookUrl = () => {
-    navigator.clipboard.writeText(metaWebhookUrl);
-    toast.success('URL copiada');
-  };
-
-  const copyWebhookUrl = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    toast.success('URL copiada');
-  };
-
   return (
-    <div className="space-y-8 pb-20 max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header>
-        <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">WhatsApp Bot por Empresa</h1>
-        <p className="text-[#6B7280] font-medium max-w-lg">Registra el número de WhatsApp/Gupshup de cada local. Los dueños ya no pueden configurar esto — solo el superAdmin.</p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        title="WhatsApp por local"
+        subtitle="Registra y conecta el número de WhatsApp de cada local. Los dueños no pueden configurar esto: solo el equipo de Wuarikes."
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
-        {/* Selector de local */}
-        <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 space-y-4 h-fit">
-          <input
-            type="text"
-            placeholder="Buscar local..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-[#F7F8FA] py-3 px-4 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-orange-50"
-          />
-          <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-            {places.map(place => (
-              <button
-                key={place.id}
-                onClick={() => selectPlace(place)}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                  selectedPlace?.id === place.id ? 'bg-[#F26122]/10 text-[#F26122]' : 'hover:bg-gray-50 text-gray-700'
-                }`}
-              >
-                <p className="font-bold text-sm">{place.name}</p>
-                <p className="text-xs text-gray-400">{place.category?.name} · {place.district?.district}</p>
-              </button>
-            ))}
-            {places.length === 0 && (
-              <p className="text-xs text-gray-400 px-2 py-4 text-center">Sin resultados.</p>
-            )}
-          </div>
-        </section>
+      <div className="grid gap-6 md:grid-cols-[320px_1fr]">
+        <PlacePicker places={places} search={search} onSearch={setSearch} selectedId={selectedPlace?.id} onSelect={selectPlace} />
 
-        {/* Configuración del número */}
-        <section className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-5 h-fit">
+        <Card padding="lg" className="h-fit space-y-6">
           {!selectedPlace ? (
-            <p className="text-sm text-gray-400">Selecciona un local para gestionar su número de WhatsApp.</p>
+            <EmptyState icon={MessageCircle} headingLevel="h2" title="Elige un local" description="Selecciona un local para gestionar su número de WhatsApp." />
           ) : (
             <>
-              <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">
-                📱 {selectedPlace.name}
-              </h2>
+              <h2 className="text-base font-semibold text-text">{selectedPlace.name}</h2>
 
               {webhookUrl && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-black text-amber-800 uppercase tracking-widest">
-                    ⚠️ Paso manual requerido en PlazBot
-                  </p>
-                  <p className="text-xs text-amber-700">
-                    PlazBot no tiene API para registrar webhooks automáticamente. Copia esta URL y pégala en su dashboard
-                    (o CLI: <code className="font-mono">plazbot whatsapp register-webhook</code>) para el canal de este número.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs font-mono bg-white border border-amber-200 rounded-lg px-3 py-2 truncate">
-                      {webhookUrl}
-                    </code>
-                    <button
-                      onClick={copyWebhookUrl}
-                      type="button"
-                      className="px-3 py-2 rounded-lg bg-amber-600 text-white text-xs font-black hover:opacity-90 transition-opacity shrink-0"
-                    >
-                      Copiar
-                    </button>
-                  </div>
-                </div>
+                <WebhookNotice tone="attention" title="Paso manual requerido en PlazBot" url={webhookUrl}>
+                  PlazBot no tiene API para registrar webhooks automáticamente. Copia esta URL y pégala en su dashboard
+                  (o CLI: <code className="font-mono">plazbot whatsapp register-webhook</code>) para el canal de este número.
+                </WebhookNotice>
               )}
 
               {metaWebhookUrl && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-black text-blue-800 uppercase tracking-widest">API de WhatsApp de Meta</p>
-                  <p className="text-xs text-blue-700">
-                    Para los números en "API de Meta": en el panel de Meta (WhatsApp → Configuración → Webhook) pega esta URL y el token de verificación
-                    (<code className="font-mono">WHATSAPP_WEBHOOK_TOKEN</code>), y suscríbete al campo <code className="font-mono">messages</code>.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xs font-mono bg-white border border-blue-200 rounded-lg px-3 py-2 truncate">{metaWebhookUrl}</code>
-                    <button onClick={copyMetaWebhookUrl} type="button" className="px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-black hover:opacity-90 shrink-0">
-                      Copiar
-                    </button>
-                  </div>
-                </div>
+                <WebhookNotice tone="info" title="API de WhatsApp de Meta" url={metaWebhookUrl}>
+                  Para los números en &quot;API de Meta&quot;: en el panel de Meta (WhatsApp → Configuración → Webhook) pega esta URL y el token de verificación
+                  (<code className="font-mono">WHATSAPP_WEBHOOK_TOKEN</code>), y suscríbete al campo <code className="font-mono">messages</code>.
+                </WebhookNotice>
               )}
 
-              {waNumbers.length > 0 && (
-                <div className="space-y-2">
-                  {waNumbers.map(num => (
-                    <div key={num.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
-                      <div>
-                        <p className="text-sm font-black text-gray-900">{num.phoneNumber}</p>
-                        <p className="text-xs text-gray-400 font-mono mt-0.5">ID: {num.phoneNumberId}</p>
-                        <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          num.isActive ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                          {num.isActive ? '🟢 Activo' : '⏳ Pendiente'}
-                        </span>
-                        <span className={`inline-block mt-1 ml-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          num.provider === 'meta' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'
-                        }`}>
-                          {num.provider === 'meta' ? 'API de Meta' : 'PlazBot'}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5">
-                        <button
-                          onClick={() => handleSetProvider(num, num.provider === 'meta' ? 'plazbot' : 'meta')}
-                          className="text-xs text-blue-600 font-bold hover:text-blue-800 transition-colors"
-                        >
-                          {num.provider === 'meta' ? 'Volver a PlazBot' : 'Pasar a API de Meta'}
-                        </button>
-                      <button
-                        onClick={() => handleDeleteWaNumber(num.id)}
-                        className="text-xs text-red-500 font-bold hover:text-red-700 transition-colors"
-                      >
-                        Eliminar
-                      </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {waNumbers.length > 0 && <NumbersList numbers={waNumbers} onSetProvider={handleSetProvider} onDelete={handleDeleteWaNumber} />}
 
-              <form onSubmit={handleConnectExisting} className="space-y-3 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                <p className="text-xs font-black text-blue-800 uppercase tracking-widest">Conectar número que ya existe en Meta</p>
-                <p className="text-xs text-blue-700">
-                  Para un número que ya está registrado en tu cuenta de WhatsApp Business de Meta: se valida el token, se suscribe la app y queda como conexión directa (sin PlazBot).
-                </p>
-                <input
-                  type="text" required placeholder="Phone Number ID (el del número, no el de la cuenta)" value={existing.phoneNumberId}
-                  onChange={e => setExisting(p => ({ ...p, phoneNumberId: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
-                />
-                <input
-                  type="text" required placeholder="ID de la cuenta de WhatsApp Business (WABA)" value={existing.wabaId}
-                  onChange={e => setExisting(p => ({ ...p, wabaId: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
-                />
-                <input
-                  type="password" required autoComplete="off" placeholder="Token de acceso (usuario del sistema)" value={existing.token}
-                  onChange={e => setExisting(p => ({ ...p, token: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-300"
-                />
-                <button
-                  type="submit" disabled={existingSaving}
-                  className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-50"
-                >
-                  {existingSaving ? 'Conectando…' : 'Conectar directo con Meta'}
-                </button>
-              </form>
+              <ConnectExistingForm key={`connect-${selectedPlace.id}`} placeId={selectedPlace.id} onConnected={() => loadWaNumbers(selectedPlace.id)} />
 
-              <form onSubmit={handleRegisterWaNumber} className="space-y-4">
-                <p className="text-xs text-gray-400">
-                  Registra el número de WhatsApp Business de este local. El webhook hay que configurarlo a mano en PlazBot (instrucciones arriba tras guardar).
-                </p>
-
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                    Número de Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+51 947 196 047"
-                    value={waForm.phoneNumber}
-                    onChange={e => setWaForm(p => ({ ...p, phoneNumber: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                    Phone Number ID <span className="normal-case font-normal text-gray-400">(de Gupshup / Meta)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="1125526153979521"
-                    value={waForm.phoneNumberId}
-                    onChange={e => setWaForm(p => ({ ...p, phoneNumberId: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                    API Token de WhatsApp <span className="normal-case font-normal text-gray-400">(opcional)</span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="103683••••••6105"
-                    value={waForm.whatsappApiToken}
-                    onChange={e => setWaForm(p => ({ ...p, whatsappApiToken: e.target.value }))}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm font-mono"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    Solo si además vas a mandar mensajes directo con la API de Meta/Gupshup (sin pasar por PlazBot). Si el bot de este local corre 100% por PlazBot, dejalo vacío.
-                  </p>
-                </div>
-
-                {waError && (
-                  <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl border border-red-200 text-sm">{waError}</div>
-                )}
-                {waSuccess && (
-                  <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl border border-green-200 text-sm font-medium">{waSuccess}</div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={waRegistering}
-                  className="w-full bg-gray-900 text-white py-3 rounded-xl font-black hover:opacity-90 transition-all disabled:opacity-50 text-sm"
-                >
-                  {waRegistering ? '⏳ Registrando...' : '✅ Registrar Número'}
-                </button>
-              </form>
+              <RegisterNumberForm
+                key={`register-${selectedPlace.id}`}
+                placeId={selectedPlace.id}
+                onRegistered={async (url) => {
+                  setWebhookUrl(url || webhookUrl);
+                  await loadWaNumbers(selectedPlace.id);
+                }}
+              />
             </>
           )}
-        </section>
+        </Card>
       </div>
 
-      {/* Prueba de envío por la API de Meta */}
-      <section className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4 max-w-3xl">
-        <div>
-          <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">🧪 Probar la API de WhatsApp (Meta)</h2>
-          <p className="text-xs text-gray-400 mt-1">
-            Envía un mensaje real a un WhatsApp por la API de Meta. Úsalo para comprobar la conexión y para grabar el video que Meta pide en la revisión de la app.
-          </p>
-        </div>
-        <form onSubmit={handleSendTest} className="grid gap-3 sm:grid-cols-2">
-          <select
-            value={test.whatsappNumberId}
-            onChange={e => setTest(p => ({ ...p, whatsappNumberId: e.target.value }))}
-            className="px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
-          >
-            <option value="">Número de prueba del servidor (WHATSAPP_PHONE_NUMBER_ID)</option>
-            {waNumbers.map(n => <option key={n.id} value={n.id}>{n.phoneNumber}</option>)}
-          </select>
-          <input
-            type="tel" required placeholder="Teléfono destino (51947196047)" value={test.to}
-            onChange={e => setTest(p => ({ ...p, to: e.target.value }))}
-            className="px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
-          />
-          <input
-            type="text" required placeholder="Mensaje" value={test.text}
-            onChange={e => setTest(p => ({ ...p, text: e.target.value }))}
-            className="sm:col-span-2 px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
-          />
-          <button
-            type="submit" disabled={testSending}
-            className="sm:col-span-2 bg-[#F26122] text-white py-3 rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-50"
-          >
-            {testSending ? 'Enviando…' : 'Enviar mensaje de prueba'}
-          </button>
-        </form>
-      </section>
+      <TestMessageCard numbers={waNumbers} />
     </div>
   );
 }
