@@ -85,7 +85,6 @@ export function PlacesSection({ places, total, loading, search, onSearch, vertic
                   size="sm"
                   variant="secondary"
                   icon={BadgeCheck}
-                  aria-pressed={place.isVerified}
                   className={cn(place.isVerified && 'text-success')}
                   onClick={() => onToggleVerified(place)}
                 >

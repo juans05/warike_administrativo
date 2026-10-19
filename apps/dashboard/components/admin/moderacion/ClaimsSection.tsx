@@ -14,6 +14,15 @@ function documentName(url: string) {
   }
 }
 
+/** Los documentos los sube quien reclama el local: solo se enlazan si son https (un `javascript:` correría en la sesión del admin). */
+function isHttpsUrl(url: string) {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function ClaimsSection({ claims, onVerify, onReject }: {
   claims: PlaceClaim[];
   onVerify(id: string): void;
@@ -53,15 +62,22 @@ export function ClaimsSection({ claims, onVerify, onReject }: {
                         <ul className="mt-1 space-y-1">
                           {docs.map((url) => (
                             <li key={url}>
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex min-h-11 items-center gap-2 rounded-control text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:min-h-8"
-                              >
-                                <FileText size={16} aria-hidden className="shrink-0" />
-                                <span className="truncate">{documentName(url)}</span>
-                              </a>
+                              {isHttpsUrl(url) ? (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex min-h-11 items-center gap-2 rounded-control text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 md:min-h-8"
+                                >
+                                  <FileText size={16} aria-hidden className="shrink-0" />
+                                  <span className="truncate">{documentName(url)}</span>
+                                </a>
+                              ) : (
+                                <span className="inline-flex min-h-11 items-center gap-2 text-sm text-text-muted md:min-h-8" title="Enlace no seguro: no se abre desde aquí">
+                                  <FileText size={16} aria-hidden className="shrink-0" />
+                                  <span className="break-all">{url}</span>
+                                </span>
+                              )}
                             </li>
                           ))}
                         </ul>

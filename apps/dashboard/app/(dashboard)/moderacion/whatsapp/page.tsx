@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { adminApi } from '../../../../lib/api-client';
 import { toast } from 'sonner';
@@ -20,6 +20,8 @@ export default function AdminWhatsappConfigPage() {
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [metaWebhookUrl, setMetaWebhookUrl] = useState('');
+  // Local elegido en este momento: descarta respuestas tardías de un local anterior.
+  const currentPlaceId = useRef<string | null>(null);
 
   useEffect(() => {
     adminApi.getPlaces(1, search).then(res => setPlaces(res.data || [])).catch(() => setPlaces([]));
@@ -28,16 +30,22 @@ export default function AdminWhatsappConfigPage() {
   const loadWaNumbers = useCallback(async (placeId: string) => {
     try {
       const res = await adminApi.getWhatsappNumbers(placeId);
+      if (currentPlaceId.current !== placeId) return;
       setWaNumbers(res.data || []);
       setWebhookUrl(res.webhookUrl || '');
       setMetaWebhookUrl(res.metaWebhookUrl || '');
     } catch {
-      setWaNumbers([]);
+      if (currentPlaceId.current === placeId) setWaNumbers([]);
     }
   }, []);
 
   const selectPlace = (place: Place) => {
+    currentPlaceId.current = place.id;
     setSelectedPlace(place);
+    // Se vacía ya: hasta que lleguen los números del nuevo local no debe quedar ninguno del anterior.
+    setWaNumbers([]);
+    setWebhookUrl('');
+    setMetaWebhookUrl('');
     loadWaNumbers(place.id);
   };
 
@@ -111,7 +119,8 @@ export default function AdminWhatsappConfigPage() {
         </Card>
       </div>
 
-      <TestMessageCard numbers={waNumbers} />
+      {/* key: al cambiar de local se vacía el número elegido, para que la prueba no salga por el número del local anterior. */}
+      <TestMessageCard key={selectedPlace?.id ?? 'none'} numbers={waNumbers} />
     </div>
   );
 }

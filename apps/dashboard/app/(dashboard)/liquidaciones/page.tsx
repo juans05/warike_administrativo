@@ -76,7 +76,9 @@ export default function PayoutsPage() {
     }
   };
 
-  const total = (key: 'gross' | 'commission' | 'net') => rows.reduce((sum, r) => sum + r[key], 0);
+  // Las anuladas no cuentan; el neto por pagar son solo las que siguen en borrador (las pagadas ya salieron).
+  const total = (key: 'gross' | 'commission' | 'net', statuses: Payout['status'][] = ['BORRADOR', 'PAGADO']) =>
+    rows.filter((r) => statuses.includes(r.status)).reduce((sum, r) => sum + r[key], 0);
 
   return (
     <div className="space-y-6">
@@ -94,7 +96,7 @@ export default function PayoutsPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatTile label="Ventas brutas" value={loading ? '—' : soles(total('gross'))} />
         <StatTile label="Comisión de Wuarikes" value={loading ? '—' : soles(total('commission'))} />
-        <StatTile label="Neto a pagar a los locales" value={loading ? '—' : soles(total('net'))} />
+        <StatTile label="Neto por pagar a los locales" value={loading ? '—' : soles(total('net', ['BORRADOR']))} />
       </div>
 
       <SectionCard title="Liquidaciones" subtitle={`Periodo ${period}`}>
