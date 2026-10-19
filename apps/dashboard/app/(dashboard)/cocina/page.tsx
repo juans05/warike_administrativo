@@ -2,16 +2,21 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AlertTriangle, ChefHat, Clock, StickyNote, Volume2 } from 'lucide-react';
 import { ordersApi } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
-import { minutesSince } from '../../../lib/orders-format';
+import { minutesSince, OrderStatus } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
+import { STATUS_META } from '../../../components/orders/OrderStatus';
+import { Badge, Button, Card, EmptyState, PageHeader, Skeleton } from '../../../components/ui';
 
 const COLUMNS = [
-  { status: 'NUEVO', title: 'NUEVO', next: 'EN_PREPARACION', action: 'Empezar' },
-  { status: 'EN_PREPARACION', title: 'EN PREPARACIÓN', next: 'LISTO', action: 'Marcar como listo' },
-  { status: 'LISTO', title: 'LISTO', next: 'ENTREGADO', action: 'Entregado' },
+  { status: 'NUEVO', title: 'Nuevo', next: 'EN_PREPARACION', action: 'Empezar' },
+  { status: 'EN_PREPARACION', title: 'En preparación', next: 'LISTO', action: 'Marcar como listo' },
+  { status: 'LISTO', title: 'Listo', next: 'ENTREGADO', action: 'Entregado' },
 ] as const;
+
+type Column = (typeof COLUMNS)[number];
 
 const FULFILLMENT_LABEL: Record<string, string> = { SALA: 'Sala', RECOJO: 'Recojo', DELIVERY: 'Delivery' };
 // ponytail: umbral fijo de 20 min; leer prep_time_min con un endpoint de solo lectura para cocina si los locales lo piden.
@@ -33,13 +38,17 @@ function beep(ctx: AudioContext) {
 
 export default function KitchenPage() {
   const { activePlaceId } = useRestaurant();
-  const [orders, setOrders] = useState<any[]>([]);
+  // null = todavía no llegó la primera carga (se muestra Skeleton).
+  const [orders, setOrders] = useState<any[] | null>(null);
   const [, tick] = useState(0);
   const audio = useRef<AudioContext | null>(null);
   const [soundOn, setSoundOn] = useState(false);
 
   const load = useCallback(() => {
-    if (activePlaceId) ordersApi.kds(activePlaceId).then(setOrders).catch((err: Error) => toast.error(err.message));
+    if (activePlaceId) ordersApi.kds(activePlaceId).then(setOrders).catch((err: Error) => {
+      toast.error(err.message);
+      setOrders((o) => o ?? []);
+    });
   }, [activePlaceId]);
 
   useEffect(() => { load(); }, [load]);
@@ -65,37 +74,84 @@ export default function KitchenPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-black text-[#1A1A1A]">Cocina</h1>
-        {!soundOn && <button onClick={enableSound} className="rounded-2xl bg-[#1A1A1A] px-5 py-3 text-sm font-bold text-white">Activar sonido</button>}
-      </header>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {COLUMNS.map((col) => {
-          const list = orders.filter((o) => o.status === col.status);
-          return (
-            <section key={col.status} className="rounded-3xl bg-gray-50 p-4" aria-label={col.title}>
-              <h2 className="mb-4 text-sm font-black tracking-widest text-gray-500">{col.title} · {list.length}</h2>
-              <div className="space-y-3">
-                {list.map((o) => {
-                  const waited = minutesSince(o.createdAt);
-                  return (
-                    <article key={o.id} className={`rounded-2xl border-2 bg-white p-4 space-y-3 ${waited > OVERDUE_MIN && col.status !== 'LISTO' ? 'border-red-400' : 'border-transparent'}`}>
-                      <p className="font-black text-lg">#{o.number} · {o.channel === 'MESA' ? 'Mesa' : 'WhatsApp'} {FULFILLMENT_LABEL[o.fulfillment]} · hace {waited} min</p>
-                      <ul className="space-y-1">
-                        {o.items.map((i: any) => (
-                          <li key={i.id}><span className="font-bold">{i.quantity}x</span> {i.name}{i.note && <span className="block rounded bg-yellow-100 px-2 text-sm font-semibold">{i.note}</span>}</li>
-                        ))}
-                      </ul>
-                      {o.notes && <p className="rounded bg-yellow-100 px-2 text-sm">{o.notes}</p>}
-                      <button onClick={() => advance(o.id, col.next)} className="w-full rounded-xl bg-[#F26122] py-4 text-base font-black text-white">{col.action}</button>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <PageHeader
+        title="Cocina"
+        subtitle="Los pedidos entran solos. Toca el botón de cada pedido para avanzarlo."
+        action={soundOn
+          ? <Badge tone="success"><Volume2 size={16} aria-hidden /> Sonido activado</Badge>
+          : <Button icon={Volume2} onClick={enableSound}>Activar sonido</Button>}
+      />
+
+      {orders === null ? (
+        <div role="status" aria-label="Cargando" className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {COLUMNS.map((c) => <Skeleton key={c.status} className="h-64 rounded-card" />)}
+        </div>
+      ) : orders.length === 0 ? (
+        <Card>
+          <EmptyState icon={ChefHat} title="No hay pedidos en cocina" description="Cuando entre un pedido aparecerá aquí sin recargar la página." />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {COLUMNS.map((col) => (
+            <KitchenColumn key={col.status} col={col} orders={orders.filter((o) => o.status === col.status)} onAdvance={advance} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function KitchenColumn({ col, orders, onAdvance }: { col: Column; orders: any[]; onAdvance(orderId: string, next: string): void }) {
+  const meta = STATUS_META[col.status as OrderStatus];
+  const Icon = meta.icon;
+  return (
+    <section className="rounded-card border border-border bg-background p-3" aria-label={col.title}>
+      <h2 className={`mb-3 flex items-center gap-2 rounded-control border px-3 py-2 text-xl font-semibold ${meta.className}`}>
+        <Icon size={24} aria-hidden />
+        {col.title}
+        <span className="ml-auto tabular-nums">{orders.length}</span>
+      </h2>
+      {orders.length === 0 ? (
+        <p className="px-1 py-6 text-center text-base text-text-muted">Sin pedidos</p>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((o) => <KitchenTicket key={o.id} order={o} col={col} onAdvance={onAdvance} />)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function KitchenTicket({ order: o, col, onAdvance }: { order: any; col: Column; onAdvance(orderId: string, next: string): void }) {
+  const waited = minutesSince(o.createdAt);
+  const overdue = waited > OVERDUE_MIN && col.status !== 'LISTO';
+  const NextIcon = STATUS_META[col.next as OrderStatus].icon;
+  return (
+    <article className={`space-y-3 rounded-card border-2 bg-surface p-4 text-base shadow-card ${overdue ? 'border-danger' : 'border-transparent'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-3xl font-bold tabular-nums text-text">#{o.number}</p>
+        <p className={`inline-flex items-center gap-1.5 text-base font-semibold tabular-nums ${overdue ? 'text-danger' : 'text-text-muted'}`}>
+          {overdue ? <AlertTriangle size={20} aria-hidden /> : <Clock size={20} aria-hidden />}
+          {overdue ? 'Demorado · ' : ''}hace {waited} min
+        </p>
+      </div>
+      <p className="text-base font-medium text-text">{o.channel === 'MESA' ? 'Mesa' : 'WhatsApp'} · {FULFILLMENT_LABEL[o.fulfillment] ?? o.fulfillment}</p>
+      <ul className="space-y-2 border-t border-border pt-3">
+        {o.items.map((i: any) => (
+          <li key={i.id} className="text-lg text-text">
+            <span className="font-bold tabular-nums">{i.quantity}x</span> {i.name}
+            {i.note && <span className="mt-1 block rounded-control bg-secondary/20 px-2 py-1 text-base font-semibold">{i.note}</span>}
+          </li>
+        ))}
+      </ul>
+      {o.notes && (
+        <p className="flex gap-2 rounded-control bg-secondary/20 px-3 py-2 text-base text-text">
+          <StickyNote size={20} aria-hidden className="mt-0.5 shrink-0" /> {o.notes}
+        </p>
+      )}
+      <Button icon={NextIcon} onClick={() => onAdvance(o.id, col.next)} className="h-14 w-full text-lg font-semibold">
+        {col.action}
+      </Button>
+    </article>
   );
 }
