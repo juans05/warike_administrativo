@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { metaAdsApi } from '../../../lib/api-client';
-import { SkeletonHeader, SkeletonCard } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
+import { CheckCircle2, Clock, Info, Plug, RefreshCw, Target, Unplug } from 'lucide-react';
+import { Badge, Button, Card, PageHeader, Select, Skeleton, Textarea } from '../../../components/ui';
+import { plural } from '../../../lib/modules';
 import { redirect } from 'next/navigation';
 import { META_ADS_ENABLED } from '../../../lib/features';
 
@@ -14,7 +16,10 @@ export default function Page() {
 }
 
 function MetaAdsPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const customer = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
+  const customerLower = customer.toLowerCase();
+  const customersLower = plural(customer).toLowerCase();
   const [status, setStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -123,179 +128,148 @@ function MetaAdsPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl space-y-10 pb-32">
-        <SkeletonHeader />
-        <SkeletonCard className="h-80" />
+      <div className="max-w-4xl space-y-6" role="status" aria-label="Cargando">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <Skeleton className="h-80 rounded-card" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl space-y-10 pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">👥</div>
-          <div>
-            <h1 className="text-4xl font-black text-text tracking-tight font-warike">Meta Ads Retargeting</h1>
-            <p className="text-text-muted font-bold text-sm">Sincroniza tus clientes NFC de forma encriptada para campañas en Facebook e Instagram.</p>
-          </div>
-        </div>
-      </header>
+    <div className="max-w-4xl space-y-6 pb-32">
+      <PageHeader
+        title="Meta Ads"
+        subtitle={`Sincroniza tus ${customersLower} de forma encriptada para campañas en Facebook e Instagram.`}
+      />
 
-      {/* Explicativo Premium de Valor */}
-      <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/5 p-8 rounded-[2.5rem] border border-blue-100 shadow-sm flex flex-col md:flex-row gap-6 items-center">
-        <div className="text-4xl">🚀</div>
-        <div className="space-y-1 flex-1">
-          <h3 className="font-black text-blue-900 text-sm uppercase tracking-wider">¿Cómo funciona esta súper integración?</h3>
-          <p className="text-xs text-blue-800 leading-relaxed font-semibold">
-            Cada vez que un comensal escanea un Tag NFC en tu mesa y da su consentimiento, guardamos su contacto.
-            Esta integración toma esos correos/teléfonos, los **encripta en códigos hashes SHA-256 privados** (cumpliendo con la ley) y los envía a tu cuenta publicitaria de Facebook.
-            ¡Podrás mostrar anuncios en Instagram/Facebook únicamente a quienes ya consumieron en tu local físico!
+      <Card padding="lg" className="flex items-start gap-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <Info size={20} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-text">¿Cómo funciona?</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Cada vez que un {customerLower} escanea un tag NFC en tu local y da su consentimiento, guardamos su contacto.
+            Esta integración toma esos correos y teléfonos, los <strong className="font-medium text-text">encripta con códigos hash SHA-256 privados</strong> (cumpliendo con la ley)
+            y los envía a tu cuenta publicitaria de Facebook. Así podrás mostrar anuncios en Instagram y Facebook únicamente a quienes ya visitaron tu local.
           </p>
         </div>
-      </div>
+      </Card>
 
       {status?.connected ? (
         /* VISTA: CONECTADO Y CONFIGURADO */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="font-black text-text text-lg">Estado de Conexión</h3>
-                <span className="bg-green-100 text-green-700 text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest">
-                  🟢 Conectado
-                </span>
-              </div>
-
-              <div className="divide-y divide-gray-50 text-sm">
-                <div className="py-4 flex justify-between">
-                  <span className="font-bold text-text-muted">Cuenta Publicitaria:</span>
-                  <span className="font-black text-text font-mono">{status.adAccountId}</span>
-                </div>
-                <div className="py-4 flex justify-between">
-                  <span className="font-bold text-text-muted">ID de Audiencia en Meta:</span>
-                  <span className="font-black text-text font-mono">{status.customAudienceId || 'Pendiente de creación'}</span>
-                </div>
-                <div className="py-4 flex justify-between">
-                  <span className="font-bold text-text-muted">Última Sincronización:</span>
-                  <span className="font-black text-text">
-                    {status.lastSyncAt ? new Date(status.lastSyncAt).toLocaleString('es-PE') : 'Nunca sincronizado'}
-                  </span>
-                </div>
-                <div className="py-4 flex justify-between">
-                  <span className="font-bold text-text-muted">Clientes Sincronizados:</span>
-                  <span className="font-black text-primary text-base">{status.syncCount} clientes</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                <button
-                  onClick={handleSyncNow}
-                  disabled={isSyncing}
-                  className="bg-primary text-white py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isSyncing ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Sincronizando...
-                    </>
-                  ) : (
-                    '🔄 Sincronizar Ahora'
-                  )}
-                </button>
-
-                <button
-                  onClick={handleDisconnect}
-                  className="border-2 border-red-200 text-red-600 bg-white py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-50 hover:border-red-300 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  🚪 Desconectar Meta Ads
-                </button>
-              </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card padding="lg" className="space-y-4 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold text-text">Estado de la conexión</h2>
+              <Badge tone="success"><CheckCircle2 size={16} aria-hidden /> Conectado</Badge>
             </div>
-          </div>
+
+            <dl className="divide-y divide-border text-sm">
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3">
+                <dt className="text-text-muted">Cuenta publicitaria</dt>
+                <dd className="break-all font-mono text-text">{status.adAccountId}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3">
+                <dt className="text-text-muted">ID de audiencia en Meta</dt>
+                <dd className="break-all font-mono text-text">{status.customAudienceId || 'Pendiente de creación'}</dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3">
+                <dt className="text-text-muted">Última sincronización</dt>
+                <dd className="text-text">
+                  {status.lastSyncAt ? new Date(status.lastSyncAt).toLocaleString('es-PE') : 'Nunca sincronizado'}
+                </dd>
+              </div>
+              <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3">
+                <dt className="text-text-muted">{plural(customer)} sincronizados</dt>
+                <dd className="font-semibold tabular-nums text-text">{status.syncCount} {customersLower}</dd>
+              </div>
+            </dl>
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <Button icon={RefreshCw} onClick={handleSyncNow} loading={isSyncing} className="flex-1">
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+              </Button>
+              <Button variant="secondary" icon={Unplug} onClick={handleDisconnect} className="flex-1">
+                Desconectar Meta Ads
+              </Button>
+            </div>
+          </Card>
 
           {/* TARJETA COLATERAL: CRON JOB AUTOMÁTICO */}
-          <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="text-4xl">⏰</div>
-              <h3 className="font-black text-text text-lg leading-tight">Sincronización Automática</h3>
-              <p className="text-xs text-text-muted font-bold leading-relaxed">
-                ¡No tienes que preocuparte! El sistema realiza de forma automática un barrido y sincronización encriptada SHA-256 todos los días a las **2:00 AM**.
+          <Card padding="lg" className="flex flex-col justify-between gap-4">
+            <div className="space-y-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+                <Clock size={20} aria-hidden />
+              </span>
+              <h2 className="text-base font-semibold text-text">Sincronización automática</h2>
+              <p className="text-sm text-text-muted">
+                No tienes que preocuparte: el sistema sincroniza tus contactos de forma encriptada (SHA-256) todos los días a las <strong className="font-medium text-text">2:00 AM</strong>.
               </p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-150 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">
-              Próxima: Mañana 2:00 AM
-            </div>
-          </div>
+            <p className="rounded-control bg-background px-3 py-2 text-center text-sm text-text-muted">
+              Próxima: mañana 2:00 AM
+            </p>
+          </Card>
         </div>
       ) : (
         /* VISTA: CONFIGURAR VINCULACIÓN */
-        <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-gray-100 space-y-8">
-          <div className="space-y-2">
-            <h3 className="font-black text-text text-lg">Configurar Integración con Meta</h3>
-            <p className="text-xs text-text-muted font-bold">Sigue los pasos a continuación para conectar tu cuenta publicitaria.</p>
+        <Card padding="lg" className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold text-text">Configura la integración con Meta</h2>
+            <p className="mt-1 text-sm text-text-muted">Sigue los pasos para conectar tu cuenta publicitaria.</p>
           </div>
 
-          <div className="space-y-6">
-            {/* Paso 1: Access Token */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-                Paso 1: Pegar Access Token de Facebook Business
-              </label>
-              <textarea
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="Escribe el Token de Acceso del Sistema de Meta Developer..."
-                rows={3}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-mono focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:ring-primary/20"
-              />
-              <p className="text-[10px] text-text-muted leading-relaxed font-bold">
-                💡 Consigue tu System User Access Token en tu <strong>Business Manager de Meta (Configuración del Negocio &gt; Usuarios del Sistema)</strong> con permisos en tu cuenta de anuncios.
-              </p>
-            </div>
+          {/* Paso 1: Access Token */}
+          <Textarea
+            label="Paso 1: Pega el Access Token de Facebook Business"
+            value={accessToken}
+            onChange={(e) => setAccessToken(e.target.value)}
+            placeholder="Escribe el token de acceso del sistema de Meta Developer..."
+            hint="Consigue tu System User Access Token en tu Business Manager de Meta (Configuración del negocio > Usuarios del sistema), con permisos en tu cuenta de anuncios."
+            rows={3}
+            autoComplete="off"
+            spellCheck={false}
+            className="font-mono"
+          />
 
-            {/* Cargar Cuentas */}
-            {adAccountsList.length === 0 && (
-              <button
-                onClick={handleLoadAccounts}
-                disabled={isLoadingAccounts || !accessToken}
-                className="bg-slate-900 text-white py-4 px-8 rounded-2xl font-black text-xs uppercase tracking-widest disabled:opacity-40 hover:scale-[1.02] active:scale-95 transition-all"
+          {/* Cargar Cuentas */}
+          {adAccountsList.length === 0 && (
+            <Button
+              variant="secondary"
+              icon={Plug}
+              onClick={handleLoadAccounts}
+              loading={isLoadingAccounts}
+              disabled={!accessToken}
+            >
+              {isLoadingAccounts ? 'Cargando cuentas...' : 'Cargar cuentas publicitarias'}
+            </Button>
+          )}
+
+          {/* Paso 2: Selección de cuenta publicitaria */}
+          {adAccountsList.length > 0 && (
+            <div className="space-y-4">
+              <Select
+                label="Paso 2: Selecciona la cuenta publicitaria de Facebook"
+                value={adAccountId}
+                onChange={(e) => setAdAccountId(e.target.value)}
               >
-                {isLoadingAccounts ? 'Cargando cuentas...' : '🔌 Cargar Cuentas Publicitarias'}
-              </button>
-            )}
+                {adAccountsList.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} — ({acc.account_id})
+                  </option>
+                ))}
+              </Select>
 
-            {/* Paso 2: Selección de cuenta publicitaria */}
-            {adAccountsList.length > 0 && (
-              <div className="space-y-4 animate-in fade-in duration-300">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
-                    Paso 2: Selecciona la Cuenta Publicitaria de Facebook
-                  </label>
-                  <select
-                    value={adAccountId}
-                    onChange={(e) => setAdAccountId(e.target.value)}
-                    className="w-full px-4 py-4 rounded-2xl border border-gray-200 text-sm font-semibold focus:outline-none focus:border-primary"
-                  >
-                    {adAccountsList.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name} — ({acc.account_id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  onClick={handleConnect}
-                  disabled={isConnecting}
-                  className="w-full bg-primary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-[1.01] active:scale-95 transition-all shadow-md"
-                >
-                  {isConnecting ? 'Vinculando...' : '🎯 Guardar y Sincronizar'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+              <Button className="w-full" icon={Target} onClick={handleConnect} loading={isConnecting}>
+                {isConnecting ? 'Vinculando...' : 'Guardar y sincronizar'}
+              </Button>
+            </div>
+          )}
+        </Card>
       )}
     </div>
   );

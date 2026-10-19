@@ -4,8 +4,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Script from 'next/script';
 import { subscriptionApi, placeSubscriptionApi } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { SkeletonPage } from '../../../components/SkeletonLoader';
 import { toast } from 'sonner';
+import { AlertTriangle, Check, CheckCircle2, Clock, CreditCard, Lock, PauseCircle, Receipt, Sparkles } from 'lucide-react';
+import { Badge, Button, Card, DataList, EmptyState, PageHeader, Skeleton, cn } from '../../../components/ui';
 
 declare global {
   interface Window {
@@ -73,7 +74,9 @@ export default function SuscripcionPage() {
       // Preselect the plan chosen on the landing (?plan=), else the middle tier (Fidelización+).
       const requestedTier = new URLSearchParams(window.location.search).get('plan');
       const requestedPlan = plansData.find((p: PlanInfo) => p.tier === requestedTier);
-      setSelectedTier((prev) => prev || requestedPlan?.tier || plansData[1]?.tier || plansData[0]?.tier || null);
+      // A canceled subscription is reactivated on its own plan unless the user picks another.
+      const previousTier = subData?.status === 'canceled' ? plansData.find((p: PlanInfo) => p.tier === subData.tier)?.tier : undefined;
+      setSelectedTier((prev) => prev || requestedPlan?.tier || previousTier || plansData[1]?.tier || plansData[0]?.tier || null);
     } finally {
       setLoading(false);
     }
@@ -151,12 +154,31 @@ export default function SuscripcionPage() {
     new Date(date).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const fmtMoney = (centavos: number) =>
-    `S/. ${(centavos / 100).toFixed(2)}`;
+    `S/ ${(centavos / 100).toFixed(2)}`;
 
-  if (loading) return <SkeletonPage type="default" />;
+  if (loading) {
+    return (
+      <div className="max-w-5xl space-y-6" role="status" aria-label="Cargando">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-80 rounded-card" />)}
+        </div>
+      </div>
+    );
+  }
 
   const isActive = subscription?.status === 'active';
+  const isPending = subscription?.status === 'pending';
+  const isPastDue = subscription?.status === 'past_due';
   const isCanceled = subscription?.status === 'canceled';
+  // Se puede elegir plan sin suscripción, con el cobro caído o cancelada; con una activa o en proceso el backend rechaza una nueva.
+  const canChoose = !subscription || isPastDue || isCanceled;
+
+  const currentLabel = isActive ? 'Plan actual' : isPending ? 'Plan actual · en proceso' : isPastDue ? 'Plan actual · pausado' : isCanceled ? 'Plan actual · cancelado' : '';
+  const currentTone = isActive ? 'success' : isPastDue ? 'danger' : isCanceled ? 'neutral' : 'primary';
 
   return (
     <>
@@ -166,213 +188,240 @@ export default function SuscripcionPage() {
         strategy="afterInteractive"
       />
 
-      <div className="space-y-10 pb-20 max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-        <header>
-          <h1 className="text-4xl font-black text-[#1A1A1A] tracking-tight">
-            Suscripción{activePlace ? ` — ${activePlace.name}` : ''}
-          </h1>
-          <p className="text-[#6B7280] font-medium">Gestiona el plan Wuarike Pro y el historial de pagos de esta sede.</p>
-        </header>
+      <div className="max-w-5xl space-y-6 pb-20">
+        <PageHeader
+          title="Suscripción"
+          subtitle={`Gestiona el plan y el historial de pagos${activePlace ? ` de ${activePlace.name}` : ' de esta sede'}.`}
+        />
 
         {/* Suscrito, pero Culqi todavía no confirmó el primer cobro: el plan se activa al confirmarse */}
-        {subscription?.status === 'pending' && (
-          <section className="bg-blue-50 border border-blue-200 rounded-[2rem] p-6 md:p-8">
-            <p className="font-black text-blue-800">⏳ Estamos procesando el primer pago de tu plan {planName(subscription.tier)}</p>
-            <p className="text-sm text-blue-700 font-medium mt-1">
-              Tu plan se activa en cuanto Culqi confirme el cobro (normalmente el mismo día). No hace falta que vuelvas a pagar.
-            </p>
-            <button onClick={handleCancel} disabled={canceling} className="mt-3 text-xs font-black text-blue-700 underline underline-offset-4 disabled:opacity-50">
-              {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
-            </button>
-          </section>
+        {isPending && subscription && (
+          <Card padding="lg" className="flex items-start gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+              <Clock size={20} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold text-text">Estamos procesando el primer pago de tu plan {planName(subscription.tier)}</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Tu plan se activa en cuanto Culqi confirme el cobro (normalmente el mismo día). No hace falta que vuelvas a pagar.
+              </p>
+              <Button variant="ghost" size="sm" className="-ml-3 mt-2 text-danger hover:bg-danger/10 hover:text-danger" onClick={handleCancel} loading={canceling}>
+                {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
+              </Button>
+            </div>
+          </Card>
         )}
 
         {/* Culqi no pudo renovar el cobro: el plan queda pausado hasta que se vuelva a suscribir */}
-        {subscription?.status === 'past_due' && (
-          <section className="bg-amber-50 border border-amber-200 rounded-[2rem] p-6 md:p-8">
-            <p className="font-black text-amber-800">⚠️ No pudimos cobrar la renovación de tu plan {planName(subscription.tier)}</p>
-            <p className="text-sm text-amber-700 font-medium mt-1">
-              Tu plan está pausado desde el {fmt(subscription.currentPeriodEnd)}. Vuelve a suscribirte abajo con una tarjeta válida para reactivarlo; el cobro anterior se cancela solo.
-            </p>
-            <button onClick={handleCancel} disabled={canceling} className="mt-3 text-xs font-black text-amber-700 underline underline-offset-4 disabled:opacity-50">
-              {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
-            </button>
-          </section>
+        {isPastDue && subscription && (
+          <Card padding="lg" className="flex items-start gap-4 border-danger/30">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+              <AlertTriangle size={20} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold text-text">No pudimos cobrar la renovación de tu plan {planName(subscription.tier)}</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Tu plan está pausado desde el {fmt(subscription.currentPeriodEnd)}. Vuelve a suscribirte abajo con una tarjeta válida para reactivarlo; el cobro anterior se cancela solo.
+              </p>
+              <Button variant="ghost" size="sm" className="-ml-3 mt-2 text-danger hover:bg-danger/10 hover:text-danger" onClick={handleCancel} loading={canceling}>
+                {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
+              </Button>
+            </div>
+          </Card>
         )}
 
         {/* Estado de suscripción activa */}
         {isActive && subscription && (
-          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center text-3xl shadow-inner">
-                  ✅
-                </div>
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <h2 className="text-2xl font-black text-[#1A1A1A]">{planName(subscription.tier)}</h2>
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest rounded-full">
-                      Activa
-                    </span>
+          <Card padding="lg" className="space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+                  <CheckCircle2 size={24} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold text-text">{planName(subscription.tier)}</h2>
+                    <Badge tone="success"><Check size={16} aria-hidden /> Activa</Badge>
                   </div>
-                  <p className="text-gray-500 font-medium text-sm">
+                  <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-muted">
                     {subscription.cardBrand && (
-                      <span className="font-bold text-gray-700">{subscription.cardBrand} •••• {subscription.cardLast4}</span>
+                      <span className="inline-flex items-center gap-1 font-medium text-text">
+                        <CreditCard size={16} aria-hidden /> {subscription.cardBrand} •••• {subscription.cardLast4}
+                      </span>
                     )}
-                    {subscription.cardBrand && ' · '}
-                    Próximo cobro el <span className="font-bold text-[#F26122]">{fmt(subscription.currentPeriodEnd)}</span>
+                    <span>Próximo cobro el <span className="font-medium text-text">{fmt(subscription.currentPeriodEnd)}</span></span>
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-black text-[#1A1A1A]">S/. {(subscription.amount / 100).toFixed(2)}</p>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">por mes</p>
+              <div className="sm:text-right">
+                <p className="text-2xl font-semibold tabular-nums text-text">{fmtMoney(subscription.amount)}</p>
+                <p className="text-sm text-text-muted">por mes</p>
               </div>
             </div>
 
-            {/* Período actual */}
-            <div className="border-t border-gray-50 px-10 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <dl className="grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-3">
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Período actual</p>
-                <p className="font-bold text-sm text-[#1A1A1A]">{fmt(subscription.currentPeriodStart)}</p>
-                <p className="text-xs text-gray-400 font-medium">hasta {fmt(subscription.currentPeriodEnd)}</p>
+                <dt className="text-sm text-text-muted">Período actual</dt>
+                <dd className="mt-1 text-sm font-medium text-text">{fmt(subscription.currentPeriodStart)}</dd>
+                <dd className="text-sm text-text-muted">hasta {fmt(subscription.currentPeriodEnd)}</dd>
               </div>
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Plan</p>
-                <p className="font-bold text-sm text-[#1A1A1A]">Mensual</p>
-                <p className="text-xs text-gray-400 font-medium">Renovación automática</p>
+                <dt className="text-sm text-text-muted">Plan</dt>
+                <dd className="mt-1 text-sm font-medium text-text">Mensual</dd>
+                <dd className="text-sm text-text-muted">Renovación automática</dd>
               </div>
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Miembro desde</p>
-                <p className="font-bold text-sm text-[#1A1A1A]">{fmt(subscription.createdAt)}</p>
+                <dt className="text-sm text-text-muted">Miembro desde</dt>
+                <dd className="mt-1 text-sm font-medium text-text">{fmt(subscription.createdAt)}</dd>
               </div>
-            </div>
+            </dl>
 
-            <div className="border-t border-gray-50 px-10 py-5 flex justify-end">
-              <button
-                onClick={handleCancel}
-                disabled={canceling}
-                className="text-xs font-black text-red-400 hover:text-red-600 underline underline-offset-4 transition-colors disabled:opacity-50"
-              >
+            <div className="flex justify-end border-t border-border pt-4">
+              <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/10 hover:text-danger" onClick={handleCancel} loading={canceling}>
                 {canceling ? 'Cancelando...' : 'Cancelar suscripción'}
-              </button>
+              </Button>
             </div>
-          </section>
+          </Card>
         )}
 
-        {/* Suscripción cancelada */}
+        {/* Suscripción cancelada: el acceso sigue hasta el fin del período; se reactiva eligiendo plan abajo */}
         {isCanceled && subscription && (
-          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-2xl">⏸️</div>
-              <div>
-                <h2 className="text-xl font-black text-[#1A1A1A]">Suscripción cancelada</h2>
-                <p className="text-gray-400 font-medium text-sm">
-                  Tu acceso Pro termina el <span className="text-[#F26122] font-bold">{fmt(subscription.currentPeriodEnd)}</span>
-                </p>
-              </div>
+          <Card padding="lg" className="flex items-start gap-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background text-text-muted">
+              <PauseCircle size={20} aria-hidden />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-text">Suscripción cancelada</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                Tu acceso termina el <span className="font-medium text-text">{fmt(subscription.currentPeriodEnd)}</span>. Elige un plan abajo para reactivarla.
+              </p>
             </div>
-            <button
-              onClick={handleSubscribe}
-              disabled={paying || !culqiReady}
-              className="bg-[#F26122] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[#F26122]/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
-            >
-              Reactivar suscripción
-            </button>
-          </section>
+          </Card>
         )}
 
-        {/* Sin suscripción - elegir plan */}
-        {(!subscription || subscription.status === 'past_due') && plans.length > 0 && (
-          <section className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Planes: se eligen sin suscripción, pausada o cancelada; con una activa se muestran para comparar */}
+        {plans.length > 0 ? (
+          <section aria-labelledby="planes-title" className="space-y-4">
+            <div>
+              <h2 id="planes-title" className="text-xl font-semibold text-text">{canChoose ? 'Elige tu plan' : 'Planes'}</h2>
+              {!canChoose && (
+                <p className="mt-1 text-sm text-text-muted">
+                  Para cambiar de plan, cancela tu suscripción actual y elige otro.
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               {plans.map((p) => {
-                const isSelected = p.tier === selectedTier;
-                const isRecommended = p.tier === plans[1]?.tier;
+                const isCurrent = subscription?.tier === p.tier;
+                const isSelected = canChoose && p.tier === selectedTier;
+                const isHighlighted = p.tier === 'ia_total';
                 return (
-                  <button
+                  <Card
                     key={p.tier}
-                    onClick={() => setSelectedTier(p.tier)}
-                    className={`relative text-left rounded-[2rem] border-2 p-8 transition-all ${
-                      isSelected
-                        ? 'border-[#F26122] shadow-xl shadow-[#F26122]/10 bg-white scale-[1.02]'
-                        : 'border-gray-100 bg-white hover:border-gray-200'
-                    }`}
+                    padding="lg"
+                    className={cn('flex flex-col', isSelected ? 'border-primary ring-2 ring-primary/30' : isHighlighted && 'border-primary/40')}
                   >
-                    {isRecommended && (
-                      <span className="absolute -top-3 left-8 bg-[#F26122] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                        Recomendado
-                      </span>
-                    )}
-                    <p className="text-sm font-black text-[#1A1A1A] mb-4">{p.name}</p>
-                    <div className="flex items-end gap-1 mb-6">
-                      <span className="text-4xl font-black text-[#1A1A1A]">S/. {p.price}</span>
-                      <span className="text-sm font-bold text-gray-400 mb-1">/mes</span>
+                    <div className="flex min-h-6 flex-wrap gap-1.5">
+                      {isCurrent && <Badge tone={currentTone}>{currentLabel}</Badge>}
+                      {isHighlighted && <Badge tone="primary"><Sparkles size={16} aria-hidden /> Recomendado</Badge>}
                     </div>
-                    <ul className="space-y-3">
+                    <h3 className="mt-3 text-base font-semibold text-text">{p.name}</h3>
+                    <p className="mt-2 flex items-baseline gap-1">
+                      <span className="text-2xl font-semibold tabular-nums text-text">S/ {Number(p.price).toFixed(2)}</span>
+                      <span className="text-sm text-text-muted">/mes</span>
+                    </p>
+                    <ul className="mt-4 flex-1 space-y-2">
                       {p.features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <div className="w-5 h-5 rounded-full bg-[#F26122]/10 flex items-center justify-center shrink-0 mt-0.5">
-                            <svg className="w-2.5 h-2.5 text-[#F26122]" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <span className="font-medium text-xs text-gray-600">{f}</span>
+                        <li key={i} className="flex items-start gap-2 text-sm text-text">
+                          <Check size={16} aria-hidden className="mt-0.5 shrink-0 text-success" />
+                          <span>{f}</span>
                         </li>
                       ))}
                     </ul>
                     {!p.configured && (
-                      <p className="mt-4 text-[10px] font-bold text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                        Cobro no configurado todavía
-                      </p>
+                      <div className="mt-4">
+                        <Badge tone="warning"><AlertTriangle size={16} aria-hidden /> Cobro no configurado todavía</Badge>
+                      </div>
                     )}
-                  </button>
+                    {canChoose && (
+                      <Button
+                        variant="secondary"
+                        className={cn('mt-5 w-full', isSelected && 'border-primary text-primary-hover')}
+                        aria-pressed={isSelected}
+                        icon={isSelected ? Check : undefined}
+                        onClick={() => setSelectedTier(p.tier)}
+                      >
+                        {isSelected ? 'Plan elegido' : 'Elegir este plan'}
+                      </Button>
+                    )}
+                  </Card>
                 );
               })}
             </div>
 
-            {selectedPlan && (
-              <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-10">
-                <button
+            {canChoose && selectedPlan && (
+              <Card padding="lg" className="space-y-3">
+                <Button
+                  className="w-full"
                   onClick={handleSubscribe}
-                  disabled={paying || !culqiReady}
-                  className="w-full bg-[#F26122] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.15em] shadow-xl shadow-[#F26122]/25 hover:opacity-90 active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
+                  loading={paying}
+                  disabled={!culqiReady}
                 >
-                  {paying ? 'Procesando...' : culqiReady ? `Suscribirme a ${selectedPlan.name} — S/. ${selectedPlan.price}/mes` : 'Cargando...'}
-                </button>
-                <p className="text-center text-[11px] text-gray-400 font-medium mt-4">
-                  Pago seguro con tarjeta. Cancela cuando quieras.
+                  {paying
+                    ? 'Procesando...'
+                    : culqiReady
+                      ? `${isCanceled ? 'Reactivar con' : 'Suscribirme a'} ${selectedPlan.name} — S/ ${Number(selectedPlan.price).toFixed(2)}/mes`
+                      : 'Cargando...'}
+                </Button>
+                <p className="flex items-center justify-center gap-1.5 text-center text-sm text-text-muted">
+                  <Lock size={16} aria-hidden /> Pago seguro con tarjeta. Cancela cuando quieras.
                 </p>
-              </div>
+              </Card>
             )}
           </section>
+        ) : (
+          !subscription && (
+            <Card>
+              <EmptyState
+                icon={CreditCard}
+                title="No pudimos cargar los planes"
+                description="Revisa tu conexión y vuelve a intentarlo en unos minutos."
+              />
+            </Card>
+          )
         )}
 
         {/* Historial de pagos */}
-        {subscription?.payments && subscription.payments.length > 0 && (
-          <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-10 pt-8 pb-4 border-b border-gray-50">
-              <h3 className="text-lg font-black text-[#1A1A1A]">Historial de pagos</h3>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {subscription.payments.map((p) => (
-                <div key={p.id} className="px-10 py-5 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-sm text-[#1A1A1A]">
-                      {p.paidAt ? fmt(p.paidAt) : fmt(p.createdAt)}
-                    </p>
-                    <p className="text-xs text-gray-400 font-medium">{subscription ? planName(subscription.tier) : ''} · Mensual</p>
+        {subscription && (
+          <Card padding="lg">
+            <h2 className="text-xl font-semibold text-text">Historial de pagos</h2>
+            <DataList
+              items={subscription.payments ?? []}
+              empty={
+                <EmptyState
+                  headingLevel="h3"
+                  icon={Receipt}
+                  title="Aún no hay pagos registrados"
+                  description="Cuando se confirme el primer cobro, lo verás aquí."
+                />
+              }
+              renderItem={(p) => (
+                <div className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-text">{p.paidAt ? fmt(p.paidAt) : fmt(p.createdAt)}</p>
+                    <p className="text-sm text-text-muted">{planName(subscription.tier)} · Mensual</p>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${p.status === 'paid' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                      {p.status === 'paid' ? 'Pagado' : p.status}
-                    </span>
-                    <span className="font-black text-[#1A1A1A]">{fmtMoney(p.amount)}</span>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {p.status === 'paid'
+                      ? <Badge tone="success"><Check size={16} aria-hidden /> Pagado</Badge>
+                      : <Badge tone="danger"><AlertTriangle size={16} aria-hidden /> {p.status}</Badge>}
+                    <span className="text-sm font-semibold tabular-nums text-text">{fmtMoney(p.amount)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+              )}
+            />
+          </Card>
         )}
       </div>
     </>
