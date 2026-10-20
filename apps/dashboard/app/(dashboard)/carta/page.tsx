@@ -71,6 +71,16 @@ export default function CartaPage() {
     }
   };
 
+  const teachMenuToAI = async (file: File) => {
+    if (!activePlaceId) return;
+    try {
+      await businessApi.uploadKnowledgeBase(activePlaceId, file, `Carta - ${file.name}`);
+      toast.success('Listo: la IA ya leyó tu carta. La verás en la sección IA.');
+    } catch {
+      toast.error('No se pudo leer el archivo. Esta función requiere el plan con IA.');
+    }
+  };
+
   const saveMenuPhoto = async () => {
     if (!activePlaceId) return;
     setIsSavingPhoto(true);
@@ -189,7 +199,7 @@ export default function CartaPage() {
           </div>
         )
       ) : (
-        <PhotoMenuCard photo={menuPhoto} onPhotoChange={setMenuPhoto} onSave={saveMenuPhoto} saving={isSavingPhoto} catalog={catalog} />
+        <PhotoMenuCard photo={menuPhoto} onPhotoChange={setMenuPhoto} onSave={saveMenuPhoto} saving={isSavingPhoto} catalog={catalog} onTeachAI={teachMenuToAI} />
       )}
 
       {activePlaceId && (
