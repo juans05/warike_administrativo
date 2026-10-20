@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { Banknote, CheckCircle2, ConciergeBell, CreditCard, DoorClosed, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
 import { ordersApi } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { Button, Card, EmptyState, PageHeader, Skeleton, buttonStyles } from '../../../components/ui';
+import { Button, Card, EmptyState, PageHeader, Sheet, Skeleton } from '../../../components/ui';
+import { TablesQrCard } from '../../../components/orders/TablesQrCard';
 
 // Estado por color, ícono y texto.
 const STATE_STYLE: Record<string, { label: string; icon: LucideIcon; className: string; pulse?: boolean }> = {
@@ -23,6 +23,8 @@ export default function TablesPage() {
   // null = todavía no llegó la primera carga (se muestra Skeleton).
   const [rows, setRows] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<any>(null);
+  const [editing, setEditing] = useState(false);
+  const [tables, setTables] = useState<any[]>([]);
 
   const load = useCallback(() => {
     if (activePlaceId) ordersApi.tablesBoard(activePlaceId).then((data: any[]) => {
@@ -30,6 +32,11 @@ export default function TablesPage() {
       setSelected((prev: any) => (prev ? data.find((r) => r.table.id === prev.table.id) ?? null : null));
     }).catch((err: Error) => { toast.error(err.message); setRows((r) => r ?? []); });
   }, [activePlaceId]);
+
+  const loadTables = useCallback(() => {
+    if (activePlaceId) ordersApi.tables(activePlaceId).then(setTables).catch(() => undefined);
+  }, [activePlaceId]);
+  const openEditor = () => { loadTables(); setEditing(true); };
 
   useEffect(() => { load(); }, [load]);
   useOrderStream(staffStreamUrl(activePlaceId), (event) => {
@@ -49,7 +56,7 @@ export default function TablesPage() {
       <PageHeader
         title="Mesas"
         subtitle="Toca una mesa con cuenta abierta para cobrarla o cerrarla."
-        action={<Link href="/pedidos/configuracion" className={buttonStyles('secondary')}><Settings size={20} aria-hidden /> Crear y editar mesas</Link>}
+        action={<Button variant="secondary" icon={Settings} onClick={openEditor}>Crear y editar mesas</Button>}
       />
 
       <ul className="flex flex-wrap gap-2" aria-label="Leyenda de estados">
@@ -69,8 +76,8 @@ export default function TablesPage() {
           <EmptyState
             icon={LayoutGrid}
             title="Aún no hay mesas"
-            description="Créalas en Configurar pedidos y mesas. Cada mesa tiene su QR para pedir desde el celular."
-            action={<Link href="/pedidos/configuracion" className={buttonStyles('primary')}>Crear mesas</Link>}
+            description="Crea tus mesas aquí. Cada mesa tiene su QR para pedir desde el celular."
+            action={<Button onClick={openEditor}>Crear mesas</Button>}
           />
         </Card>
       ) : (
@@ -89,6 +96,10 @@ export default function TablesPage() {
           </div>
         </Card>
       )}
+
+      <Sheet open={editing} onClose={() => setEditing(false)} title="Crear y editar mesas">
+        {activePlaceId && <TablesQrCard placeId={activePlaceId} tables={tables} onChanged={() => { loadTables(); load(); }} />}
+      </Sheet>
     </div>
   );
 }

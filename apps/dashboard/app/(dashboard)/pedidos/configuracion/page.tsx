@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { KeyRound } from 'lucide-react';
 import { ordersApi } from '../../../../lib/api-client';
 import { useRestaurant } from '../../../../context/RestaurantContext';
-import { TablesQrCard } from '../../../../components/orders/TablesQrCard';
+import Link from 'next/link';
 import { Badge, Button, Card, Input, PageHeader, Skeleton, Switch } from '../../../../components/ui';
 
 function Radio({ checked, onChange, disabled, children }: { checked: boolean; onChange?: () => void; disabled?: boolean; children: React.ReactNode }) {
@@ -31,20 +31,15 @@ export default function OrderSettingsPage() {
   const [settings, setSettings] = useState<any>(null);
   // Copia de lo último que vino del servidor: el botón Guardar aparece solo si hay cambios.
   const [savedJson, setSavedJson] = useState('');
-  const [tables, setTables] = useState<any[]>([]);
   const [secret, setSecret] = useState('');
   const [saving, setSaving] = useState(false);
 
   const applyServer = useCallback((s: any) => { setSettings(s); setSavedJson(JSON.stringify(s)); }, []);
 
-  const loadTables = useCallback(() => {
-    if (activePlaceId) ordersApi.tables(activePlaceId).then(setTables).catch(() => undefined);
-  }, [activePlaceId]);
   const load = useCallback(() => {
     if (!activePlaceId) return;
     ordersApi.getSettings(activePlaceId).then(applyServer).catch((err: Error) => toast.error(err.message));
-    loadTables();
-  }, [activePlaceId, applyServer, loadTables]);
+  }, [activePlaceId, applyServer]);
   useEffect(() => { load(); }, [load]);
 
   if (!settings) {
@@ -147,7 +142,7 @@ export default function OrderSettingsPage() {
         </div>
       )}
 
-      <TablesQrCard placeId={activePlaceId!} tables={tables} onChanged={loadTables} />
+      <p className="text-sm text-text-muted">Las mesas, sus QR y PIN se gestionan en <Link href="/mesas" className="font-medium text-primary underline">Mesas</Link>.</p>
     </div>
   );
 }
