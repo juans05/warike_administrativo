@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, Search } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { businessApi } from '../../lib/api-client';
-import { Badge, Button, Input } from '../ui';
+import { Badge, Button, Input, buttonStyles } from '../ui';
 import { GoogleIcon } from './GoogleIcon';
 
 /**
@@ -81,9 +81,19 @@ export function GooglePlaceConnect({ placeId, googlePlaceId, onChangeGooglePlace
           </div>
           <Button loading={isSaving} onClick={save}>Guardar</Button>
         </div>
-        <Button variant="ghost" size="sm" icon={Search} loading={isSearching} onClick={search}>
-          {isSearching ? 'Buscando...' : 'Buscar mi negocio automáticamente'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" icon={Search} loading={isSearching} onClick={search}>
+            {isSearching ? 'Buscando...' : 'Buscar mi negocio automáticamente'}
+          </Button>
+          <a
+            href="https://developers.google.com/maps/documentation/places/web-service/place-id?hl=es-419#find-id"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonStyles('ghost', 'sm')}
+          >
+            <ExternalLink size={16} aria-hidden /> Buscar mi Place ID en Google
+          </a>
+        </div>
       </div>
 
       {candidates.length > 0 && (
