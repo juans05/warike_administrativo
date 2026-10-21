@@ -429,7 +429,6 @@ export const businessApi = {
   // Google Maps Integration (Places API — sync 5 últimas reseñas)
   syncGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-sync`, { method: 'POST' }),
   getPersistedGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-reviews`),
-  findGooglePlaceId: (id: string) => fetchWithAuth(`/business/places/${id}/find-google-place-id`),
 
   // AI Bot Prompt Suggestion
   suggestBotPrompt: (id: string) => fetchWithAuth(`/business/places/${id}/suggest-bot-prompt`, { method: 'POST' }),

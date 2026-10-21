@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle2, ExternalLink, Search } from 'lucide-react';
+import { CheckCircle2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { businessApi } from '../../lib/api-client';
 import { Badge, Button, Input, buttonStyles } from '../ui';
@@ -18,29 +18,14 @@ export function GooglePlaceConnect({ placeId, googlePlaceId, onChangeGooglePlace
   isConnected: boolean;
   onSynced(result: any): void;
 }) {
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-
-  const search = async () => {
-    if (!placeId) return;
-    setIsSearching(true);
-    setCandidates([]);
-    try {
-      const res = await businessApi.findGooglePlaceId(placeId);
-      setCandidates(res.candidates || []);
-      if (!res.candidates?.length) toast.warning('No se encontraron resultados. Intenta ingresar el ID manualmente.');
-    } catch { toast.error('Error al buscar en Google'); }
-    finally { setIsSearching(false); }
-  };
 
   const save = async () => {
     if (!placeId) return;
     setIsSaving(true);
     try {
       await businessApi.updateProfile(placeId, { googlePlaceId });
-      setCandidates([]);
       toast.success('ID de Google guardado. Ahora puedes sincronizar las reseñas.');
     } catch (e) { toast.error('Error al guardar'); }
     setIsSaving(false);
@@ -75,44 +60,21 @@ export function GooglePlaceConnect({ placeId, googlePlaceId, onChangeGooglePlace
             <Input
               label="Google Place ID"
               value={googlePlaceId}
-              onChange={(e) => { onChangeGooglePlaceId(e.target.value); setCandidates([]); }}
+              onChange={(e) => onChangeGooglePlaceId(e.target.value)}
               placeholder="Ej: ChIJs_-... (ID de tu negocio)"
             />
           </div>
           <Button loading={isSaving} onClick={save}>Guardar</Button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" icon={Search} loading={isSearching} onClick={search}>
-            {isSearching ? 'Buscando...' : 'Buscar mi negocio automáticamente'}
-          </Button>
-          <a
-            href="https://developers.google.com/maps/documentation/places/web-service/place-id?hl=es-419#find-id"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonStyles('ghost', 'sm')}
-          >
-            <ExternalLink size={16} aria-hidden /> Buscar mi Place ID en Google
-          </a>
-        </div>
+        <a
+          href="https://developers.google.com/maps/documentation/places/web-service/place-id?hl=es-419#find-id"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonStyles('ghost', 'sm')}
+        >
+          <ExternalLink size={16} aria-hidden /> Buscar mi Place ID en Google
+        </a>
       </div>
-
-      {candidates.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-card border border-border">
-          {candidates.map((c: any) => (
-            <li key={c.googlePlaceId}>
-              <button
-                type="button"
-                onClick={() => { onChangeGooglePlaceId(c.googlePlaceId); setCandidates([]); }}
-                className="w-full px-4 py-3 text-left transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-              >
-                <p className="text-sm font-medium text-text">{c.name}</p>
-                <p className="text-xs text-text-muted">{c.address}</p>
-                <p className="mt-0.5 text-xs text-primary-hover">{c.googlePlaceId}</p>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {isConnected && (
         <p className="flex flex-wrap items-center gap-2 text-sm text-text">
