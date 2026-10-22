@@ -56,7 +56,8 @@ export function FeedbackReply({ placeId, feedback, onSaved }: {
       if (res.channel === 'email') toast.success(`Respuesta enviada por correo al ${customer}`);
       else if (res.channel === 'whatsapp') {
         // El navegador bloquea abrir pestañas después de un await: se ofrece un botón.
-        setWhatsappUrl(res.whatsappUrl);
+        // Solo enlaces de WhatsApp: el href no puede apuntar a otro sitio ni a javascript:.
+        setWhatsappUrl(isWhatsappLink(res.whatsappUrl) ? res.whatsappUrl : null);
         toast.success('Respuesta guardada. Pulsa "Enviar por WhatsApp" para mandarla.');
       } else toast.success('Respuesta guardada como nota');
     } catch (e: any) {
@@ -123,4 +124,11 @@ export function FeedbackReply({ placeId, feedback, onSaved }: {
       )}
     </div>
   );
+}
+
+function isWhatsappLink(url: unknown): url is string {
+  try {
+    const u = new URL(String(url));
+    return u.protocol === 'https:' && (u.hostname === 'wa.me' || u.hostname === 'api.whatsapp.com') && !u.username;
+  } catch { return false; }
 }
