@@ -2,11 +2,12 @@ import { useState, useCallback } from 'react';
 import { businessApi, Contact, ContactImport } from '../lib/api-client';
 import { toast } from 'sonner';
 
-export function useContacts() {
+/** `noun`: etiqueta del rubro para los avisos ("cliente"/"clientes", "paciente"/"pacientes"). */
+export function useContacts(noun = { one: 'cliente', many: 'clientes' }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
   const [imports, setImports] = useState<ContactImport[]>([]);
-  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lastImportResult, setLastImportResult] = useState<ContactImport | null>(null);
@@ -41,9 +42,9 @@ export function useContacts() {
       const result = await businessApi.uploadContacts(placeId, file);
       setLastImportResult(result);
       if (result.importedRows > 0) {
-        toast.success(`${result.importedRows} clientes importados${result.failedRows > 0 ? `, ${result.failedRows} fallidos` : ''}`);
+        toast.success(`${result.importedRows} ${result.importedRows === 1 ? `${noun.one} importado` : `${noun.many} importados`}${result.failedRows > 0 ? `, ${result.failedRows} fallidos` : ''}`);
       } else {
-        toast.warning('No se importó ningún cliente. Revisa el formato del archivo.');
+        toast.warning(`No se importó ningún ${noun.one}. Revisa el formato del archivo.`);
       }
       await Promise.all([loadContacts(placeId), loadImports(placeId)]);
     } catch (e: unknown) {

@@ -1,21 +1,22 @@
 'use client';
 
 import React from 'react';
+import { AlertCircle, CheckCircle2, Clock, FileText, Mail, Pencil, Plus, Send, Trash2, type LucideIcon } from 'lucide-react';
 import { EmailCampaign, EmailCampaignStatus } from '../../hooks/useEmailCampaigns';
+import { useCustomerLabels } from '../../hooks/useCustomerLabels';
+import { Badge, type BadgeProps, Button, Card, DataList, EmptyState } from '../ui';
 
-const STATUS_COLOR: Record<EmailCampaignStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SCHEDULED: 'bg-blue-100 text-blue-700',
-  SENDING: 'bg-yellow-100 text-yellow-700',
-  COMPLETED: 'bg-green-100 text-green-700',
-  FAILED: 'bg-red-100 text-red-700',
-};
-const STATUS_LABEL: Record<EmailCampaignStatus, string> = {
-  DRAFT: 'Borrador', SCHEDULED: 'Programado', SENDING: 'Enviando', COMPLETED: 'Completado', FAILED: 'Fallido',
+const STATUS: Record<EmailCampaignStatus, { label: string; tone: BadgeProps['tone']; icon: LucideIcon }> = {
+  DRAFT: { label: 'Borrador', tone: 'neutral', icon: FileText },
+  SCHEDULED: { label: 'Programado', tone: 'primary', icon: Clock },
+  SENDING: { label: 'Enviando', tone: 'warning', icon: Send },
+  COMPLETED: { label: 'Completado', tone: 'success', icon: CheckCircle2 },
+  FAILED: { label: 'Fallido', tone: 'danger', icon: AlertCircle },
 };
 
 interface EmailCampaignListProps {
   campaigns: EmailCampaign[];
+  loading?: boolean;
   audienceCount: number;
   sendingId: string | null;
   completingId: string | null;
@@ -29,10 +30,12 @@ interface EmailCampaignListProps {
   onNew: () => void;
 }
 
-export function EmailCampaignList({ campaigns, audienceCount, sendingId, completingId, unschedulingId, deletingId, onSend, onComplete, onUnschedule, onEdit, onDelete, onNew }: EmailCampaignListProps) {
+export function EmailCampaignList({ campaigns, loading, audienceCount, sendingId, completingId, unschedulingId, deletingId, onSend, onComplete, onUnschedule, onEdit, onDelete, onNew }: EmailCampaignListProps) {
+  const { customer, customers } = useCustomerLabels();
+
   const handleSendClick = (campaign: EmailCampaign) => {
     const confirmed = window.confirm(
-      `¿Enviar "${campaign.campaignName}" a ${audienceCount} cliente${audienceCount === 1 ? '' : 's'}? Esta acción no se puede deshacer.`
+      `¿Enviar "${campaign.campaignName}" a ${audienceCount} ${audienceCount === 1 ? customer : customers}? Esta acción no se puede deshacer.`
     );
     if (confirmed) onSend(campaign.id);
   };
@@ -43,95 +46,71 @@ export function EmailCampaignList({ campaigns, audienceCount, sendingId, complet
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-gray-800">Campañas de Email</h2>
-        <button onClick={onNew} className="px-5 py-2.5 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
-          + Nueva Campaña
-        </button>
-      </div>
-
-      {campaigns.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-16 text-center space-y-3">
-          <p className="text-5xl">📧</p>
-          <p className="font-black text-gray-700 text-lg">No hay campañas de email aún</p>
-          <p className="text-sm text-gray-400">Crea tu primera campaña para llegar a tus clientes por correo</p>
-          <button onClick={onNew} className="mt-2 px-6 py-3 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
-            + Nueva Campaña
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {campaigns.map(c => (
-            <div key={c.id} className="bg-white border border-gray-100 rounded-2xl p-5 flex items-center justify-between hover:shadow-md transition-all">
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-black text-gray-900 text-sm">{c.campaignName}</h3>
-                  <span className={`shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${STATUS_COLOR[c.status]}`}>
-                    {STATUS_LABEL[c.status]}
-                  </span>
+    <Card padding="sm">
+      <DataList
+        items={campaigns}
+        loading={loading}
+        empty={
+          <EmptyState
+            icon={Mail}
+            title="No hay campañas de email aún"
+            description={`Crea tu primera campaña para llegar a tus ${customers} por correo.`}
+            action={<Button variant="secondary" icon={Plus} onClick={onNew}>Nueva campaña</Button>}
+          />
+        }
+        renderItem={c => {
+          const status = STATUS[c.status];
+          return (
+            <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-text">{c.campaignName}</h3>
+                  <Badge tone={status.tone}><status.icon size={16} aria-hidden /> {status.label}</Badge>
                 </div>
-                <p className="text-xs text-gray-500 truncate">{c.subject}</p>
-                <div className="flex items-center gap-3 text-[10px] text-gray-400 font-bold">
+                <p className="truncate text-sm text-text-muted">{c.subject}</p>
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-text-muted tabular-nums">
                   <span>{c.emailsSent}{c.totalRecipients > 0 ? `/${c.totalRecipients}` : ''} enviados</span>
                   {c.status === 'SCHEDULED' && c.scheduledAt && (
-                    <span>· 🕐 Programado para {new Date(c.scheduledAt).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    <span className="inline-flex items-center gap-1">· <Clock size={16} aria-hidden /> Programado para {new Date(c.scheduledAt).toLocaleString('es-PE', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   )}
                   <span>· {new Date(c.createdAt).toLocaleDateString('es-PE')}</span>
-                </div>
+                </p>
               </div>
-              <div className="shrink-0 ml-4 flex items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-1">
                 {c.status === 'DRAFT' && (
-                  <button
-                    onClick={() => handleSendClick(c)}
-                    disabled={sendingId === c.id}
-                    className="px-4 py-2 bg-green-600 text-white text-xs font-black rounded-xl hover:bg-green-700 transition-all disabled:opacity-50"
-                  >
-                    {sendingId === c.id ? 'Enviando...' : '▶ Enviar'}
-                  </button>
+                  <Button size="sm" icon={Send} onClick={() => handleSendClick(c)} loading={sendingId === c.id}>
+                    {sendingId === c.id ? 'Enviando...' : 'Enviar'}
+                  </Button>
                 )}
                 {c.status === 'SCHEDULED' && (
-                  <button
-                    onClick={() => onUnschedule(c.id)}
-                    disabled={unschedulingId === c.id}
-                    className="px-3 py-2 border border-gray-200 text-gray-500 text-[10px] font-black rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
-                  >
-                    {unschedulingId === c.id ? '...' : 'Cancelar programación'}
-                  </button>
+                  <Button size="sm" variant="secondary" onClick={() => onUnschedule(c.id)} loading={unschedulingId === c.id}>
+                    Cancelar programación
+                  </Button>
                 )}
                 {c.status === 'SENDING' && (
-                  <button
-                    onClick={() => onComplete(c.id)}
-                    disabled={completingId === c.id}
-                    className="px-3 py-2 border border-gray-200 text-gray-500 text-[10px] font-black rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
-                  >
-                    {completingId === c.id ? '...' : 'Marcar como completada'}
-                  </button>
+                  <Button size="sm" variant="secondary" onClick={() => onComplete(c.id)} loading={completingId === c.id}>
+                    Marcar como completada
+                  </Button>
                 )}
                 {(c.status === 'DRAFT' || c.status === 'SCHEDULED') && (
-                  <button
-                    onClick={() => onEdit(c)}
-                    title="Editar campaña"
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all"
-                  >
-                    ✏️
-                  </button>
+                  <Button size="sm" variant="ghost" icon={Pencil} onClick={() => onEdit(c)} aria-label={`Editar campaña ${c.campaignName}`} />
                 )}
                 {c.status !== 'SENDING' && (
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={Trash2}
+                    className="text-danger hover:bg-danger/10 hover:text-danger"
                     onClick={() => handleDeleteClick(c)}
-                    disabled={deletingId === c.id}
-                    title="Eliminar campaña"
-                    className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                  >
-                    {deletingId === c.id ? '...' : '🗑️'}
-                  </button>
+                    loading={deletingId === c.id}
+                    aria-label={`Eliminar campaña ${c.campaignName}`}
+                  />
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          );
+        }}
+      />
+    </Card>
   );
 }

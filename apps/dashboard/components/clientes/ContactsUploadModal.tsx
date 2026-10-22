@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Download, FileText, Upload } from 'lucide-react';
 import { ContactImport } from '../../lib/api-client';
+import { Button, Modal, cn } from '../ui';
 
 interface ContactsUploadModalProps {
   open: boolean;
@@ -9,6 +11,8 @@ interface ContactsUploadModalProps {
   onUpload: (file: File) => void;
   uploading: boolean;
   lastResult: ContactImport | null;
+  /** Etiqueta del rubro en plural y minúsculas ("clientes", "pacientes"). */
+  customers: string;
 }
 
 function downloadTemplate() {
@@ -22,118 +26,112 @@ function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-export function ContactsUploadModal({ open, onClose, onUpload, uploading, lastResult }: ContactsUploadModalProps) {
+export function ContactsUploadModal({ open, onClose, onUpload, uploading, lastResult, customers }: ContactsUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  if (!open) return null;
-
-  const handleSubmit = () => {
-    if (selectedFile) onUpload(selectedFile);
-  };
+  // El <dialog> nativo deja montado el <input>: sin vaciarlo, elegir el mismo archivo otra vez no dispara onChange.
+  const clearInput = () => { if (fileInputRef.current) fileInputRef.current.value = ''; };
 
   const handleCloseAndReset = () => {
     setSelectedFile(null);
+    clearInput();
     onClose();
   };
 
+  const handleSubmit = () => {
+    if (!selectedFile) return;
+    onUpload(selectedFile);
+    clearInput();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
-          <div>
-            <h3 className="font-black text-gray-900">Subir Clientes Masivamente</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Importa tu base de clientes desde un archivo CSV o Excel</p>
-          </div>
-          <button onClick={handleCloseAndReset} className="text-gray-400 hover:text-gray-600 p-1">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <Modal
+      open={open}
+      onClose={handleCloseAndReset}
+      title={`Importar ${customers}`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={handleCloseAndReset}>{lastResult ? 'Cerrar' : 'Cancelar'}</Button>
+          {!lastResult && (
+            <Button icon={Upload} loading={uploading} disabled={!selectedFile} onClick={handleSubmit}>
+              {uploading ? 'Subiendo...' : 'Subir archivo'}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {!lastResult ? (
+          <>
+            <p className="text-text-muted">Importa tu base de {customers} desde un archivo CSV o Excel.</p>
+            <div className="space-y-2 rounded-control bg-primary-soft p-3">
+              <p className="text-sm font-medium text-text">Columnas esperadas</p>
+              <p className="text-sm text-text">
+                <strong>nombre</strong> (nombre y apellido), <strong>celular</strong>, <strong>email</strong> y <strong>dni</strong> (opcional).
+              </p>
+              <Button variant="ghost" size="sm" icon={Download} onClick={downloadTemplate}>
+                Descargar plantilla de ejemplo
+              </Button>
+            </div>
 
-        <div className="px-7 py-6 space-y-5">
-          {!lastResult ? (
-            <>
-              <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 space-y-1.5">
-                <p className="text-xs font-black text-orange-700">Columnas esperadas:</p>
-                <p className="text-xs text-orange-700">
-                  <strong>nombre</strong> (nombre y apellido), <strong>celular</strong>, <strong>email</strong>, y <strong>dni</strong> (opcional)
-                </p>
-                <button
-                  type="button"
-                  onClick={downloadTemplate}
-                  className="text-[10px] font-black text-orange-600 hover:underline mt-1"
-                >
-                  📥 Descargar plantilla de ejemplo
-                </button>
-              </div>
-
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex min-h-32 w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed border-border p-6 text-center transition-colors duration-200 hover:border-primary hover:bg-primary-soft motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {selectedFile ? (
+                <>
+                  <FileText size={24} aria-hidden className="text-primary" />
+                  <span className="text-sm font-medium text-text">{selectedFile.name}</span>
+                  <span className="text-xs text-text-muted">Toca para cambiar el archivo</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={24} aria-hidden className="text-primary" />
+                  <span className="text-sm font-medium text-text">Toca para elegir un archivo</span>
+                  <span className="text-xs text-text-muted">CSV, XLSX o XLS · Máx. 10 MB</span>
+                </>
+              )}
+            </button>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div
+              className={cn(
+                'flex items-start gap-2 rounded-control p-3',
+                lastResult.failedRows === 0 ? 'bg-success/10' : 'bg-secondary/20',
+              )}
+            >
+              {lastResult.failedRows === 0
+                ? <CheckCircle2 size={20} aria-hidden className="mt-0.5 shrink-0 text-success" />
+                : <AlertTriangle size={20} aria-hidden className="mt-0.5 shrink-0 text-text" />}
               <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  className="hidden"
-                  onChange={e => setSelectedFile(e.target.files?.[0] || null)}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center hover:border-orange-300 hover:bg-orange-50/50 transition-all"
-                >
-                  {selectedFile ? (
-                    <>
-                      <p className="text-3xl mb-2">📄</p>
-                      <p className="font-black text-sm text-gray-900">{selectedFile.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">Click para cambiar el archivo</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-3xl mb-2">📤</p>
-                      <p className="font-black text-sm text-gray-700">Click para seleccionar un archivo</p>
-                      <p className="text-[10px] text-gray-400 mt-1">CSV, XLSX o XLS · Máx 10MB</p>
-                    </>
-                  )}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-3">
-              <div className={`rounded-xl px-4 py-3 border ${lastResult.failedRows === 0 ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-200'}`}>
-                <p className="text-sm font-black text-gray-900">
-                  ✅ {lastResult.importedRows} de {lastResult.totalRows} clientes importados
+                <p className="text-sm font-medium text-text">
+                  {lastResult.importedRows} de {lastResult.totalRows} {customers} importados
                 </p>
                 {lastResult.failedRows > 0 && (
-                  <p className="text-xs font-bold text-amber-700 mt-1">⚠️ {lastResult.failedRows} filas con errores</p>
+                  <p className="text-sm text-text">{lastResult.failedRows} filas con errores</p>
                 )}
               </div>
-              {lastResult.errorLog && lastResult.errorLog.length > 0 && (
-                <div className="max-h-40 overflow-y-auto space-y-1 bg-gray-50 rounded-xl p-3">
-                  {lastResult.errorLog.slice(0, 10).map((err, i) => (
-                    <p key={i} className="text-[10px] text-gray-500 font-mono">Fila {err.row}: {err.error}</p>
-                  ))}
-                </div>
-              )}
             </div>
-          )}
-        </div>
-
-        <div className="px-7 py-5 border-t border-gray-100 flex gap-3">
-          <button onClick={handleCloseAndReset} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-black text-gray-600 hover:bg-gray-50 transition-all">
-            {lastResult ? 'Cerrar' : 'Cancelar'}
-          </button>
-          {!lastResult && (
-            <button
-              onClick={handleSubmit}
-              disabled={!selectedFile || uploading}
-              className="flex-1 py-3 bg-[#F26122] text-white rounded-xl text-sm font-black hover:opacity-90 transition-all disabled:opacity-50"
-            >
-              {uploading ? 'Subiendo...' : 'Subir Archivo'}
-            </button>
-          )}
-        </div>
+            {lastResult.errorLog && lastResult.errorLog.length > 0 && (
+              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-control bg-background p-3">
+                {lastResult.errorLog.slice(0, 10).map((err, i) => (
+                  <li key={i} className="text-xs text-text-muted">Fila {err.row}: {err.error}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

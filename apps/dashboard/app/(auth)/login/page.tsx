@@ -1,7 +1,11 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import AuthCard, { AuthError, AuthLogo } from '../../../components/AuthCard';
+import { Button, Input } from '../../../components/ui';
 
 export default function LoginPage() {
   return (
@@ -70,79 +74,59 @@ function LoginContent() {
 
   if (showSplash) {
     return (
-      <div className="min-h-screen bg-[#F7F8FA] flex flex-col items-center justify-center gap-6">
-        <h1 className="text-4xl font-black text-[#F26122] tracking-tighter">WUARIKE</h1>
-        <div className="w-12 h-12 border-4 border-[#F26122] border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Cargando tu panel...</p>
-      </div>
+      <main role="status" className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
+        <AuthLogo className="text-3xl" />
+        <Loader2 size={24} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+        <p className="text-sm text-text-muted">Cargando tu panel...</p>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-        <div className="p-8 md:p-12">
-          <div className="mb-10 text-center">
-            <h1 className="text-4xl font-black text-[#F26122] tracking-tighter mb-2">WUARIKE</h1>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Admin Control Center</p>
+    <AuthCard
+      title="Inicia sesión"
+      subtitle="Entra al panel de tu negocio."
+      footer="Solo personal autorizado. Acceso monitoreado."
+    >
+      {sessionExpired && (
+        <p role="status" className="mb-4 flex items-start gap-2 rounded-control bg-secondary/20 px-3 py-2.5 text-sm text-text">
+          <AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0" />
+          <span>Tu sesión expiró. Inicia sesión nuevamente.</span>
+        </p>
+      )}
+
+      <form onSubmit={handleLogin} className="space-y-4">
+        <Input
+          label="Correo electrónico"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="tu@correo.com"
+          required
+        />
+        <div>
+          <Input
+            label="Contraseña"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <div className="mt-1 text-right">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center rounded-control text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              ¿Olvidaste tu contraseña?
+            </Link>
           </div>
-
-          {sessionExpired && (
-            <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-sm font-bold text-center">
-              ⚠️ Tu sesión expiró. Inicia sesión nuevamente.
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Email corporativo</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@wuarike.com"
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#F26122]/10 focus:border-[#F26122] outline-none transition-all font-medium py-3"
-                required
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-bold text-gray-700">Contraseña</label>
-                <a href="/forgot-password" className="text-xs font-bold text-[#F26122] hover:opacity-80">
-                  ¿Olvidaste tu contraseña?
-                </a>
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-[#F26122]/10 focus:border-[#F26122] outline-none transition-all font-medium py-3"
-                required
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#F26122] text-white py-4 rounded-2xl font-bold shadow-lg shadow-[#F26122]/20 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              {loading ? 'Cargando...' : 'Entrar al Panel'}
-            </button>
-          </form>
-
-          <p className="mt-8 text-center text-gray-400 text-xs font-semibold">
-            Solo personal autorizado. Acceso monitoreado.
-          </p>
         </div>
-      </div>
-    </div>
+
+        {error && <AuthError>{error}</AuthError>}
+
+        <Button type="submit" loading={loading} className="w-full">
+          {loading ? 'Entrando...' : 'Entrar al panel'}
+        </Button>
+      </form>
+    </AuthCard>
   );
 }

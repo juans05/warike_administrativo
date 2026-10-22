@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
+import { AlertTriangle, Bold, Clock, Heading2, Italic, Link2, List, Mail, Plus, Zap } from 'lucide-react';
 import { EmailCampaignFormData, AudienceSource } from '../../hooks/useEmailCampaigns';
 import { EMAIL_TEMPLATES, EmailTemplateOption } from '../../lib/email-templates';
+import { useCustomerLabels } from '../../hooks/useCustomerLabels';
+import { Button, CloseButton, Input } from '../ui';
 
 interface EmailCampaignModalProps {
   open: boolean;
@@ -24,22 +27,19 @@ function minScheduleValue() {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
-function ToolbarButton({ active, onClick, label, children }: { active?: boolean; onClick: () => void; label: string; children: React.ReactNode }) {
+function ToolbarButton({ active, onClick, label, icon: Icon }: { active?: boolean; onClick: () => void; label: string; icon: React.ElementType }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all ${
-        active ? 'bg-[#F26122] text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-      }`}
-    >
-      {children}
-    </button>
+    <Button size="sm" variant={active ? 'primary' : 'ghost'} onClick={onClick} aria-label={label} aria-pressed={!!active} title={label} className="w-9 px-0">
+      <Icon size={16} aria-hidden />
+    </Button>
   );
 }
 
+const groupLabel = 'mb-1.5 block text-sm font-medium text-text';
+
 export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, creating, audienceCount, isEditing }: EmailCampaignModalProps) {
+  const { customer, customers } = useCustomerLabels();
+  const titleId = useId();
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -53,6 +53,7 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none min-h-[220px] px-4 py-3 focus:outline-none',
+        'aria-label': 'Contenido del correo',
       },
     },
   });
@@ -75,7 +76,7 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
     editor?.chain().focus().insertContent('{nombre}').run();
   };
 
-  const previewHtml = (form.bodyHtml || '<p style="color:#9ca3af;padding:16px;">Escribe el contenido del correo para ver la vista previa aquí.</p>')
+  const previewHtml = (form.bodyHtml || '<p style="color:gray;padding:16px;font-family:sans-serif;">Escribe el contenido del correo para ver la vista previa aquí.</p>')
     .replace(/\{nombre\}/g, 'Juan');
 
   const toggleAudienceSource = (source: AudienceSource) => {
@@ -98,182 +99,147 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 sticky top-0 bg-white z-10">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-card bg-surface text-text shadow-modal">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-5 py-3">
           <div>
-            <h3 className="font-black text-gray-900">{isEditing ? 'Editar Campaña de Email' : 'Nueva Campaña de Email'}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{isEditing ? 'Actualiza el contenido de tu borrador' : 'Completa los campos para crear tu campaña'}</p>
+            <h2 id={titleId} className="text-base font-semibold">{isEditing ? 'Editar campaña de email' : 'Nueva campaña de email'}</h2>
+            <p className="mt-0.5 text-sm text-text-muted">{isEditing ? 'Actualiza el contenido de tu borrador' : 'Completa los campos para crear tu campaña'}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <CloseButton onClose={onClose} />
         </div>
 
-        <div className="px-7 py-6 space-y-5">
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Nombre de la Campaña</label>
-            <input
-              type="text"
-              value={form.campaignName}
-              onChange={e => onChange(p => ({ ...p, campaignName: e.target.value }))}
-              placeholder="Ej: Promo fin de semana julio"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-            />
-          </div>
+        <div className="space-y-5 px-5 py-5">
+          <Input
+            label="Nombre de la campaña"
+            value={form.campaignName}
+            onChange={e => onChange(p => ({ ...p, campaignName: e.target.value }))}
+            placeholder="Ej: Promo fin de semana julio"
+          />
+
+          <Input
+            label="Asunto del correo"
+            value={form.subject}
+            onChange={e => onChange(p => ({ ...p, subject: e.target.value }))}
+            placeholder="Ej: ¡Oferta especial para ti, {nombre}!"
+          />
 
           <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Asunto del Correo</label>
-            <input
-              type="text"
-              value={form.subject}
-              onChange={e => onChange(p => ({ ...p, subject: e.target.value }))}
-              placeholder="Ej: 🍽️ ¡Oferta especial para ti, {nombre}!"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Empezar desde una plantilla</label>
-            <div className="grid grid-cols-3 gap-2">
+            <p className={groupLabel}>Empezar desde una plantilla</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {EMAIL_TEMPLATES.map(t => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => applyTemplate(t)}
-                  className="text-left px-3 py-3 rounded-xl border border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all"
+                  className="rounded-control border border-border px-3 py-3 text-left transition-colors duration-200 motion-reduce:transition-none hover:border-primary hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <div className="text-sm font-black text-gray-900">{t.label}</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">{t.description}</div>
+                  <span className="block text-sm font-semibold text-text">{t.label}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">{t.description}</span>
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest">Contenido del Correo</label>
-              <button
-                type="button"
-                onClick={insertNombre}
-                className="text-[10px] font-black text-orange-600 hover:underline"
-              >
-                ➕ Insertar {'{nombre}'}
-              </button>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium text-text">Contenido del correo</p>
+              <Button size="sm" variant="ghost" icon={Plus} onClick={insertNombre}>Insertar {'{nombre}'}</Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-1.5 px-2 py-2 border-b border-gray-100 bg-gray-50">
-                  <ToolbarButton label="Negrita" active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}>B</ToolbarButton>
-                  <ToolbarButton label="Cursiva" active={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><i>I</i></ToolbarButton>
-                  <ToolbarButton label="Título" active={editor?.isActive('heading', { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</ToolbarButton>
-                  <ToolbarButton label="Lista" active={editor?.isActive('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()}>•</ToolbarButton>
-                  <ToolbarButton label="Enlace" active={editor?.isActive('link')} onClick={toggleLink}>🔗</ToolbarButton>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="overflow-hidden rounded-control border border-border">
+                <div className="flex items-center gap-1 border-b border-border bg-background px-2 py-1.5" role="toolbar" aria-label="Formato">
+                  <ToolbarButton label="Negrita" icon={Bold} active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()} />
+                  <ToolbarButton label="Cursiva" icon={Italic} active={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()} />
+                  <ToolbarButton label="Título" icon={Heading2} active={editor?.isActive('heading', { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} />
+                  <ToolbarButton label="Lista" icon={List} active={editor?.isActive('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()} />
+                  <ToolbarButton label="Enlace" icon={Link2} active={editor?.isActive('link')} onClick={toggleLink} />
                 </div>
                 <EditorContent editor={editor} />
               </div>
 
-              <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
-                <div className="px-3 py-2 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  Vista Previa
-                </div>
-                <iframe
-                  srcDoc={previewHtml}
-                  title="Vista previa del email"
-                  className="w-full min-h-[220px] bg-white"
-                />
+              <div className="overflow-hidden rounded-control border border-border bg-background">
+                <div className="border-b border-border px-3 py-2 text-xs font-medium text-text-muted">Vista previa</div>
+                <iframe srcDoc={previewHtml} title="Vista previa del email" className="min-h-[220px] w-full bg-surface" />
               </div>
             </div>
-            <p className="text-[10px] text-gray-400 mt-1.5">Así se verá aproximadamente en la bandeja de entrada de tu cliente.</p>
+            <p className="mt-1.5 text-xs text-text-muted">Así se verá aproximadamente en la bandeja de entrada de tu {customer}.</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">¿A quién le llega?</label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.audienceSources.includes('feedback')}
-                  onChange={() => toggleAudienceSource('feedback')}
-                  className="w-4 h-4"
-                />
+          <fieldset>
+            <legend className={groupLabel}>¿A quién le llega?</legend>
+            <div className="flex flex-wrap gap-x-6">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-text">
+                <input type="checkbox" checked={form.audienceSources.includes('feedback')} onChange={() => toggleAudienceSource('feedback')} className="h-4 w-4 accent-primary" />
                 Fidelización
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.audienceSources.includes('contacts')}
-                  onChange={() => toggleAudienceSource('contacts')}
-                  className="w-4 h-4"
-                />
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-text">
+                <input type="checkbox" checked={form.audienceSources.includes('contacts')} onChange={() => toggleAudienceSource('contacts')} className="h-4 w-4 accent-primary" />
                 Contactos
               </label>
             </div>
-            <p className="text-[10px] text-gray-400 mt-1.5">
-              Fidelización: clientes que dejaron su email y aceptaron promociones al dejar una reseña. Contactos: tu agenda de WhatsApp/importados con email y consentimiento. Si marcas los dos, se manda a la unión de ambos (sin duplicados).
+            <p className="mt-1.5 text-xs text-text-muted">
+              Fidelización: {customers} que dejaron su email y aceptaron promociones al dejar una reseña. Contactos: tu agenda de WhatsApp/importados con email y consentimiento. Si marcas los dos, se manda a la unión de ambos (sin duplicados).
             </p>
-          </div>
+          </fieldset>
 
-          <div className={`rounded-xl px-4 py-3 border ${audienceCount > 0 ? 'bg-orange-50 border-orange-100' : 'bg-amber-50 border-amber-200'}`}>
+          <div aria-live="polite" className={`flex items-start gap-2 rounded-control border px-4 py-3 text-sm ${
+            form.audienceSources.length === 0 ? 'border-danger/30 bg-danger/10 text-danger'
+              : audienceCount > 0 ? 'border-primary/20 bg-primary-soft text-text'
+              : 'border-secondary/60 bg-secondary/10 text-text'
+          }`}>
             {form.audienceSources.length === 0 ? (
-              <p className="text-xs font-bold text-red-600">⚠️ Elegí al menos una fuente de destinatarios arriba.</p>
+              <><AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0" /> Elige al menos una fuente de destinatarios arriba.</>
             ) : audienceCount > 0 ? (
-              <p className="text-xs font-bold text-orange-700">📬 Esta campaña llegará a <strong>{audienceCount}</strong> cliente{audienceCount === 1 ? '' : 's'}.</p>
+              <><Mail size={16} aria-hidden className="mt-0.5 shrink-0" /> <span>Esta campaña llegará a <strong className="tabular-nums">{audienceCount}</strong> {audienceCount === 1 ? customer : customers}.</span></>
             ) : (
-              <p className="text-xs font-bold text-amber-700">⚠️ Nadie en esa(s) fuente(s) aceptó recibir promociones por email todavía. Aun así puedes guardar el borrador.</p>
+              <><AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0" /> Nadie en esa(s) fuente(s) aceptó recibir promociones por email todavía. Aun así puedes guardar el borrador.</>
             )}
           </div>
 
           {!isEditing && (
             <div>
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">¿Cuándo enviar?</label>
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
-                {([['now', '⚡ Enviar ahora'], ['schedule', '🕐 Programar']] as const).map(([id, label]) => (
+              <p className={groupLabel}>¿Cuándo enviar?</p>
+              <div className="inline-flex gap-1 rounded-control bg-background p-1" role="group" aria-label="¿Cuándo enviar?">
+                {([['now', 'Enviar ahora', Zap], ['schedule', 'Programar', Clock]] as const).map(([id, label, Icon]) => (
                   <button
                     key={id}
                     type="button"
+                    aria-pressed={form.sendMode === id}
                     onClick={() => onChange(p => ({ ...p, sendMode: id }))}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                      form.sendMode === id ? 'bg-white shadow-sm text-orange-600' : 'text-gray-500 hover:text-gray-700'
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-control px-4 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      form.sendMode === id ? 'bg-surface text-primary shadow-card' : 'text-text-muted hover:text-text'
                     }`}
                   >
-                    {label}
+                    <Icon size={16} aria-hidden /> {label}
                   </button>
                 ))}
               </div>
 
               {form.sendMode === 'schedule' && (
-                <div className="mt-3">
-                  <input
+                <div className="mt-3 max-w-xs">
+                  <Input
+                    label="Fecha y hora de envío"
                     type="datetime-local"
                     value={form.scheduledAt}
                     min={minScheduleValue()}
                     onChange={e => onChange(p => ({ ...p, scheduledAt: e.target.value }))}
-                    className="px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+                    hint="La campaña se enviará automáticamente en esta fecha y hora (zona horaria: Lima)."
                   />
-                  <p className="text-[10px] text-gray-400 mt-1.5">La campaña se enviará automáticamente en esta fecha y hora (zona horaria: Lima).</p>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="px-7 py-5 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white">
-          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-black text-gray-600 hover:bg-gray-50 transition-all">
-            Cancelar
-          </button>
-          <button
-            onClick={onSubmit}
-            disabled={creating}
-            className="flex-1 py-3 bg-[#F26122] text-white rounded-xl text-sm font-black hover:opacity-90 transition-all disabled:opacity-50"
-          >
+        <div className="sticky bottom-0 flex gap-2 border-t border-border bg-surface px-5 py-3">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>Cancelar</Button>
+          <Button className="flex-1" onClick={onSubmit} loading={creating}>
             {isEditing
-              ? (creating ? 'Guardando...' : 'Guardar Cambios')
-              : (creating ? 'Creando...' : form.sendMode === 'now' ? 'Crear y Enviar' : 'Programar Campaña')}
-          </button>
+              ? (creating ? 'Guardando...' : 'Guardar cambios')
+              : (creating ? 'Creando...' : form.sendMode === 'now' ? 'Crear y enviar' : 'Programar campaña')}
+          </Button>
         </div>
       </div>
     </div>

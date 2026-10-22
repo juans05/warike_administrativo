@@ -1,28 +1,72 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { AlertCircle, AlertTriangle, Coins, Gift, Info, Lock, Plus, Send, Smartphone, Star, Trash2, Wallet, type LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
-import { toast } from 'sonner';
-import { SkeletonPage } from '../../../components/SkeletonLoader';
+import { plural } from '../../../lib/modules';
+import {
+  Badge, Button, Card, DataList, EmptyState, Input, PageHeader, Skeleton, StatTile, Switch, Textarea, buttonStyles, cn,
+} from '../../../components/ui';
+
+type ProgramType = 'stamps' | 'points';
+
+interface ProgramForm {
+  type: ProgramType;
+  stampsToReward: number;
+  pointsPerVisit: number;
+  minHoursBetweenVisits: number;
+  rewardTitle: string;
+  rewardDescription: string;
+  isActive: boolean;
+  winbackEnabled: boolean;
+  winbackMessage: string;
+}
+
+const DEFAULT_FORM: ProgramForm = {
+  type: 'stamps',
+  stampsToReward: 10,
+  pointsPerVisit: 10,
+  minHoursBetweenVisits: 24,
+  rewardTitle: '',
+  rewardDescription: '',
+  isActive: true,
+  winbackEnabled: false,
+  winbackMessage: '',
+};
+
+const formFromProgram = (p: any): ProgramForm => ({
+  type: p.type || 'stamps',
+  stampsToReward: p.stampsToReward || 10,
+  pointsPerVisit: p.pointsPerVisit || 10,
+  minHoursBetweenVisits: p.minHoursBetweenVisits ?? 24,
+  rewardTitle: p.rewardTitle || '',
+  rewardDescription: p.rewardDescription || '',
+  isActive: p.isActive ?? true,
+  winbackEnabled: p.winbackEnabled ?? false,
+  winbackMessage: p.winbackMessage || '',
+});
 
 export default function FidelizacionPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const customer = (activePlace?.verticalConfig?.labels.customer ?? 'Cliente').toLowerCase();
+  const customers = plural(customer);
+
   const [program, setProgram] = useState<any>(null);
   const [rewards, setRewards] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
-  const [type, setType] = useState<'stamps' | 'points'>('stamps');
-  const [stampsToReward, setStampsToReward] = useState(10);
-  const [pointsPerVisit, setPointsPerVisit] = useState(10);
-  const [minHoursBetweenVisits, setMinHoursBetweenVisits] = useState(24);
-  const [rewardTitle, setRewardTitle] = useState('');
-  const [rewardDescription, setRewardDescription] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [winbackEnabled, setWinbackEnabled] = useState(false);
-  const [winbackMessage, setWinbackMessage] = useState('');
+  // `form` es lo que se edita; `savedForm`, lo último guardado (para saber si hay cambios).
+  const [form, setForm] = useState<ProgramForm>(DEFAULT_FORM);
+  const [savedForm, setSavedForm] = useState<ProgramForm>(DEFAULT_FORM);
+  const set = (patch: Partial<ProgramForm>) => setForm((prev) => ({ ...prev, ...patch }));
+  const isDirty = !program || (Object.keys(form) as (keyof ProgramForm)[]).some((key) => form[key] !== savedForm[key]);
 
   const [newRewardTitle, setNewRewardTitle] = useState('');
   const [newRewardStamps, setNewRewardStamps] = useState(10);
@@ -36,32 +80,36 @@ export default function FidelizacionPage() {
 
   useEffect(() => {
     if (!activePlaceId) { setIsLoading(false); return; }
+    // Si cambia el local antes de que responda el anterior, esa respuesta no debe llenar el formulario del nuevo.
+    let cancelled = false;
+    let failed = false;
+    setIsLoading(true);
+    setLoadFailed(false);
+    setSubscriptionBlocked(null);
     Promise.all([
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`).catch((err) => {
+        if (cancelled) return null;
         if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
           setSubscriptionBlocked(err.message);
+        } else {
+          failed = true; // sin esto, "Guardar" pisaría el programa real con los valores por defecto
         }
         return null;
       }),
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards`).catch(() => []),
       fetchWithAuth(`/business/places/${activePlaceId}/loyalty/notifications-status`).catch(() => null),
     ]).then(([prog, rwds, status]) => {
+      if (cancelled) return;
       setNotifStatus(status);
-      if (prog) {
-        setProgram(prog);
-        setType(prog.type || 'stamps');
-        setStampsToReward(prog.stampsToReward || 10);
-        setPointsPerVisit(prog.pointsPerVisit || 10);
-        setMinHoursBetweenVisits(prog.minHoursBetweenVisits ?? 24);
-        setRewardTitle(prog.rewardTitle || '');
-        setRewardDescription(prog.rewardDescription || '');
-        setIsActive(prog.isActive ?? true);
-        setWinbackEnabled(prog.winbackEnabled ?? false);
-        setWinbackMessage(prog.winbackMessage || '');
-      }
+      setProgram(prog);
+      const loaded = prog ? formFromProgram(prog) : DEFAULT_FORM;
+      setForm(loaded);
+      setSavedForm(loaded);
       setRewards(Array.isArray(rwds) ? rwds : []);
-    }).finally(() => setIsLoading(false));
-  }, [activePlaceId]);
+      setLoadFailed(failed);
+    }).finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activePlaceId, reloadKey]);
 
   const handleSave = async () => {
     if (!activePlaceId) return;
@@ -69,9 +117,10 @@ export default function FidelizacionPage() {
     try {
       const saved = await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/program`, {
         method: 'PUT',
-        body: JSON.stringify({ type, stampsToReward, pointsPerVisit, minHoursBetweenVisits, rewardTitle, rewardDescription, isActive, winbackEnabled, winbackMessage }),
+        body: JSON.stringify(form),
       });
       setProgram(saved);
+      setSavedForm(form);
       toast.success('Programa guardado');
     } catch { toast.error('Error al guardar'); }
     setIsSaving(false);
@@ -94,8 +143,10 @@ export default function FidelizacionPage() {
 
   const handleDeleteReward = async (rewardId: string) => {
     if (!activePlaceId) return;
-    await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards/${rewardId}`, { method: 'DELETE' });
-    setRewards(prev => prev.filter(r => r.id !== rewardId));
+    try {
+      await fetchWithAuth(`/business/places/${activePlaceId}/loyalty/rewards/${rewardId}`, { method: 'DELETE' });
+      setRewards(prev => prev.filter(r => r.id !== rewardId));
+    } catch { toast.error('Error al eliminar el premio'); }
   };
 
   const handleSendCampaign = async () => {
@@ -106,386 +157,375 @@ export default function FidelizacionPage() {
         method: 'POST',
         body: JSON.stringify({ header: campaignHeader, body: campaignBody }),
       });
-      toast.success(`Enviado a ${res.totalQueued} clientes`);
+      toast.success(`Enviado a ${res.totalQueued} ${res.totalQueued === 1 ? customer : customers}`);
       setCampaignHeader('');
       setCampaignBody('');
     } catch (err: any) { toast.error(err?.message || 'Error al enviar la campaña'); }
     setIsSendingCampaign(false);
   };
 
-  if (isLoading) return <SkeletonPage type="default" />;
+  if (isLoading) return <FidelizacionSkeleton />;
 
   if (subscriptionBlocked) {
     return (
-      <div className="max-w-2xl rounded-2xl p-8 border border-[#F26122]/30 bg-[#F26122]/5 space-y-4">
-        <h1 className="text-2xl font-black text-text">Fidelización disponible en un plan superior</h1>
-        <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
-        <a
-          href="/suscripcion"
-          className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-        >
-          Ver planes
-        </a>
-      </div>
+      <EmptyState
+        icon={Lock}
+        title="Fidelización disponible en un plan superior"
+        description={subscriptionBlocked}
+        action={<Link href="/suscripcion" className={buttonStyles('primary')}>Ver planes</Link>}
+      />
     );
   }
 
+  if (loadFailed) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="No pudimos cargar tu programa"
+        description="Revisa tu conexión e inténtalo de nuevo."
+        action={<Button variant="secondary" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</Button>}
+      />
+    );
+  }
+
+  const audience = notifStatus?.walletAudience ?? 0;
+
   return (
-    <div className="max-w-6xl space-y-8 pb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="space-y-6">
+      <PageHeader
+        title="Fidelización"
+        subtitle={`Recompensa a tus ${customers} frecuentes con sellos o puntos canjeables.`}
+      />
 
-      {/* ── HEADER ── */}
-      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
-        <div className="space-y-1">
-          <h1 className="text-5xl font-black text-text tracking-tight font-warike">Programa de Fidelización</h1>
-          <p className="text-text-muted font-bold text-lg max-w-xl leading-snug">
-            Recompensa a tus clientes frecuentes con sellos o puntos canjeables.
-          </p>
+      {program && (
+        <div className="grid grid-cols-3 gap-3">
+          <StatTile label="Tarjetas" value={program.totalCards || 0} />
+          <StatTile label="Canjes" value={program.totalRedemptions || 0} />
+          <StatTile label="Escaneos" value={program.totalScans || 0} />
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-            {isActive ? 'Activo' : 'Inactivo'}
-          </span>
-          <button
-            onClick={() => setIsActive(!isActive)}
-            className={`w-14 h-8 rounded-full relative transition-colors ${isActive ? 'bg-primary' : 'bg-gray-200'}`}
-          >
-            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${isActive ? 'right-1' : 'left-1'}`} />
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="btn-primary flex items-center gap-2 px-6 py-3 text-sm disabled:opacity-50"
-          >
-            {isSaving ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : '💾'}
-            {isSaving ? 'Guardando...' : 'Guardar'}
-          </button>
-        </div>
-      </header>
+      )}
 
-      {/* ── GRID PRINCIPAL ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* ── COLUMNA IZQUIERDA: Tipo + Configuración ── */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div className="space-y-6">
+          {/* Programa */}
+          <Card padding="lg" className="space-y-5">
+            <CardTitle title="Programa" />
+            <Switch label="Programa activo" checked={form.isActive} onChange={(isActive) => set({ isActive })} />
 
-          {/* Tipo de programa */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-primary rounded-full" />
-              Tipo de Programa
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {(['stamps', 'points'] as const).map(t => (
+            <div role="radiogroup" aria-label="Tipo de programa" className="grid grid-cols-2 gap-3">
+              {([
+                ['stamps', 'Sellos', '1 sello por visita', Star],
+                ['points', 'Puntos', 'Puntos según el consumo', Coins],
+              ] as [ProgramType, string, string, LucideIcon][]).map(([value, label, hint, Icon]) => (
                 <button
-                  key={t}
-                  onClick={() => setType(t)}
-                  className={`p-5 rounded-[1.5rem] border-2 text-center space-y-2 transition-all ${type === t
-                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10'
-                    : 'border-border bg-background hover:border-primary/30'}`}
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.type === value}
+                  onClick={() => set({ type: value })}
+                  className={cn(
+                    'flex min-h-11 flex-col items-center gap-1 rounded-card border-2 p-4 text-center transition-colors duration-200 motion-reduce:transition-none',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                    form.type === value ? 'border-primary bg-primary-soft' : 'border-border hover:border-primary',
+                  )}
                 >
-                  <div className="text-3xl">{t === 'stamps' ? '⭐' : '🪙'}</div>
-                  <p className="font-black text-text text-sm">{t === 'stamps' ? 'Sellos' : 'Puntos'}</p>
-                  <p className="text-[9px] font-bold text-text-muted leading-snug">
-                    {t === 'stamps' ? '1 sello por visita' : 'Puntos según el consumo'}
-                  </p>
+                  <Icon size={24} aria-hidden className="text-primary" />
+                  <span className="text-sm font-medium text-text">{label}</span>
+                  <span className="text-xs text-text-muted">{hint}</span>
                 </button>
               ))}
             </div>
-          </section>
 
-          {/* Configuración */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-5">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-secondary rounded-full" />
-              Configuración
-            </h2>
-
-            {type === 'stamps' ? (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Sellos para ganar premio</label>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setStampsToReward(s => Math.max(1, s - 1))} className="w-10 h-10 rounded-xl bg-background border border-border font-black text-lg hover:bg-primary/5 transition-all">−</button>
-                  <span className="flex-1 text-center font-black text-2xl text-text">{stampsToReward}</span>
-                  <button onClick={() => setStampsToReward(s => Math.min(50, s + 1))} className="w-10 h-10 rounded-xl bg-background border border-border font-black text-lg hover:bg-primary/5 transition-all">+</button>
-                </div>
-                <p className="text-[10px] font-bold text-text-muted text-center">
-                  {stampsToReward} sellos = 1 premio
-                </p>
-              </div>
+            {form.type === 'stamps' ? (
+              <NumberInput
+                label="Sellos para ganar premio"
+                min={1}
+                max={50}
+                value={form.stampsToReward}
+                onChange={(stampsToReward) => set({ stampsToReward })}
+                hint={`${form.stampsToReward} sellos = 1 premio`}
+              />
             ) : (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Puntos por visita</label>
-                <input type="number" min={1} value={pointsPerVisit} onChange={e => setPointsPerVisit(+e.target.value)} className="input-premium w-full" />
-              </div>
+              <NumberInput
+                label="Puntos por visita"
+                min={1}
+                value={form.pointsPerVisit}
+                onChange={(pointsPerVisit) => set({ pointsPerVisit })}
+              />
             )}
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Espera mínima entre visitas (horas)</label>
-              <input
-                type="number"
-                min={0}
-                value={minHoursBetweenVisits}
-                onChange={e => setMinHoursBetweenVisits(Math.max(0, +e.target.value))}
-                className="input-premium w-full"
-              />
-              <p className="text-[10px] font-bold text-text-muted">
-                Evita que el mismo cliente sume sellos varias veces seguidas. Usa 0 para desactivar el límite.
-              </p>
-            </div>
+            <NumberInput
+              label="Espera mínima entre visitas (horas)"
+              min={0}
+              value={form.minHoursBetweenVisits}
+              onChange={(minHoursBetweenVisits) => set({ minHoursBetweenVisits })}
+              hint={`Evita que el mismo ${customer} sume sellos varias veces seguidas. Usa 0 para desactivar el límite.`}
+            />
+            <Input
+              label="Premio principal"
+              value={form.rewardTitle}
+              onChange={(e) => set({ rewardTitle: e.target.value })}
+              placeholder="Ej: 20% de descuento en tu próxima visita"
+            />
+            <Textarea
+              label="Descripción del premio"
+              rows={2}
+              value={form.rewardDescription}
+              onChange={(e) => set({ rewardDescription: e.target.value })}
+              placeholder="Ej: Válido por 30 días, no acumulable con otras promociones"
+            />
+          </Card>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Premio principal</label>
-              <input
-                type="text"
-                value={rewardTitle}
-                onChange={e => setRewardTitle(e.target.value)}
-                placeholder="Ej: Ceviche gratis, 20% de descuento..."
-                className="input-premium w-full"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-text-muted uppercase tracking-widest">Descripción del premio</label>
-              <textarea
-                value={rewardDescription}
-                onChange={e => setRewardDescription(e.target.value)}
-                placeholder="Ej: Un ceviche personal de cortesía en tu próxima visita"
-                className="input-premium w-full resize-none"
-                rows={2}
-              />
-            </div>
-          </section>
-
-          {/* Premios adicionales */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-accent rounded-full" />
-              Premios Adicionales
-            </h2>
-
-            {rewards.length > 0 && (
-              <div className="space-y-2">
-                {rewards.map(r => (
-                  <div key={r.id} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border">
-                    <div>
-                      <p className="font-black text-text text-sm">{r.title}</p>
-                      <p className="text-[9px] font-bold text-text-muted">{r.stampsCost} sellos</p>
-                    </div>
-                    <button onClick={() => handleDeleteReward(r.id)} className="w-7 h-7 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-all text-xs font-black flex items-center justify-center">✕</button>
+          {/* Recompensas */}
+          <Card padding="lg" className="space-y-4">
+            <CardTitle title="Recompensas" subtitle={`Premios adicionales que tus ${customers} canjean con sellos.`} />
+            <DataList
+              items={rewards}
+              empty={
+                <EmptyState
+                  icon={Gift}
+                  headingLevel="h3"
+                  title="Aún no tienes recompensas adicionales"
+                  description="Agrega premios con distinto costo en sellos."
+                />
+              }
+              renderItem={(reward) => (
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-text">{reward.title}</p>
+                    <p className="text-xs tabular-nums text-text-muted">{reward.stampsCost} sellos</p>
                   </div>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                type="text"
+                  <Button
+                    variant="ghost"
+                    icon={Trash2}
+                    aria-label={`Eliminar ${reward.title}`}
+                    onClick={() => handleDeleteReward(reward.id)}
+                    className="w-11 px-0"
+                  />
+                </div>
+              )}
+            />
+            <div className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+              <Input
+                label="Nombre del premio"
                 value={newRewardTitle}
-                onChange={e => setNewRewardTitle(e.target.value)}
+                onChange={(e) => setNewRewardTitle(e.target.value)}
                 placeholder="Nombre del premio"
-                className="input-premium flex-1 text-sm py-3"
               />
-              <input
-                type="number"
-                value={newRewardStamps}
-                onChange={e => setNewRewardStamps(+e.target.value)}
-                className="input-premium w-16 text-sm py-3 text-center"
-              />
-              <button
-                onClick={handleAddReward}
-                disabled={isAddingReward || !newRewardTitle}
-                className="bg-text text-white px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider hover:bg-primary transition-all disabled:opacity-50"
-              >
-                + Agregar
-              </button>
+              <NumberInput label="Sellos" min={1} value={newRewardStamps} onChange={setNewRewardStamps} />
+              <Button variant="secondary" icon={Plus} loading={isAddingReward} disabled={!newRewardTitle} onClick={handleAddReward}>
+                Agregar
+              </Button>
             </div>
-          </section>
+          </Card>
         </div>
 
-        {/* ── COLUMNA DERECHA: Wallet + Tarjeta ── */}
         <div className="space-y-6">
+          {/* Mensaje automático de reactivación */}
+          <Card padding="lg" className="space-y-4">
+            <CardTitle
+              title="Mensaje automático de reactivación"
+              subtitle={`Si un ${customer} con tarjeta no vuelve en 30 días, le enviamos este mensaje por WhatsApp automáticamente a las 10:00 a. m. Si sigue sin volver, se lo reenviamos cada 30 días.`}
+            />
+            {notifStatus && !notifStatus.whatsappConfigured && (
+              <Notice tone="warning" icon={AlertTriangle}>
+                Tu local no tiene un número de WhatsApp Business conectado, así que estos mensajes no se enviarán.{' '}
+                <Link href="/plazbot" className="font-medium text-primary-hover underline">Conectar WhatsApp</Link>
+              </Notice>
+            )}
+            <Switch label="Activar mensaje de reactivación" checked={form.winbackEnabled} onChange={(winbackEnabled) => set({ winbackEnabled })} />
+            <Textarea
+              label="Mensaje"
+              rows={3}
+              maxLength={300}
+              disabled={!form.winbackEnabled}
+              value={form.winbackMessage}
+              onChange={(e) => set({ winbackMessage: e.target.value })}
+              placeholder="Ej. ¡Te extrañamos! Vuelve por tu sello y no pierdas tu progreso."
+            />
+          </Card>
 
           {/* Wallet */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-5">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-              Wallet Digital
-              <span className="ml-auto text-[9px] font-black px-2.5 py-1 bg-green-100 text-green-700 rounded-full uppercase tracking-wider">Activo</span>
-            </h2>
-            <p className="text-xs font-bold text-text-muted leading-relaxed">
-              Tus clientes pueden agregar su tarjeta directamente al wallet de su móvil desde la página de su tarjeta. Los sellos se reflejan en tiempo real.
+          <Card padding="lg" className="space-y-5">
+            <CardTitle
+              title="Wallet"
+              subtitle={`Tus ${customers} pueden agregar su tarjeta al wallet de su móvil desde la página de su tarjeta. Los sellos se reflejan en tiempo real.`}
+            />
+            <ul className="divide-y divide-border rounded-card border border-border">
+              {([
+                ['Apple Wallet', 'iOS · Pase .pkpass nativo', Smartphone],
+                ['Google Wallet', 'Android · JWT firmado', Wallet],
+              ] as [string, string, LucideIcon][]).map(([name, detail, Icon]) => (
+                <li key={name} className="flex items-center gap-3 p-3">
+                  <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-primary-soft text-primary">
+                    <Icon size={20} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-text">{name}</p>
+                    <p className="text-xs text-text-muted">{detail}</p>
+                  </div>
+                  <Badge tone="success">Activo</Badge>
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-text-muted">
+              Los botones aparecen automáticamente en la tarjeta según el dispositivo (iOS o Android).
             </p>
 
-            <div className="space-y-3">
-              {/* Apple Wallet */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-black text-white">
-                <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <AppleIcon />
-                </div>
-                <div className="flex-1">
-                  <p className="font-black text-sm">Apple Wallet</p>
-                  <p className="text-[10px] text-white/60 font-bold">iOS · Pase .pkpass nativo</p>
-                </div>
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              </div>
-
-              {/* Google Wallet */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-                <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <GoogleWalletIcon />
-                </div>
-                <div className="flex-1">
-                  <p className="font-black text-sm">Google Wallet</p>
-                  <p className="text-[10px] text-white/60 font-bold">Android · JWT firmado</p>
-                </div>
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              </div>
-            </div>
-
-            <div className="bg-blue-50 rounded-xl p-3 text-[10px] font-bold text-blue-700 leading-relaxed">
-              Los botones aparecen automáticamente en la tarjeta del cliente según su dispositivo (iOS o Android).
-            </div>
-
-            {/* Preview tarjeta */}
-            <div className="relative h-32 rounded-2xl overflow-hidden bg-gradient-to-br from-primary via-orange-500 to-amber-400 p-5 shadow-lg">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-10 translate-x-10" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-8 -translate-x-6" />
-              <div className="relative z-10 flex flex-col justify-between h-full">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-white/70 text-[9px] font-black uppercase tracking-widest">Tarjeta de Fidelización</p>
-                    <p className="text-white font-black text-base leading-tight">Wuarike</p>
+            {/* Vista previa de la tarjeta */}
+            <div className="relative h-36 overflow-hidden rounded-card bg-primary p-5 text-white">
+              <div aria-hidden className="absolute right-0 top-0 h-40 w-40 -translate-y-10 translate-x-10 rounded-full bg-white/10" />
+              <div aria-hidden className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-8 rounded-full bg-white/10" />
+              <div className="relative flex h-full flex-col justify-between">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs">Tarjeta de fidelización</p>
+                    <p className="truncate text-base font-semibold">{activePlace?.name ?? 'Tu negocio'}</p>
                   </div>
-                  <div className="text-2xl">⭐</div>
+                  <Star size={24} aria-hidden />
                 </div>
-                <div className="flex items-end justify-between">
-                  <div className="flex gap-1.5">
-                    {Array.from({ length: stampsToReward }).slice(0, 8).map((_, i) => (
-                      <div key={i} className={`w-4 h-4 rounded-full border-2 border-white/80 ${i < 3 ? 'bg-white' : 'bg-white/20'}`} />
+                <div className="flex items-end justify-between gap-3">
+                  <div aria-hidden className="flex items-center gap-1.5">
+                    {Array.from({ length: Math.min(form.stampsToReward, 8) }).map((_, i) => (
+                      <span key={i} className={cn('h-4 w-4 rounded-full border-2 border-white', i < 3 && 'bg-white')} />
                     ))}
-                    {stampsToReward > 8 && <span className="text-white/60 text-xs font-black self-center">+{stampsToReward - 8}</span>}
+                    {form.stampsToReward > 8 && <span className="text-xs font-medium">+{form.stampsToReward - 8}</span>}
                   </div>
-                  <p className="text-white/60 text-[9px] font-black">3 / {stampsToReward} sellos</p>
+                  <p className="text-xs tabular-nums">3 / {form.stampsToReward} sellos (ejemplo)</p>
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* Campaña — notificación masiva por Wallet */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-              Notificar a mis clientes
-            </h2>
-            <p className="text-xs font-bold text-text-muted leading-relaxed">
-              Manda un aviso a la tarjeta de fidelización de tus clientes (ej. "Hoy 2x1"). Solo llega a quienes guardaron su tarjeta en <b>Google Wallet</b>; les aparece como notificación en el celular. Máximo 3 avisos por día.
-            </p>
-            {notifStatus && (
-              <p className={`text-xs font-black rounded-xl px-4 py-2 ${notifStatus.walletAudience > 0 ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
-                {notifStatus.walletAudience > 0
-                  ? `📲 Llegará a ${notifStatus.walletAudience} cliente${notifStatus.walletAudience === 1 ? '' : 's'} con Google Wallet`
-                  : '📲 Aún ningún cliente guardó su tarjeta en Google Wallet. Invítalos desde la página de su tarjeta.'}
-              </p>
-            )}
-            <input
-              value={campaignHeader}
-              onChange={(e) => setCampaignHeader(e.target.value)}
-              placeholder="Título (ej. Promo de hoy)"
-              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold"
-              maxLength={60}
-            />
-            <textarea
-              value={campaignBody}
-              onChange={(e) => setCampaignBody(e.target.value)}
-              placeholder="Mensaje (ej. 2x1 en postres hasta las 8pm)"
-              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold resize-none"
-              rows={2}
-              maxLength={200}
-            />
-            <button
-              onClick={handleSendCampaign}
-              disabled={isSendingCampaign || !campaignHeader || !campaignBody || notifStatus?.walletAudience === 0}
-              className="w-full bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest px-4 py-3 rounded-xl hover:bg-blue-700 transition-all disabled:opacity-50"
-            >
-              {isSendingCampaign ? 'Enviando...' : 'Enviar notificación'}
-            </button>
-          </section>
-
-          {/* Campaña automática por inactividad */}
-          <section className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
-            <h2 className="font-black text-text font-warike text-base flex items-center gap-2">
-              <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-              Traer de vuelta a quien no vuelve
-            </h2>
-            <p className="text-xs font-bold text-text-muted leading-relaxed">
-              Si un cliente con tarjeta no vuelve en 30 días, le enviamos este mensaje por WhatsApp automáticamente a las 10:00 a. m. Si sigue sin volver, se lo reenviamos cada 30 días.
-            </p>
-            {notifStatus && !notifStatus.whatsappConfigured && (
-              <p className="text-xs font-black text-amber-700 bg-amber-50 rounded-xl px-4 py-2">
-                ⚠️ Tu local no tiene un número de WhatsApp Business conectado, así que estos mensajes no se enviarán.{' '}
-                <a href="/plazbot" className="underline">Conectar WhatsApp →</a>
-              </p>
-            )}
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={winbackEnabled}
-                onChange={(e) => setWinbackEnabled(e.target.checked)}
-                className="w-5 h-5 accent-primary"
+            {/* Aviso masivo por Wallet */}
+            <div className="space-y-3 border-t border-border pt-5">
+              <div>
+                <h3 className="text-base font-semibold text-text">Notificar a mis {customers}</h3>
+                <p className="mt-0.5 text-sm text-text-muted">
+                  Manda un aviso a la tarjeta de tus {customers} (ej. &quot;Hoy 20% de descuento&quot;). Solo llega a quienes guardaron su tarjeta en <b>Google Wallet</b>; les aparece como notificación en el celular. Máximo 3 avisos por día.
+                </p>
+              </div>
+              {notifStatus && (
+                audience > 0 ? (
+                  <Notice tone="info" icon={Info}>
+                    Llegará a {audience} {audience === 1 ? customer : customers} con Google Wallet
+                  </Notice>
+                ) : (
+                  <Notice tone="warning" icon={AlertTriangle}>
+                    Aún ningún {customer} guardó su tarjeta en Google Wallet. Invítalos desde la página de su tarjeta.
+                  </Notice>
+                )
+              )}
+              <Input
+                label="Título"
+                value={campaignHeader}
+                onChange={(e) => setCampaignHeader(e.target.value)}
+                placeholder="Ej. Promo de hoy"
+                maxLength={60}
               />
-              <span className="text-sm font-bold text-text">Activar mensaje de reactivación</span>
-            </label>
-            <textarea
-              value={winbackMessage}
-              onChange={(e) => setWinbackMessage(e.target.value)}
-              placeholder="Ej. ¡Te extrañamos! Vuelve por tu sello y no pierdas tu progreso 🍽️"
-              disabled={!winbackEnabled}
-              className="w-full border border-border rounded-xl px-4 py-3 text-sm font-bold resize-none disabled:opacity-50"
-              rows={2}
-              maxLength={300}
-            />
-          </section>
-
-          {/* Stats rápidas */}
-          {program && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white p-4 rounded-2xl border border-border shadow-sm text-center">
-                <p className="text-2xl font-black text-primary">{program.totalCards || 0}</p>
-                <p className="text-[9px] font-black text-text-muted uppercase tracking-wider mt-1">Tarjetas</p>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-border shadow-sm text-center">
-                <p className="text-2xl font-black text-green-600">{program.totalRedemptions || 0}</p>
-                <p className="text-[9px] font-black text-text-muted uppercase tracking-wider mt-1">Canjes</p>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-border shadow-sm text-center">
-                <p className="text-2xl font-black text-blue-600">{program.totalScans || 0}</p>
-                <p className="text-[9px] font-black text-text-muted uppercase tracking-wider mt-1">Escaneos</p>
-              </div>
+              <Textarea
+                label="Mensaje"
+                rows={2}
+                value={campaignBody}
+                onChange={(e) => setCampaignBody(e.target.value)}
+                placeholder="Ej. 20% de descuento hasta las 8 p. m."
+                maxLength={200}
+              />
+              <Button
+                variant="secondary"
+                icon={Send}
+                loading={isSendingCampaign}
+                disabled={!campaignHeader || !campaignBody || notifStatus?.walletAudience === 0}
+                onClick={handleSendCampaign}
+              >
+                {isSendingCampaign ? 'Enviando...' : 'Enviar notificación'}
+              </Button>
             </div>
-          )}
+          </Card>
         </div>
       </div>
+
+      {isDirty && (
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3 shadow-modal">
+          <p className="text-sm text-text-muted">{program ? 'Tienes cambios sin guardar.' : 'Aún no guardaste tu programa.'}</p>
+          <Button onClick={handleSave} loading={isSaving}>Guardar</Button>
+        </div>
+      )}
     </div>
   );
 }
 
-function AppleIcon() {
+/** Número editable: mientras se escribe se guarda el texto (se puede vaciar) y se ajusta al rango al salir del campo. */
+function NumberInput({ label, value, min, max = Infinity, hint, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max?: number;
+  hint?: string;
+  onChange(value: number): void;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-    </svg>
+    <Input
+      label={label}
+      type="number"
+      inputMode="numeric"
+      min={min}
+      max={Number.isFinite(max) ? max : undefined}
+      value={text}
+      hint={hint}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = Number(e.target.value);
+        if (e.target.value !== '' && Number.isInteger(n) && n >= min && n <= max) onChange(n);
+      }}
+      onBlur={() => {
+        const n = Math.min(max, Math.max(min, Math.round(Number(text)) || min));
+        setText(String(n));
+        onChange(n);
+      }}
+    />
   );
 }
 
-function GoogleWalletIcon() {
+function CardTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="5" width="20" height="14" rx="3" fill="white" fillOpacity="0.2" stroke="white" strokeWidth="1.5"/>
-      <path d="M2 9h20" stroke="white" strokeWidth="1.5"/>
-      <circle cx="17" cy="14" r="2.5" fill="white" fillOpacity="0.8"/>
-      <circle cx="17" cy="14" r="1" fill="white"/>
-    </svg>
+    <div>
+      <h2 className="text-base font-semibold text-text">{title}</h2>
+      {subtitle && <p className="mt-0.5 text-sm text-text-muted">{subtitle}</p>}
+    </div>
+  );
+}
+
+function Notice({ tone, icon: Icon, children }: { tone: 'info' | 'warning'; icon: LucideIcon; children: ReactNode }) {
+  return (
+    <p className={cn('flex items-start gap-2 rounded-control p-3 text-sm text-text', tone === 'info' ? 'bg-primary-soft' : 'bg-secondary/20')}>
+      <Icon size={20} aria-hidden className="mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+function FidelizacionSkeleton() {
+  return (
+    <div role="status" aria-label="Cargando" className="space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="w-80 max-w-full" />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-card" />)}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {[0, 1].map((i) => (
+          <Card key={i} padding="lg" className="space-y-3">
+            <Skeleton className="w-32" />
+            <Skeleton className="h-11" />
+            <Skeleton className="h-11" />
+            <Skeleton className="h-11" />
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }

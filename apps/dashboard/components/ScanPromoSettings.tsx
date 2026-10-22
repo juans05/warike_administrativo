@@ -1,14 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Gift } from 'lucide-react';
 import { toast } from 'sonner';
 import { businessApi } from '../lib/api-client';
+import { Button, Card, Input, Switch } from './ui';
+import { useCustomerLabels } from '../hooks/useCustomerLabels';
 
 // El dueño decide si, al calificar, se invita al cliente a dejar su WhatsApp para recibir promociones, y con qué mensaje.
 export default function ScanPromoSettings({ placeId }: { placeId: string }) {
   const [enabled, setEnabled] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
+  const { customer } = useCustomerLabels();
 
   useEffect(() => {
     businessApi.getScanPromo(placeId)
@@ -29,40 +33,30 @@ export default function ScanPromoSettings({ placeId }: { placeId: string }) {
   };
 
   return (
-    <section className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-border space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-2xl">🎁</div>
+    <Card padding="lg" className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <Gift size={20} />
+        </div>
         <div>
-          <h3 className="text-xl font-black text-text font-warike">Promociones por WhatsApp</h3>
-          <p className="text-xs font-bold text-text-muted">Al calificar, invita al cliente a dejar su número para recibir promociones.</p>
+          <h3 className="text-base font-semibold text-text">Promociones por WhatsApp</h3>
+          <p className="text-sm text-text-muted">Al calificar, invita al {customer} a dejar su número para recibir promociones.</p>
         </div>
       </div>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="w-5 h-5 accent-primary" />
-        <span className="text-sm font-black text-text">Pedir WhatsApp para enviar promociones</span>
-      </label>
+      <Switch label="Pedir WhatsApp para enviar promociones" checked={enabled} onChange={setEnabled} />
 
-      <div className={enabled ? 'space-y-2' : 'space-y-2 opacity-50'}>
-        <label className="flex items-center justify-between text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-          Mensaje que verá el cliente
-          <span className="font-bold normal-case tracking-normal">{text.length}/160</span>
-        </label>
-        <input
-          type="text"
-          value={text}
-          maxLength={160}
-          disabled={!enabled}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Ej: Deja tu WhatsApp y llévate una bebida gratis en tu próxima visita"
-          className="input-premium w-full"
-        />
-        <p className="text-[11px] font-bold text-text-muted">Si tienes fidelización activa, el cliente también suma su primer sello al dejar el número.</p>
-      </div>
+      <Input
+        label={`Mensaje que verá el ${customer}`}
+        value={text}
+        maxLength={160}
+        disabled={!enabled}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Ej: Deja tu WhatsApp y llévate una bebida gratis en tu próxima visita"
+        hint={`${text.length}/160. Si tienes fidelización activa, el ${customer} también suma su primer sello al dejar el número.`}
+      />
 
-      <button onClick={save} disabled={saving} className="bg-text text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary transition-all disabled:opacity-50">
-        {saving ? 'Guardando...' : 'Guardar'}
-      </button>
-    </section>
+      <Button loading={saving} onClick={save}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+    </Card>
   );
 }

@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { plazbotApi, businessApi } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { Lock, Sparkles } from 'lucide-react';
+import { Button, Card, EmptyState, Input, PageHeader, Select, Skeleton, Textarea, buttonStyles } from '../../../components/ui';
+import { BotTester } from '../../../components/bot/BotTester';
+import { MenuOptionsEditor, type MenuActionType, type MenuOptionForm } from '../../../components/bot/MenuOptionsEditor';
+import { plural } from '../../../lib/modules';
+import { PlazbotCampaignsCard, PlazbotMetricsCard, type PlazbotMetrics, type PlazbotTemplate } from '../../../components/bot/PlazbotWorkspace';
 
 type Tone = 'professional' | 'casual' | 'friendly';
 
@@ -14,41 +21,11 @@ const TONE_LABELS: Record<Tone, string> = {
 };
 
 type ResponseMode = 'ai' | 'menu';
-type MenuActionType = 'file' | 'text' | 'human';
-type MenuOptionForm = { label: string; actionType: MenuActionType; actionValue: string };
-
-const ACTION_TYPE_LABELS: Record<MenuActionType, string> = {
-  file: 'Mandar un archivo',
-  text: 'Responder con un texto',
-  human: 'Hablar con una persona',
-};
-
-type BotConfig = {
-  placeId: string;
-  botName: string | null;
-  restaurantName: string | null;
-  systemPrompt: string | null;
-  tone: Tone;
-  isActive: boolean;
-  responseMode: ResponseMode;
-};
-
-type Metrics = {
-  totalContacts: number;
-  totalConversations: number;
-  totalOpportunities: number;
-  totalTasks: number;
-};
-
-type Template = {
-  id: string;
-  elementName: string;
-  languageCode: string;
-  category: string;
-};
 
 export default function PlazbotSetupPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const customerLabel = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
+  const catalogLabel = activePlace?.verticalConfig?.labels.catalog ?? 'Carta';
 
   const [plazbotConnected, setPlazbotConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,9 +39,9 @@ export default function PlazbotSetupPage() {
     tone: 'professional' as Tone,
     responseMode: 'ai' as ResponseMode,
   });
+  // Lo último guardado (o cargado): el botón Guardar aparece solo cuando el formulario difiere.
+  const [savedForm, setSavedForm] = useState(formData);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState('');
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
 
   // Menú de botones (opciones dinámicas)
@@ -72,24 +49,13 @@ export default function PlazbotSetupPage() {
   const [savingMenu, setSavingMenu] = useState(false);
   const [uploadingOptionIndex, setUploadingOptionIndex] = useState<number | null>(null);
 
-  // Demo chat
-  type DemoMessage = { role: 'user' | 'bot'; text: string };
-  const [demoMessages, setDemoMessages] = useState<DemoMessage[]>([]);
-  const [demoInput, setDemoInput] = useState('');
-  const [demoLoading, setDemoLoading] = useState(false);
-  const demoEndRef = useRef<HTMLDivElement>(null);
-
   // Metrics & templates
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [metrics, setMetrics] = useState<PlazbotMetrics | null>(null);
+  const [templates, setTemplates] = useState<PlazbotTemplate[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     try { setIsAdmin(JSON.parse(localStorage.getItem('user') || '{}')?.role === 'admin'); } catch { setIsAdmin(false); }
   }, []);
-  const [showCampaignForm, setShowCampaignForm] = useState(false);
-  const [campaignForm, setCampaignForm] = useState({ name: '', templateId: '', contacts: '' });
-  const [campaignSending, setCampaignSending] = useState(false);
-  const [campaignResult, setCampaignResult] = useState('');
 
   const loadMetricsAndTemplates = useCallback(async () => {
     const [m, t] = await Promise.allSettled([
@@ -106,15 +72,18 @@ export default function PlazbotSetupPage() {
         const status = await plazbotApi.getStatus();
         setPlazbotConnected(status?.connected ?? false);
 
-        if (status?.connected && activePlaceId) {
+        // La configuración del bot sirve para cualquier canal (Meta o PlazBot): no depende de PlazBot.
+        if (activePlaceId) {
           const config = await plazbotApi.getConfig(activePlaceId);
-          setFormData({
+          const loaded = {
             botName: config?.botName || '',
             restaurantName: config?.restaurantName || '',
             systemPrompt: config?.systemPrompt || '',
             tone: (config?.tone as Tone) || 'professional',
             responseMode: (config?.responseMode as ResponseMode) || 'ai',
-          });
+          };
+          setFormData(loaded);
+          setSavedForm(loaded);
           const menuRes = await plazbotApi.getMenuOptions(activePlaceId);
           setMenuOptions(
             (menuRes?.data || []).map((o: any) => ({
@@ -123,8 +92,8 @@ export default function PlazbotSetupPage() {
               actionValue: o.actionValue || '',
             })),
           );
-          await loadMetricsAndTemplates();
         }
+        if (status?.connected) await loadMetricsAndTemplates();
       } catch (err: any) {
         if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
           setSubscriptionBlocked(err.message);
@@ -199,516 +168,143 @@ export default function PlazbotSetupPage() {
     }
   };
 
-  const handleDemoSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = demoInput.trim();
-    if (!text || !activePlaceId || demoLoading) return;
-    const userMsg: DemoMessage = { role: 'user', text };
-    const history = demoMessages.map(m => ({ role: (m.role === 'bot' ? 'assistant' : 'user') as 'user' | 'assistant', content: m.text }));
-    setDemoMessages(prev => [...prev, userMsg]);
-    setDemoInput('');
-    setDemoLoading(true);
-    try {
-      const res = await plazbotApi.demoChat({ placeId: activePlaceId, message: text, history });
-      setDemoMessages(prev => [...prev, { role: 'bot', text: res.response || '...' }]);
-    } catch {
-      setDemoMessages(prev => [...prev, { role: 'bot', text: '❌ Error al obtener respuesta.' }]);
-    } finally {
-      setDemoLoading(false);
-      setTimeout(() => demoEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    }
-  };
-
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activePlaceId) return;
-    setSaving(true); setSaveError(''); setSaveSuccess('');
+    setSaving(true);
+    const submitted = formData;
     try {
-      await plazbotApi.configure({ placeId: activePlaceId, ...formData });
-      setSaveSuccess('Configuración guardada.');
+      await plazbotApi.configure({ placeId: activePlaceId, ...submitted });
+      setSavedForm(submitted);
+      toast.success('Configuración guardada.');
     } catch (err: any) {
-      setSaveError(err.message || 'Error al guardar');
+      toast.error(err.message || 'Error al guardar');
     } finally { setSaving(false); }
   };
 
-  const handleLaunchCampaign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCampaignSending(true); setCampaignResult('');
-    try {
-      const contacts = campaignForm.contacts.split(',').map(s => s.trim()).filter(Boolean);
-      await plazbotApi.createCampaign({ name: campaignForm.name, templateId: campaignForm.templateId, contacts });
-      setCampaignResult('Campaña lanzada correctamente.');
-      setCampaignForm({ name: '', templateId: '', contacts: '' });
-      setShowCampaignForm(false);
-    } catch (err: any) {
-      setCampaignResult(err.message || 'Error al lanzar la campaña');
-    } finally { setCampaignSending(false); }
-  };
+  const isDirty = JSON.stringify(formData) !== JSON.stringify(savedForm);
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto p-8 space-y-4">
-        <div className="h-8 bg-gray-200 rounded-lg w-1/2 animate-pulse" />
-        <div className="h-4 bg-gray-100 rounded-lg w-3/4 animate-pulse" />
-        <div className="bg-white p-8 rounded-2xl border border-gray-100 space-y-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
-        </div>
+      <div className="space-y-6" role="status" aria-label="Cargando">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-64 rounded-card" />
+        <Skeleton className="h-80 rounded-card" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">PlazBot</h1>
-        <p className="text-gray-500 mt-1">Configura el comportamiento del bot de WhatsApp para tu restaurante</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Mi bot" subtitle={`Cómo atiende tu bot de WhatsApp a tus ${plural(customerLabel).toLowerCase()}.`} />
 
       {subscriptionBlocked && (
-        <div className="rounded-2xl p-6 border border-[#F26122]/30 bg-[#F26122]/5 space-y-3">
-          <p className="font-black text-sm text-[#1A1A1A]">Función disponible en un plan superior</p>
-          <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
-          <a
-            href="/suscripcion"
-            className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-          >
-            Ver planes
-          </a>
-        </div>
+        <Card>
+          <EmptyState
+            icon={Lock}
+            title="Función disponible en un plan superior"
+            description={subscriptionBlocked}
+            action={<Link href="/suscripcion" className={buttonStyles('primary')}>Ver planes</Link>}
+          />
+        </Card>
       )}
 
-      {/* Estado PlazBot */}
       {!subscriptionBlocked && (
-      <div className={`rounded-2xl p-4 border flex items-center gap-3 ${plazbotConnected ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${plazbotConnected ? 'bg-green-500' : 'bg-amber-400'}`} />
-        <div>
-          <p className={`font-black text-sm ${plazbotConnected ? 'text-green-800' : 'text-amber-800'}`}>
-            {plazbotConnected ? 'PlazBot Activo' : 'PlazBot no configurado'}
-          </p>
-          <p className={`text-xs mt-0.5 ${plazbotConnected ? 'text-green-700' : 'text-amber-700'}`}>
-            {plazbotConnected
-              ? 'El sistema de WhatsApp está activo. Los mensajes de tus clientes llegarán al bot automáticamente.'
-              : 'Las credenciales de PlazBot deben configurarse en el servidor. Contacta al administrador.'}
-          </p>
-        </div>
-      </div>
-      )}
-
-      {/* ─── PERSONALIZACIÓN DEL BOT ─── */}
-      {plazbotConnected && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest mb-4">
-            Personalización del Bot
-          </h2>
-          <form onSubmit={handleSaveConfig} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                  Nombre del restaurante
-                </label>
-                <input
-                  type="text"
+        <div className="grid gap-6 lg:grid-cols-[1fr_minmax(320px,400px)] lg:items-start">
+          <form onSubmit={handleSaveConfig} className="space-y-6">
+            <Card padding="lg" className="space-y-4">
+              <h2 className="text-base font-semibold text-text">Datos del bot</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="Nombre del negocio"
                   value={formData.restaurantName}
                   onChange={e => setFormData(p => ({ ...p, restaurantName: e.target.value }))}
                   placeholder="Ej: La Bajadita"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                  Nombre del bot
-                </label>
-                <input
-                  type="text"
+                <Input
+                  label="Nombre del bot"
                   value={formData.botName}
                   onChange={e => setFormData(p => ({ ...p, botName: e.target.value }))}
                   placeholder="Ej: Mario"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                Tono de Respuesta
-              </label>
-              <select
+              <Select
+                label="Tono de respuesta"
                 value={formData.tone}
                 onChange={e => setFormData(p => ({ ...p, tone: e.target.value as Tone }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
               >
                 {(Object.entries(TONE_LABELS) as [Tone, string][]).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Card>
 
-            <div>
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                Modo de respuesta
-              </label>
-              <select
+            <Card padding="lg" className="space-y-4">
+              <h2 className="text-base font-semibold text-text">Cómo responde</h2>
+              <Select
+                label="Modo de respuesta"
                 value={formData.responseMode}
                 onChange={e => setFormData(p => ({ ...p, responseMode: e.target.value as ResponseMode }))}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                hint={formData.responseMode === 'menu'
+                  ? 'El bot manda un menú de texto numerado con las opciones de abajo, en vez de responder con IA.'
+                  : `El bot responde con IA usando tu ${catalogLabel.toLowerCase()} digital y las instrucciones de abajo.`}
               >
                 <option value="ai">Respuestas con IA</option>
                 <option value="menu">Menú de botones (sin IA)</option>
-              </select>
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                {formData.responseMode === 'menu'
-                  ? 'El bot manda un menú de texto numerado con las opciones de abajo, en vez de responder con IA.'
-                  : 'El bot responde con IA usando la carta digital y las instrucciones de abajo.'}
-              </p>
-            </div>
+              </Select>
 
-            {formData.responseMode === 'menu' && (
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl space-y-3">
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest">
-                  Opciones del menú
-                </label>
+              {formData.responseMode === 'menu' && (
+                <MenuOptionsEditor
+                  options={menuOptions}
+                  onAdd={addMenuOption}
+                  onRemove={removeMenuOption}
+                  onUpdate={updateMenuOption}
+                  onFileUpload={handleOptionFileUpload}
+                  uploadingIndex={uploadingOptionIndex}
+                  saving={savingMenu}
+                  onSave={handleSaveMenuOptions}
+                />
+              )}
+            </Card>
 
-                {menuOptions.length === 0 && (
-                  <p className="text-xs text-gray-400">Todavía no agregaste ninguna opción.</p>
-                )}
-
-                {menuOptions.map((opt, i) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-gray-400 flex-shrink-0">{i + 1}.</span>
-                      <input
-                        type="text"
-                        value={opt.label}
-                        onChange={e => updateMenuOption(i, { label: e.target.value })}
-                        placeholder="Ej: Ver catálogo"
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeMenuOption(i)}
-                        className="text-xs text-red-500 font-bold hover:text-red-700 flex-shrink-0"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-
-                    <select
-                      value={opt.actionType}
-                      onChange={e => updateMenuOption(i, { actionType: e.target.value as MenuActionType, actionValue: '' })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
-                    >
-                      {(Object.entries(ACTION_TYPE_LABELS) as [MenuActionType, string][]).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-
-                    {opt.actionType === 'file' && (
-                      <div>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/3gpp"
-                          onChange={e => handleOptionFileUpload(i, e)}
-                          disabled={uploadingOptionIndex === i}
-                          className="w-full text-xs"
-                        />
-                        {uploadingOptionIndex === i && <p className="text-[11px] text-gray-400 mt-1">Subiendo...</p>}
-                        {opt.actionValue && uploadingOptionIndex !== i && (
-                          <a href={opt.actionValue} target="_blank" rel="noopener noreferrer" className="text-[11px] text-green-700 font-bold hover:underline mt-1 block">
-                            ✓ Archivo cargado — ver
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {opt.actionType === 'text' && (
-                      <textarea
-                        value={opt.actionValue}
-                        onChange={e => updateMenuOption(i, { actionValue: e.target.value })}
-                        placeholder="Texto que le va a responder el bot al elegir esta opción"
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none resize-none"
-                      />
-                    )}
-
-                    {opt.actionType === 'human' && (
-                      <input
-                        type="text"
-                        value={opt.actionValue}
-                        onChange={e => updateMenuOption(i, { actionValue: e.target.value })}
-                        placeholder="Mensaje de confirmación (opcional) — ej: Ya te atiende alguien del equipo"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
-                      />
-                    )}
-                  </div>
-                ))}
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={addMenuOption}
-                    className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-black"
-                  >
-                    + Agregar opción
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveMenuOptions}
-                    disabled={savingMenu}
-                    className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-black disabled:opacity-50"
-                  >
-                    {savingMenu ? 'Guardando...' : 'Guardar menú'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                  Instrucciones para el Bot{' '}
-                  <span className="text-gray-400 normal-case font-normal">(opcional)</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={handleSuggestPrompt}
-                  disabled={generatingPrompt}
-                  title="Generar con IA"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 text-[11px] font-black hover:bg-violet-100 transition-all disabled:opacity-50"
-                >
-                  {generatingPrompt ? (
-                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-                    </svg>
-                  )}
+            <Card padding="lg" className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-base font-semibold text-text">Instrucciones</h2>
+                <Button variant="secondary" size="sm" icon={Sparkles} loading={generatingPrompt} onClick={handleSuggestPrompt}>
                   {generatingPrompt ? 'Generando...' : 'Proponer con IA'}
-                </button>
+                </Button>
               </div>
-              <textarea
+              <Textarea
+                label="Instrucciones para el bot (opcional)"
+                hint="Se suman al comportamiento base del bot y tienen prioridad sobre él."
                 value={formData.systemPrompt}
                 onChange={e => setFormData(p => ({ ...p, systemPrompt: e.target.value }))}
-                placeholder={`Ejemplos de instrucciones personalizadas:\n– Menciona siempre que tenemos delivery hasta las 10pm\n– Si preguntan por reservas, pide nombre, hora y número de personas\n– Promoción del día: anticucho a S/ 8 los lunes\n– Si el cliente pide la cuenta, indícale que puede pagar con Yape o efectivo`}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm resize-none"
-                rows={5}
+                placeholder={`Ejemplos de instrucciones personalizadas:\n– Menciona siempre que tenemos delivery hasta las 10pm\n– Si preguntan por reservas, pide nombre, hora y número de personas\n– Promoción del día: anticucho a S/ 8 los lunes\n– Si el ${customerLabel.toLowerCase()} pide la cuenta, indícale que puede pagar con Yape o efectivo`}
+                rows={6}
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Estas instrucciones se suman al comportamiento base del bot y tienen prioridad sobre él.
-              </p>
-            </div>
+            </Card>
 
-            {saveError && <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl border border-red-200 text-sm">{saveError}</div>}
-            {saveSuccess && <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl border border-green-200 text-sm font-medium">{saveSuccess}</div>}
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full bg-[#F26122] text-white py-3 rounded-xl font-black hover:opacity-95 transition-all disabled:opacity-50 text-sm"
-            >
-              {saving ? 'Guardando...' : 'Guardar configuración'}
-            </button>
+            {isDirty && (
+              <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3 shadow-modal">
+                <p className="text-sm text-text-muted">Tienes cambios sin guardar.</p>
+                <Button type="submit" loading={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+              </div>
+            )}
           </form>
-        </div>
-      )}
 
-      {/* ─── DEMO BOT ─── */}
-      {plazbotConnected && activePlaceId && (
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">
-                Probar Bot
-              </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Simula una conversación con la configuración actual
-              </p>
+          {activePlaceId && (
+            <div className="lg:sticky lg:top-6">
+              <BotTester placeId={activePlaceId} customerLabel={customerLabel} />
             </div>
-            {demoMessages.length > 0 && (
-              <button
-                onClick={() => setDemoMessages([])}
-                className="text-xs text-gray-400 hover:text-red-500 font-bold transition-colors"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
-
-          {/* Chat area */}
-          <div className="h-80 overflow-y-auto px-4 py-3 space-y-2 bg-[#e5ddd5]">
-            {demoMessages.length === 0 && (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-xs text-gray-500 bg-white/60 px-4 py-2 rounded-full">
-                  Escribe un mensaje para probar el bot
-                </p>
-              </div>
-            )}
-            {demoMessages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap shadow-sm ${
-                  msg.role === 'user'
-                    ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-sm'
-                    : 'bg-white text-gray-900 rounded-tl-sm'
-                }`}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {demoLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white px-4 py-2.5 rounded-2xl rounded-tl-sm shadow-sm flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            )}
-            <div ref={demoEndRef} />
-          </div>
-
-          {/* Input */}
-          <form onSubmit={handleDemoSend} className="flex gap-2 px-4 py-3 border-t border-gray-100 bg-[#f0f0f0]">
-            <input
-              type="text"
-              value={demoInput}
-              onChange={e => setDemoInput(e.target.value)}
-              placeholder="Escribe como si fueras un cliente..."
-              disabled={demoLoading}
-              className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 bg-white text-sm outline-none focus:ring-2 focus:ring-orange-400 disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={!demoInput.trim() || demoLoading}
-              className="w-10 h-10 bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-40 rounded-full flex items-center justify-center transition-colors shrink-0"
-            >
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
-            </button>
-          </form>
+          )}
         </div>
       )}
 
-      {/* ─── MÉTRICAS ─── */}
-      {plazbotConnected && metrics && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-          <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest mb-4">Métricas del Workspace</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: 'Contactos', value: metrics.totalContacts },
-              { label: 'Conversaciones', value: metrics.totalConversations },
-              { label: 'Oportunidades', value: metrics.totalOpportunities },
-              { label: 'Tareas', value: metrics.totalTasks },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-3 text-center">
-                <p className="text-2xl font-black text-gray-900">{value?.toLocaleString() ?? '—'}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {plazbotConnected && metrics && <PlazbotMetricsCard metrics={metrics} />}
 
-      {/* ─── CAMPAÑAS WHATSAPP ─── */}
       {/* Usan la cuenta global de PlazBot de Wuarikes: solo admin (el backend también lo exige). */}
-      {plazbotConnected && isAdmin && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black text-gray-700 uppercase tracking-widest">Campañas WhatsApp</h2>
-            {templates.length > 0 && (
-              <button
-                onClick={() => { setShowCampaignForm(v => !v); setCampaignResult(''); }}
-                className="px-4 py-2 bg-[#F26122] text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all"
-              >
-                {showCampaignForm ? 'Cancelar' : '+ Nueva Campaña'}
-              </button>
-            )}
-          </div>
-
-          {templates.length === 0 && (
-            <p className="text-sm text-gray-400">No hay templates aprobados en el workspace de PlazBot.</p>
-          )}
-
-          {campaignResult && (
-            <p className={`text-sm font-medium px-3 py-2 rounded-xl border ${
-              campaignResult.includes('Error') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'
-            }`}>
-              {campaignResult}
-            </p>
-          )}
-
-          {showCampaignForm && (
-            <form onSubmit={handleLaunchCampaign} className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Nombre</label>
-                <input
-                  type="text"
-                  value={campaignForm.name}
-                  onChange={e => setCampaignForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="Ej: Promo fin de semana"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">Template</label>
-                <select
-                  value={campaignForm.templateId}
-                  onChange={e => setCampaignForm(p => ({ ...p, templateId: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                  required
-                >
-                  <option value="">Seleccionar template...</option>
-                  {templates.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.elementName} ({t.languageCode.toUpperCase()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-                  IDs de Contactos <span className="normal-case font-normal text-gray-400">(separados por coma)</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.contacts}
-                  onChange={e => setCampaignForm(p => ({ ...p, contacts: e.target.value }))}
-                  placeholder="id_contacto_1, id_contacto_2, ..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-orange-400 outline-none"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={campaignSending}
-                className="w-full py-2.5 bg-[#F26122] text-white rounded-xl font-black text-sm hover:opacity-90 transition-all disabled:opacity-50"
-              >
-                {campaignSending ? 'Lanzando...' : 'Lanzar Campaña'}
-              </button>
-            </form>
-          )}
-
-          {templates.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Templates activos</p>
-              {templates.map(t => (
-                <div key={t.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-100">
-                  <div>
-                    <span className="text-sm font-bold text-gray-800">{t.elementName}</span>
-                    <span className="ml-2 text-xs text-gray-400">{t.languageCode.toUpperCase()}</span>
-                  </div>
-                  <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded-lg px-2 py-0.5">
-                    {t.category}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {plazbotConnected && isAdmin && <PlazbotCampaignsCard templates={templates} />}
     </div>
   );
 }

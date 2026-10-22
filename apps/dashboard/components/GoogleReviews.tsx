@@ -1,23 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 import { useRestaurant } from '../context/RestaurantContext';
 import { businessApi } from '../lib/api-client';
-import { toast } from 'sonner';
-import { copyText } from '../lib/clipboard';
 import WuarikesFeedbackList from './WuarikesFeedback';
+import { Button, Card, DataList, buttonStyles } from './ui';
+import { ConnectGoogleCard } from './reputation/ConnectGoogleCard';
+import { GoogleIcon } from './reputation/GoogleIcon';
+import { ReviewInbox } from './reputation/ReviewInbox';
+import { GBP_API_ENABLED, numberToStarRating, withKeys, type GoogleReview } from './reputation/googleReviews';
+import { useCustomerLabels } from '../hooks/useCustomerLabels';
 
 type Step = 'loading' | 'not_connected' | 'pick_location' | 'connected' | 'error';
-type Filter = 'all' | 'unanswered' | 'negative';
-
-// Leer/responder todas las reseñas usa la API de Google Business Profile, que requiere
-// aprobación de Google. Hasta entonces se usa Places API (5 reseñas) y el dueño publica
-// su respuesta pegándola en Google. Encender con NEXT_PUBLIC_GBP_API_ENABLED=true.
-const GBP_API_ENABLED = process.env.NEXT_PUBLIC_GBP_API_ENABLED === 'true';
-const GOOGLE_REVIEWS_URL = 'https://business.google.com/reviews';
-
-const STARS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 
 // Errores devueltos por el callback de OAuth (?error=...) o por el backend (code).
 const ERROR_TEXT: Record<string, string> = {
@@ -32,29 +29,23 @@ const RECONNECT_CODES = new Set(['token_expired', 'not_connected', 'permission_d
 // conexión): en vez de un error se muestran solo las opiniones de Wuarikes.
 const GOOGLE_UNAVAILABLE_CODES = new Set(['quota', 'permission_denied', 'not_connected', 'token_expired']);
 
-function numberToStarRating(n: number) {
-  return ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'][Math.min(Math.max(Math.round(n), 1), 5) - 1];
-}
-
-function formatDate(review: any) {
-  if (review.relativeTimeDescription) return review.relativeTimeDescription;
-  if (!review.createTime) return '';
-  return new Date(review.createTime).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
+/**
+ * Reseñas de Google con sus estados de conexión. `connectSlot` es el formulario para conectar por
+ * Place ID (se muestra cuando todavía no hay reseñas de Google); lo arma la página.
+ */
+export default function GoogleReviews({ refreshKey, connectSlot }: { refreshKey?: number; connectSlot?: ReactNode }) {
   const { activePlaceId } = useRestaurant();
+  const { customers } = useCustomerLabels();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [step, setStep] = useState<Step>('loading');
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<GoogleReview[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [rating, setRating] = useState(0);
   const [total, setTotal] = useState(0);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<{ code?: string; message: string } | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
 
   useEffect(() => {
     if (!activePlaceId) return;
@@ -98,12 +89,12 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
   const fetchPersistedReviews = async (profile: any) => {
     const rows = await businessApi.getPersistedGoogleReviews(activePlaceId!);
     if (!rows || rows.length === 0) { setStep('not_connected'); return; }
-    setReviews(rows.map((r: any) => ({
+    setReviews(withKeys(rows.map((r: any) => ({
       reviewer: { displayName: r.authorName, profilePhotoUrl: r.authorPhotoUrl },
       starRating: numberToStarRating(r.rating),
       comment: r.text,
       relativeTimeDescription: r.relativeTimeDescription,
-    })));
+    }))));
     setRating(profile.googleRating ? parseFloat(profile.googleRating) : 0);
     setTotal(profile.googleTotalReviews || rows.length);
     setStep('connected');
@@ -128,7 +119,7 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
     setStep('loading');
     try {
       const res = await businessApi.getAllGoogleReviews(activePlaceId!);
-      setReviews(res.reviews || []);
+      setReviews(withKeys(res.reviews || []));
       setTotal(res.total || 0);
       if (res.averageRating) {
         setRating(res.averageRating);
@@ -169,349 +160,111 @@ export default function GoogleReviews({ refreshKey }: { refreshKey?: number }) {
       r.name === reviewName ? { ...r, reviewReply: { comment, updateTime: new Date().toISOString() } } : r));
   };
 
-  const canReply = reviews.some((r) => r.name);
-  const counts = useMemo(() => ({
-    unanswered: reviews.filter((r) => !r.reviewReply).length,
-    negative: reviews.filter((r) => (STARS[r.starRating] ?? 0) <= 3).length,
-  }), [reviews]);
-
-  const visible = useMemo(() => {
-    const list = reviews.filter((r) =>
-      filter === 'unanswered' ? !r.reviewReply
-        : filter === 'negative' ? (STARS[r.starRating] ?? 0) <= 3
-          : true);
-    // Primero las negativas sin responder: son las que más urgen.
-    const urgent = (r: any) => (!r.reviewReply && (STARS[r.starRating] ?? 5) <= 3 ? 0 : 1);
-    return canReply ? [...list].sort((a, b) => urgent(a) - urgent(b)) : list;
-  }, [reviews, filter, canReply]);
-
-  const header = (subtitle: React.ReactNode) => (
-    <div>
-      <h2 className="text-3xl font-black text-[var(--text)] font-warike italic">Reseñas de Google</h2>
-      {subtitle}
-    </div>
-  );
-
-  // ── LOADING ──────────────────────────────────────────────────────────────
+  // ── CARGANDO ─────────────────────────────────────────────────────────────
   if (step === 'loading') return (
-    <div className="text-center py-10 font-bold text-gray-400">Cargando reseñas de Google...</div>
+    <Card padding="sm" className="p-0">
+      <DataList items={[]} loading empty={null} renderItem={() => null} />
+    </Card>
   );
 
   // ── GOOGLE NO DISPONIBLE → SOLO OPINIONES DE WUARIKES ────────────────────
   if (step === 'error' && GOOGLE_UNAVAILABLE_CODES.has(error?.code || '')) return (
-    <WuarikesFeedbackList placeId={activePlaceId!} />
+    <div className="space-y-6">
+      <p className="rounded-card border border-border bg-surface p-4 text-sm text-text-muted">
+        Las reseñas de Google no están disponibles por ahora. Mientras tanto, aquí están las opiniones que tus {customers} dejaron por QR o NFC.
+      </p>
+      <WuarikesFeedbackList placeId={activePlaceId!} />
+    </div>
   );
 
   // ── ERROR ────────────────────────────────────────────────────────────────
   if (step === 'error') return (
+    <Card padding="lg" className="space-y-4 border-danger/30">
+      <p role="alert" className="flex items-start gap-2 text-sm font-medium text-danger">
+        <AlertTriangle size={20} aria-hidden className="shrink-0" />
+        {error?.message}
+      </p>
+      {RECONNECT_CODES.has(error?.code || '') || error?.code === 'location_missing' ? (
+        <Button variant="secondary" disabled={isBusy} onClick={error?.code === 'location_missing' ? loadLocations : handleConnect}>
+          <GoogleIcon />
+          {error?.code === 'location_missing' ? 'Elegir mi negocio' : isBusy ? 'Redirigiendo...' : 'Volver a conectar Google'}
+        </Button>
+      ) : (
+        <Button variant="secondary" onClick={checkConnectionAndLoad}>Reintentar</Button>
+      )}
+    </Card>
+  );
+
+  // ── SIN RESEÑAS DE GOOGLE (sin Place ID) → CONECTAR + OPINIONES DE WUARIKES ──
+  if (step === 'not_connected' && !GBP_API_ENABLED) return (
     <div className="space-y-8">
-      {header(null)}
-      <div className="bg-red-50 border border-red-200 rounded-[2rem] p-8 space-y-4">
-        <p className="font-black text-red-700 text-sm">{error?.message}</p>
-        <div className="flex flex-wrap gap-3">
-          {RECONNECT_CODES.has(error?.code || '') || error?.code === 'location_missing' ? (
-            <button
-              onClick={error?.code === 'location_missing' ? loadLocations : handleConnect}
-              disabled={isBusy}
-              className="flex items-center gap-3 py-3 px-5 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md disabled:opacity-50"
-            >
-              <GoogleIcon />
-              <span className="text-sm font-black text-[#3c4043]">
-                {error?.code === 'location_missing' ? 'Elegir mi negocio' : isBusy ? 'Redirigiendo...' : 'Volver a conectar Google'}
-              </span>
-            </button>
-          ) : (
-            <button onClick={checkConnectionAndLoad} className="py-3 px-5 rounded-2xl bg-white border border-red-200 text-sm font-black text-red-700">
-              Reintentar
-            </button>
-          )}
-        </div>
-      </div>
+      <ConnectGoogleCard>{connectSlot}</ConnectGoogleCard>
+      <WuarikesFeedbackList placeId={activePlaceId!} />
     </div>
   );
 
-  // ── SIN RESEÑAS DE GOOGLE (sin Place ID) → OPINIONES DE WUARIKES ──────────
-  if (step === 'not_connected' && !GBP_API_ENABLED) return (
-    <WuarikesFeedbackList
-      placeId={activePlaceId!}
-      notice={
-        <p className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3">
-          ¿Quieres ver también tus reseñas de Google? Arriba, en <b>Google Place ID</b>, pulsa <b>Buscar</b>, guarda y luego <b>Sincronizar</b>.
-        </p>
-      }
-    />
-  );
-
-  // ── NOT CONNECTED ────────────────────────────────────────────────────────
+  // ── NO CONECTADO (API de Business Profile) ───────────────────────────────
   if (step === 'not_connected') return (
-    <div className="space-y-8">
-      {header(<p className="text-[var(--text-muted)] font-bold text-sm mt-1">Conecta tu cuenta para ver y responder todas tus reseñas</p>)}
-
-      <div className="bg-amber-50 border border-amber-200 rounded-[2rem] p-8 space-y-4">
-        <div className="flex items-start gap-4">
-          <span className="text-3xl">⚠️</span>
-          <div className="space-y-2">
-            <p className="font-black text-amber-800 text-sm">Tu negocio debe estar verificado en Google</p>
-            <p className="text-amber-700 font-bold text-xs leading-relaxed">
-              Para acceder a todas tus reseñas, necesitas ser el propietario verificado del negocio en Google Business Profile.
-            </p>
-            <ol className="text-amber-700 font-bold text-xs leading-loose list-decimal pl-4 space-y-1">
-              <li>Ir a <span className="font-black">business.google.com</span></li>
-              <li>Iniciar sesión con la cuenta Google del negocio</li>
-              <li>Verificar el negocio (carta postal, llamada o SMS)</li>
-              <li>Una vez verificado, conectar aquí abajo</li>
-            </ol>
-          </div>
-        </div>
-        <a
-          href="https://business.google.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline"
-        >
-          Abrir Google Business Profile →
+    <Card padding="lg" className="space-y-5">
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-text">Tu negocio debe estar verificado en Google</h2>
+        <p className="text-sm text-text-muted">
+          Para acceder a todas tus reseñas necesitas ser el propietario verificado del negocio en Google Business Profile.
+        </p>
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-text">
+          <li>Ir a business.google.com</li>
+          <li>Iniciar sesión con la cuenta Google del negocio</li>
+          <li>Verificar el negocio (carta postal, llamada o SMS)</li>
+          <li>Una vez verificado, conectar aquí abajo</li>
+        </ol>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <Button variant="secondary" disabled={isBusy} onClick={handleConnect}>
+          <GoogleIcon />
+          {isBusy ? 'Redirigiendo...' : 'Conectar con Google Business'}
+        </Button>
+        <a href="https://business.google.com" target="_blank" rel="noopener noreferrer" className={buttonStyles('ghost', 'md')}>
+          Abrir Google Business Profile
+          <ExternalLink size={16} aria-hidden />
         </a>
       </div>
-
-      <button
-        onClick={handleConnect}
-        disabled={isBusy}
-        className="flex items-center justify-center gap-3 w-full py-5 px-6 bg-white border border-gray-300 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
-      >
-        <GoogleIcon />
-        <span className="text-sm font-black text-[#3c4043]">
-          {isBusy ? 'Redirigiendo...' : 'Conectar con Google Business'}
-        </span>
-      </button>
-    </div>
+    </Card>
   );
 
-  // ── PICK LOCATION ────────────────────────────────────────────────────────
+  // ── ELEGIR NEGOCIO ───────────────────────────────────────────────────────
   if (step === 'pick_location') return (
-    <div className="space-y-8">
-      {header(<p className="text-[var(--text-muted)] font-bold text-sm mt-1">Selecciona cuál es tu negocio</p>)}
-
-      <div className="bg-white border border-border rounded-[2rem] divide-y divide-gray-100 overflow-hidden">
+    <Card padding="sm" className="p-0">
+      <div className="border-b border-border px-5 py-4">
+        <h2 className="text-xl font-semibold text-text">Selecciona cuál es tu negocio</h2>
+      </div>
+      <ul className="divide-y divide-border">
         {locations.map((loc) => (
-          <button
-            key={loc.locationName}
-            onClick={() => handlePickLocation(loc.locationName)}
-            disabled={isBusy}
-            className="w-full text-left px-8 py-5 hover:bg-gray-50 transition-colors disabled:opacity-50 space-y-1"
-          >
-            <p className="font-black text-text text-sm">{loc.title}</p>
-            {loc.address && <p className="text-xs font-bold text-text-muted">{loc.address}</p>}
-          </button>
+          <li key={loc.locationName}>
+            <button
+              type="button"
+              onClick={() => handlePickLocation(loc.locationName)}
+              disabled={isBusy}
+              className="w-full space-y-0.5 px-5 py-4 text-left transition-colors hover:bg-background disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+            >
+              <p className="text-sm font-medium text-text">{loc.title}</p>
+              {loc.address && <p className="text-sm text-text-muted">{loc.address}</p>}
+            </button>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </Card>
   );
 
-  // ── CONNECTED — SHOW ALL REVIEWS ─────────────────────────────────────────
+  // ── CONECTADO: BANDEJA DE RESEÑAS ────────────────────────────────────────
   return (
-    <div className="space-y-8">
-      {header(
-        <div className="flex items-center gap-3 mt-2">
-          <span className="text-yellow-400 text-xl font-black">{rating > 0 ? rating.toFixed(1) : '—'} ⭐</span>
-          <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-widest">{total} reseñas totales</p>
-        </div>
-      )}
-
-      {canReply ? (
-        <div className="flex flex-wrap gap-2">
-          {([
-            ['all', `Todas (${reviews.length})`],
-            ['unanswered', `Sin responder (${counts.unanswered})`],
-            ['negative', `1-3 estrellas (${counts.negative})`],
-          ] as [Filter, string][]).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border transition-colors ${filter === key ? 'bg-primary text-white border-primary' : 'bg-white text-text-muted border-border hover:border-primary'}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      ) : reviews.length > 0 && (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-bold text-blue-700">
-            Estas son las reseñas más relevantes de Google. Pulsa <b>Responder</b>: la IA te sugiere el texto, lo copiamos y abrimos Google para que lo pegues.
-          </p>
-          {GBP_API_ENABLED && (
-            <button onClick={handleConnect} disabled={isBusy} className="text-[10px] font-black text-blue-700 uppercase tracking-widest hover:underline">
-              {isBusy ? 'Redirigiendo...' : 'Conectar →'}
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {visible.length === 0 ? (
-          <div className="md:col-span-2 bg-gray-50 p-12 rounded-[2.5rem] border border-dashed border-gray-200 text-center">
-            <p className="text-gray-400 font-bold italic">
-              {reviews.length === 0 ? 'Aún no tienes reseñas en Google Maps.' : 'No hay reseñas con este filtro. 🎉'}
-            </p>
-          </div>
-        ) : (
-          visible.map((review, idx) => (
-            <ReviewCard key={review.name || idx} review={review} placeId={activePlaceId!} onReplied={onReplied} />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ReviewCard({ review, placeId, onReplied }: {
-  review: any;
-  placeId: string;
-  onReplied: (reviewName: string, comment: string) => void;
-}) {
-  const stars = STARS[review.starRating] ?? 1;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState<'suggest' | 'publish' | null>(null);
-
-  const startEditing = () => {
-    setDraft(review.reviewReply?.comment || '');
-    setEditing(true);
-  };
-
-  const suggest = async () => {
-    setBusy('suggest');
-    try {
-      const res = await businessApi.suggestGoogleReply(placeId, {
-        comment: review.comment,
-        stars,
-        reviewerName: review.reviewer?.isAnonymous ? undefined : review.reviewer?.displayName,
-      });
-      setDraft(res.reply);
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo generar la sugerencia');
-    }
-    setBusy(null);
-  };
-
-  // Sin API: copiar en el mismo clic y luego abrir Google (el foco cambia de pestaña).
-  const copyAndOpen = () => {
-    const text = draft.trim();
-    const ok = copyText(text);
-    window.open(GOOGLE_REVIEWS_URL, '_blank', 'noopener,noreferrer');
-    if (ok) {
-      toast.success(`Respuesta copiada. En Google busca la reseña de ${review.reviewer?.displayName || 'tu cliente'}, toca Responder y pega.`, { duration: 8000 });
-    } else {
-      toast.error('No pudimos copiar el texto. Selecciónalo y cópialo manualmente.');
-    }
-    setEditing(false);
-  };
-
-  const publish = async () => {
-    setBusy('publish');
-    try {
-      await businessApi.replyGoogleReview(placeId, review.name, draft.trim());
-      onReplied(review.name, draft.trim());
-      setEditing(false);
-      toast.success('Respuesta publicada en Google');
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo publicar la respuesta');
-    }
-    setBusy(null);
-  };
-
-  return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm space-y-6 hover:shadow-xl transition-all">
-      <div className="flex justify-between items-start">
-        <div className="flex items-center gap-4">
-          {review.reviewer?.profilePhotoUrl ? (
-            <img src={review.reviewer.profilePhotoUrl} className="w-12 h-12 rounded-2xl object-cover" alt="" />
-          ) : (
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-lg">
-              {(review.reviewer?.displayName || '?')[0]}
-            </div>
-          )}
-          <div>
-            <p className="font-black text-[var(--text)] text-base">{review.reviewer?.displayName}</p>
-            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{formatDate(review)}</p>
-          </div>
-        </div>
-        <div className="flex gap-1 text-yellow-400 text-sm" aria-label={`${stars} estrellas`}>
-          {Array.from({ length: stars }).map((_, i) => <span key={i}>⭐</span>)}
-        </div>
-      </div>
-
-      {review.comment && (
-        <div className="bg-[var(--background)] p-6 rounded-3xl border border-[var(--border)] italic text-[var(--text-muted)] text-sm font-bold leading-relaxed">
-          "{review.comment}"
-        </div>
-      )}
-
-      {review.reviewReply && !editing && (
-        <div className="border-l-4 border-primary pl-4 space-y-1">
-          <p className="text-[10px] font-black text-primary uppercase tracking-widest">Tu respuesta</p>
-          <p className="text-sm font-bold text-[var(--text)] leading-relaxed">{review.reviewReply.comment}</p>
-        </div>
-      )}
-
-      {editing && (
-        <div className="space-y-3">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={4000}
-            rows={4}
-            placeholder="Escribe tu respuesta pública..."
-            aria-label="Respuesta a la reseña"
-            className="input-premium w-full resize-none py-4 text-sm"
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={suggest}
-              disabled={busy !== null}
-              className="px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest bg-primary/10 text-primary disabled:opacity-50"
-            >
-              {busy === 'suggest' ? 'Pensando...' : '✨ Sugerir con IA'}
-            </button>
-            <button
-              onClick={review.name ? publish : copyAndOpen}
-              disabled={busy !== null || !draft.trim()}
-              className="px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest bg-primary text-white disabled:opacity-50"
-            >
-              {busy === 'publish' ? 'Publicando...' : review.name ? 'Publicar en Google' : '📋 Copiar y abrir Google'}
-            </button>
-            <button
-              onClick={() => setEditing(false)}
-              disabled={busy !== null}
-              className="px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-widest text-text-muted"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <span className="text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest bg-blue-50 text-blue-600">
-          Google Maps
-        </span>
-        {!editing && (
-          <button onClick={startEditing} className="text-[11px] font-black text-primary uppercase tracking-widest hover:underline">
-            {review.reviewReply ? 'Editar respuesta' : 'Responder'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      <path fill="none" d="M0 0h48v48H0z"/>
-    </svg>
+    <ReviewInbox
+      reviews={reviews}
+      rating={rating}
+      total={total}
+      placeId={activePlaceId!}
+      isBusy={isBusy}
+      onConnect={handleConnect}
+      onReplied={onReplied}
+    />
   );
 }

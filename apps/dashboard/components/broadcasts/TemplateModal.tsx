@@ -1,27 +1,30 @@
 'use client';
 
 import React from 'react';
+import { ArrowRight, Lightbulb, Plus, Save, X } from 'lucide-react';
 import {
   TemplateFormData, TemplateStep, TemplateCategory,
 } from '../../hooks/useTemplates';
+import { Button, Input, Select, Sheet, Tabs, cn } from '../ui';
+import { controlStyles } from '../ui/Field';
 
 const STEPS: TemplateStep[] = ['info', 'message', 'buttons'];
 const STEP_LABELS: Record<TemplateStep, string> = { info: 'Plantilla', message: 'Mensaje', buttons: 'Botones' };
 
-const CATEGORY_INFO: Record<TemplateCategory, { icon: string; color: string; desc: string; example: string }> = {
+const CATEGORY_INFO: Record<TemplateCategory, { label: string; desc: string; example: string }> = {
   MARKETING: {
-    icon: '📣', color: 'amber',
+    label: 'Marketing',
     desc: 'Para promociones, ofertas, descuentos y anuncios comerciales.',
     example: '¡Hola {{1}}! Esta semana 2x1 en ceviche. Ven a El Huarique y disfruta.',
   },
   UTILITY: {
-    icon: '🔧', color: 'blue',
+    label: 'Utilidad',
     desc: 'Para confirmaciones, recordatorios y actualizaciones de pedidos/reservas.',
     example: '{{1}}, tu reserva para {{2}} personas el {{3}} está confirmada. ¡Te esperamos!',
   },
   AUTHENTICATION: {
-    icon: '🔒', color: 'purple',
-    desc: 'Para códigos de verificación de un solo uso (OTP). Raramente necesario en restaurantes.',
+    label: 'Autenticación',
+    desc: 'Para códigos de verificación de un solo uso (OTP). Raramente necesario.',
     example: 'Tu código de verificación de El Huarique es: {{1}}. Caduca en 10 minutos.',
   },
 };
@@ -45,236 +48,161 @@ interface TemplateModalProps {
   removeVariable: (n: number) => void;
 }
 
+const chip = 'inline-flex items-center gap-1 rounded-control border border-border bg-background px-2 py-1 text-xs font-medium text-text';
+
+/** Creación de una plantilla en tres pasos, en un panel lateral con vista previa abajo. */
 export function TemplateModal({
   open, onClose, step, onStep, form, onChange, onSubmit, creating,
   bodyVariables, addVariable, removeVariable,
 }: TemplateModalProps) {
-  if (!open) return null;
-
   const vars = bodyVariables(form.body);
-  const colorMap: Record<string, string> = {
-    amber: 'bg-amber-50 border-amber-200 text-amber-800',
-    blue:  'bg-blue-50 border-blue-200 text-blue-800',
-    purple:'bg-purple-50 border-purple-200 text-purple-800',
-  };
-  const exColorMap: Record<string, string> = {
-    amber: 'bg-amber-100/60 text-amber-700',
-    blue:  'bg-blue-100/60 text-blue-700',
-    purple:'bg-purple-100/60 text-purple-700',
-  };
   const catInfo = CATEGORY_INFO[form.category];
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col" style={{ maxHeight: '90vh' }}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100 shrink-0">
-          <div>
-            <h3 className="font-black text-gray-900">Nueva Plantilla de WhatsApp</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Completa los campos para comenzar</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* Sidebar de pasos */}
-          <div className="w-44 border-r border-gray-100 py-4 shrink-0 overflow-y-auto">
-            {STEPS.map(s => (
-              <button
-                key={s}
-                onClick={() => onStep(s)}
-                className={`w-full text-left px-5 py-3.5 text-sm font-bold transition-colors border-r-2 ${
-                  step === s ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-500 hover:bg-gray-50 border-transparent'
-                }`}
-              >
-                {STEP_LABELS[s]}
-              </button>
-            ))}
+    <Sheet open={open} onClose={onClose} title="Nueva plantilla de WhatsApp">
+      {open && (
+        <div className="flex min-h-full flex-col">
+          <div className="px-2">
+            <Tabs tabs={STEPS.map(s => ({ key: s, label: STEP_LABELS[s] }))} value={step} onChange={(k) => onStep(k as TemplateStep)} aria-label="Pasos de la plantilla" />
           </div>
 
-          {/* Formulario central */}
-          <div className="flex-1 overflow-y-auto px-7 py-6 space-y-5">
-
-            {/* Paso 1: Info */}
+          <div className="flex-1 space-y-5 px-4 py-4">
             {step === 'info' && <>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Nombre de la Plantilla</label>
-                <input
-                  type="text"
-                  value={form.elementName}
-                  onChange={e => onChange(p => ({ ...p, elementName: e.target.value.replace(/\s+/g, '_').toLowerCase() }))}
-                  placeholder="promo_fin_semana"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-400 outline-none"
-                />
-                <p className="text-[10px] text-gray-400 mt-1">Solo minúsculas y guiones bajos.</p>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Categoría</label>
-                <div className="grid grid-cols-3 gap-2 mb-3">
+              <Input
+                label="Nombre de la plantilla"
+                hint="Solo minúsculas y guiones bajos."
+                value={form.elementName}
+                onChange={e => onChange(p => ({ ...p, elementName: e.target.value.replace(/\s+/g, '_').toLowerCase() }))}
+                placeholder="promo_fin_semana"
+              />
+              <fieldset className="space-y-2">
+                <legend className="mb-1.5 text-sm font-medium text-text">Categoría</legend>
+                <div className="grid grid-cols-3 gap-2">
                   {(['MARKETING', 'UTILITY', 'AUTHENTICATION'] as TemplateCategory[]).map(cat => (
                     <button
                       key={cat}
                       type="button"
+                      aria-pressed={form.category === cat}
                       onClick={() => onChange(p => ({ ...p, category: cat }))}
-                      className={`py-3 px-2 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all ${
-                        form.category === cat ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      className={`h-11 rounded-control border px-2 text-sm font-medium transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                        form.category === cat ? 'border-primary bg-primary-soft text-primary-hover' : 'border-border text-text hover:bg-background'
                       }`}
                     >
-                      {CATEGORY_INFO[cat].icon} {cat === 'AUTHENTICATION' ? 'Auth' : cat === 'UTILITY' ? 'Utilidad' : 'Marketing'}
+                      {cat === 'AUTHENTICATION' ? 'Auth' : CATEGORY_INFO[cat].label}
                     </button>
                   ))}
                 </div>
-                <div className={`rounded-xl border px-4 py-3 space-y-1.5 ${colorMap[catInfo.color]}`}>
-                  <p className="text-xs font-black">{catInfo.icon} {form.category === 'AUTHENTICATION' ? 'Autenticación' : form.category === 'UTILITY' ? 'Utilidad' : 'Marketing'}</p>
-                  <p className="text-xs font-medium leading-relaxed">{catInfo.desc}</p>
-                  <div className={`rounded-lg px-3 py-2 mt-1 ${exColorMap[catInfo.color]}`}>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-0.5">Ejemplo:</p>
-                    <p className="text-xs italic leading-relaxed">"{catInfo.example}"</p>
-                  </div>
+                <div className="space-y-1.5 rounded-control border border-border bg-background px-4 py-3">
+                  <p className="text-sm font-medium text-text">{catInfo.label}</p>
+                  <p className="text-xs leading-relaxed text-text-muted">{catInfo.desc}</p>
+                  <p className="text-xs italic leading-relaxed text-text-muted">Ejemplo: &quot;{catInfo.example}&quot;</p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Idioma</label>
-                <select
-                  value={form.language}
-                  onChange={e => onChange(p => ({ ...p, language: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                >
-                  <option value="es">Español</option>
-                  <option value="en">Inglés</option>
-                  <option value="pt_BR">Portugués (Brasil)</option>
-                </select>
-              </div>
+              </fieldset>
+              <Select
+                label="Idioma"
+                value={form.language}
+                onChange={e => onChange(p => ({ ...p, language: e.target.value }))}
+              >
+                <option value="es">Español</option>
+                <option value="en">Inglés</option>
+                <option value="pt_BR">Portugués (Brasil)</option>
+              </Select>
             </>}
 
-            {/* Paso 2: Mensaje */}
             {step === 'message' && <>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                  Encabezado <span className="normal-case font-normal text-gray-400">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.headerText}
-                  onChange={e => onChange(p => ({ ...p, headerText: e.target.value }))}
-                  placeholder="Título del mensaje"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+              <Input
+                label="Encabezado (opcional)"
+                value={form.headerText}
+                onChange={e => onChange(p => ({ ...p, headerText: e.target.value }))}
+                placeholder="Título del mensaje"
+              />
+              <div className="space-y-1.5">
+                <label htmlFor="template-body" className="text-sm font-medium text-text">Cuerpo del mensaje</label>
+                <textarea
+                  id="template-body"
+                  value={form.body}
+                  onChange={e => onChange(p => ({ ...p, body: e.target.value }))}
+                  placeholder="Hola {{1}}, tenemos una oferta especial para ti hoy..."
+                  rows={5}
+                  maxLength={1024}
+                  className={controlStyles(undefined, 'py-2.5')}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-black text-gray-700 mb-1">Cuerpo del Mensaje</label>
-                <p className="text-xs text-gray-400 mb-2">Ingresa el texto para tu mensaje.</p>
-                <div className="relative border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-400">
-                  <textarea
-                    value={form.body}
-                    onChange={e => onChange(p => ({ ...p, body: e.target.value }))}
-                    placeholder="Hola {{1}}, tenemos una oferta especial para ti hoy..."
-                    rows={5}
-                    maxLength={1024}
-                    className="w-full px-4 pt-3 pb-8 text-sm outline-none resize-none rounded-xl"
-                  />
-                  <div className="absolute bottom-2 right-3 text-[10px] text-gray-400 font-mono">
-                    {form.body.length} / 1024
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Button variant="secondary" size="sm" icon={Plus} onClick={addVariable}>Agregar variable</Button>
+                  <span className="text-xs tabular-nums text-text-muted">{form.body.length} / 1024</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={addVariable}
-                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-black text-gray-600 hover:bg-gray-50 transition-all"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Agregar variable
-                </button>
                 {vars.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {vars.map(n => (
-                      <span key={n} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-blue-50 border border-blue-200 rounded-lg text-xs font-black text-blue-700">
+                      <span key={n} className={chip}>
                         {`{{${n}}}`}
-                        <button type="button" onClick={() => removeVariable(n)} className="text-blue-400 hover:text-red-500 transition-colors">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                        <button
+                          type="button"
+                          onClick={() => removeVariable(n)}
+                          aria-label={`Quitar variable ${n}`}
+                          className="relative rounded text-text-muted after:absolute after:-inset-3 hover:text-danger"
+                        >
+                          <X size={16} aria-hidden />
                         </button>
                       </span>
                     ))}
                   </div>
                 )}
-                {vars.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-xs font-black text-gray-700">Valor de muestra para las variables</p>
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">💡</span>
-                      <p className="text-xs text-amber-700 leading-relaxed">Los valores de muestra ayudan a WhatsApp a evaluar y aprobar tu plantilla rápidamente.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Variables del Cuerpo</p>
-                      {vars.map(n => (
-                        <div key={n} className="flex items-center gap-2">
-                          <span className="shrink-0 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-xs font-black text-blue-700 font-mono">{`{{${n}}}`}</span>
-                          <input
-                            type="text"
-                            placeholder="Ingresa el valor de muestra"
-                            value={form.variableSamples[n]?.value || ''}
-                            onChange={e => onChange(p => ({
-                              ...p,
-                              variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], value: e.target.value, type: p.variableSamples[n]?.type || '' } },
-                            }))}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none"
-                          />
-                          <select
-                            value={form.variableSamples[n]?.type || ''}
-                            onChange={e => onChange(p => ({
-                              ...p,
-                              variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], type: e.target.value, value: p.variableSamples[n]?.value || '' } },
-                            }))}
-                            className="shrink-0 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none bg-white"
-                          >
-                            <option value="">Seleccionar tipo</option>
-                            {VARIABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">
-                  Mensaje Inferior <span className="normal-case font-normal text-gray-400">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={form.footer}
-                  onChange={e => onChange(p => ({ ...p, footer: e.target.value }))}
-                  placeholder="Ej: Para no recibir más mensajes, escribe STOP"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                />
-              </div>
+              {vars.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-text">Valor de muestra para las variables</p>
+                  <p className="flex items-start gap-2 rounded-control border border-secondary/40 bg-secondary/10 px-4 py-3 text-xs leading-relaxed text-text">
+                    <Lightbulb size={16} className="mt-0.5 shrink-0 text-text-muted" aria-hidden />
+                    Los valores de muestra ayudan a WhatsApp a evaluar y aprobar tu plantilla rápidamente.
+                  </p>
+                  {vars.map(n => (
+                    <div key={n} className="space-y-2 rounded-control border border-border p-3">
+                      <span className={chip}>{`{{${n}}}`}</span>
+                      <Input
+                        label="Valor de muestra"
+                        value={form.variableSamples[n]?.value || ''}
+                        onChange={e => onChange(p => ({
+                          ...p,
+                          variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], value: e.target.value, type: p.variableSamples[n]?.type || '' } },
+                        }))}
+                      />
+                      <Select
+                        label="Tipo"
+                        value={form.variableSamples[n]?.type || ''}
+                        onChange={e => onChange(p => ({
+                          ...p,
+                          variableSamples: { ...p.variableSamples, [n]: { ...p.variableSamples[n], type: e.target.value, value: p.variableSamples[n]?.value || '' } },
+                        }))}
+                      >
+                        <option value="">Seleccionar tipo</option>
+                        {VARIABLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Input
+                label="Mensaje inferior (opcional)"
+                value={form.footer}
+                onChange={e => onChange(p => ({ ...p, footer: e.target.value }))}
+                placeholder="Ej: Para no recibir más mensajes, escribe STOP"
+              />
             </>}
 
-            {/* Paso 3: Botones */}
             {step === 'buttons' && (
               <div className="space-y-6">
-                <div>
-                  <div className="mb-3">
-                    <p className="text-sm font-black text-gray-700">Respuesta Rápida</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Hasta 3 respuestas rápidas y 2 CTAs.</p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-text">Respuesta rápida</p>
+                    <p className="text-xs text-text-muted">Hasta 3 respuestas rápidas y 2 llamadas a la acción.</p>
                   </div>
                   {form.quickReplies.map((qr, i) => (
-                    <div key={i} className="flex items-start gap-2 mb-3">
-                      <div className="flex-1 space-y-1">
-                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Título</label>
-                        <input
-                          type="text"
+                    <div key={i} className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <Input
+                          label={`Título ${i + 1}`}
+                          hint="Máx. 25 caracteres. No admite emojis."
                           value={qr.text}
                           maxLength={25}
                           onChange={e => {
@@ -283,149 +211,107 @@ export function TemplateModal({
                             onChange(p => ({ ...p, quickReplies: u }));
                           }}
                           placeholder="Ej: Ver menú"
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
                         />
-                        <p className="text-[10px] text-gray-400">Max. 25 caracteres — No admite emojis.</p>
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        icon={X}
+                        aria-label={`Quitar respuesta rápida ${i + 1}`}
                         onClick={() => onChange(p => ({ ...p, quickReplies: p.quickReplies.filter((_, idx) => idx !== i) }))}
-                        className="mt-7 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                        className="mb-6 w-11 px-0"
+                      />
                     </div>
                   ))}
                   {form.quickReplies.length < 3 && (
-                    <button
-                      type="button"
-                      onClick={() => onChange(p => ({ ...p, quickReplies: [...p.quickReplies, { text: '' }] }))}
-                      className="text-blue-600 text-xs font-black hover:text-blue-800 transition-colors"
-                    >
-                      + Respuesta Rápida
-                    </button>
+                    <Button variant="secondary" size="sm" icon={Plus} onClick={() => onChange(p => ({ ...p, quickReplies: [...p.quickReplies, { text: '' }] }))}>
+                      Respuesta rápida
+                    </Button>
                   )}
                 </div>
-                <div>
-                  <p className="text-sm font-black text-gray-700 mb-3">Llamada a la Acción</p>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-text">Llamada a la acción</p>
                   {form.ctaButtons.map((cta, i) => (
-                    <div key={i} className="flex items-start gap-2 mb-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          value={cta.text}
-                          onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], text: e.target.value }; onChange(p => ({ ...p, ctaButtons: u })); }}
-                          placeholder="Texto del botón"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                        />
-                        <div className="flex gap-2">
-                          <select
-                            value={cta.type}
-                            onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], type: e.target.value as 'URL' | 'PHONE' }; onChange(p => ({ ...p, ctaButtons: u })); }}
-                            className="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-400 outline-none bg-white"
-                          >
-                            <option value="URL">URL</option>
-                            <option value="PHONE">Teléfono</option>
-                          </select>
-                          <input
-                            type="text"
-                            value={cta.value}
-                            onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], value: e.target.value }; onChange(p => ({ ...p, ctaButtons: u })); }}
-                            placeholder={cta.type === 'URL' ? 'https://...' : '+51 9...'}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                    <div key={i} className="space-y-2 rounded-control border border-border bg-background p-3">
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <Input
+                            label="Texto del botón"
+                            value={cta.text}
+                            onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], text: e.target.value }; onChange(p => ({ ...p, ctaButtons: u })); }}
                           />
                         </div>
+                        <Button
+                          variant="ghost"
+                          icon={X}
+                          aria-label={`Quitar llamada a la acción ${i + 1}`}
+                          onClick={() => onChange(p => ({ ...p, ctaButtons: p.ctaButtons.filter((_, idx) => idx !== i) }))}
+                          className="w-11 px-0"
+                        />
                       </div>
-                      <button type="button" onClick={() => onChange(p => ({ ...p, ctaButtons: p.ctaButtons.filter((_, idx) => idx !== i) }))} className="mt-1 text-gray-400 hover:text-red-500">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div className="grid grid-cols-[120px_1fr] gap-2">
+                        <Select
+                          label="Tipo"
+                          value={cta.type}
+                          onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], type: e.target.value as 'URL' | 'PHONE' }; onChange(p => ({ ...p, ctaButtons: u })); }}
+                        >
+                          <option value="URL">URL</option>
+                          <option value="PHONE">Teléfono</option>
+                        </Select>
+                        <Input
+                          label={cta.type === 'URL' ? 'Enlace' : 'Teléfono'}
+                          value={cta.value}
+                          onChange={e => { const u = [...form.ctaButtons]; u[i] = { ...u[i], value: e.target.value }; onChange(p => ({ ...p, ctaButtons: u })); }}
+                          placeholder={cta.type === 'URL' ? 'https://...' : '+51 9...'}
+                        />
+                      </div>
                     </div>
                   ))}
                   {form.ctaButtons.length < 2 && (
-                    <button
-                      type="button"
-                      onClick={() => onChange(p => ({ ...p, ctaButtons: [...p.ctaButtons, { text: '', type: 'URL', value: '' }] }))}
-                      className="text-blue-600 text-xs font-black hover:text-blue-800 transition-colors"
-                    >
-                      + Agregar CTA
-                    </button>
+                    <Button variant="secondary" size="sm" icon={Plus} onClick={() => onChange(p => ({ ...p, ctaButtons: [...p.ctaButtons, { text: '', type: 'URL', value: '' }] }))}>
+                      Agregar llamada a la acción
+                    </Button>
                   )}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Vista previa */}
-          <div className="w-72 border-l border-gray-100 bg-gray-50 p-5 shrink-0 overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Vista previa</p>
-              <span className="text-[10px] text-gray-400">{new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div className="bg-[#ECE5DD] rounded-2xl p-3 min-h-48">
-              <div className="bg-white rounded-2xl rounded-tl-none p-3 shadow-sm max-w-[92%] space-y-1.5">
-                {form.headerText && <p className="font-black text-gray-900 text-sm">{form.headerText}</p>}
-                {form.body ? (
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {form.body.replace(/\{\{(\d+)\}\}/g, (_, n) => `[Variable ${n}]`)}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-300 italic">El mensaje aparecerá aquí...</p>
-                )}
-                {form.footer && <p className="text-[10px] text-gray-400 mt-1">{form.footer}</p>}
-                {(form.quickReplies.some(q => q.text) || form.ctaButtons.some(c => c.text)) && (
-                  <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
-                    {form.quickReplies.filter(q => q.text).map((q, i) => (
-                      <div key={i} className="text-center text-blue-600 text-xs font-bold py-1 border-t border-gray-100 first:border-t-0">→ {q.text}</div>
-                    ))}
-                    {form.ctaButtons.filter(c => c.text).map((c, i) => (
-                      <div key={i} className="text-center text-blue-600 text-xs font-bold py-1 border-t border-gray-100">→ {c.text}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {(form.body || form.headerText) && (
-                <div className="flex justify-end mt-1">
-                  <span className="text-[9px] text-gray-400 bg-yellow-50 px-2 py-0.5 rounded-full font-bold">Plantilla de mensaje ●●</span>
+            <section aria-label="Vista previa" className="space-y-2 border-t border-border pt-4">
+              <p className="text-sm font-medium text-text-muted">Vista previa</p>
+              <div className="min-h-32 rounded-card bg-background p-3">
+                <div className="max-w-[92%] space-y-1.5 rounded-card border border-border bg-surface p-3">
+                  {form.headerText && <p className="text-sm font-semibold text-text">{form.headerText}</p>}
+                  {form.body ? (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-text">
+                      {form.body.replace(/\{\{(\d+)\}\}/g, (_, n) => `[Variable ${n}]`)}
+                    </p>
+                  ) : (
+                    <p className="text-sm italic text-text-muted">El mensaje aparecerá aquí...</p>
+                  )}
+                  {form.footer && <p className="mt-1 text-xs text-text-muted">{form.footer}</p>}
+                  {(form.quickReplies.some(q => q.text) || form.ctaButtons.some(c => c.text)) && (
+                    <div className="mt-2 border-t border-border pt-1">
+                      {[...form.quickReplies.filter(q => q.text), ...form.ctaButtons.filter(c => c.text)].map((b, i) => (
+                        <div key={i} className={cn('py-1 text-center text-xs font-medium text-primary', i > 0 && 'border-t border-border')}>{b.text}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            </section>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-7 py-4 border-t border-gray-100 flex items-center justify-between shrink-0">
-          <div className="flex gap-1.5">
-            {STEPS.map(s => (
-              <button key={s} onClick={() => onStep(s)} className={`w-2 h-2 rounded-full transition-all ${step === s ? 'bg-blue-600' : 'bg-gray-200 hover:bg-gray-300'}`} />
-            ))}
-          </div>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-black text-gray-600 hover:bg-gray-50 transition-all">
-              Cancelar
-            </button>
+          <div className="sticky bottom-0 flex gap-2 border-t border-border bg-surface px-4 py-3">
+            <Button variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
             {step !== 'buttons' ? (
-              <button
-                onClick={() => onStep(STEPS[STEPS.indexOf(step) + 1])}
-                className="px-5 py-2.5 bg-[#1E73BE] text-white rounded-xl text-sm font-black hover:opacity-90 transition-all"
-              >
-                Siguiente →
-              </button>
+              <Button icon={ArrowRight} onClick={() => onStep(STEPS[STEPS.indexOf(step) + 1])} className="flex-1">Siguiente</Button>
             ) : (
-              <button
-                onClick={onSubmit}
-                disabled={creating}
-                className="px-5 py-2.5 bg-[#1E73BE] text-white rounded-xl text-sm font-black hover:opacity-90 transition-all disabled:opacity-50"
-              >
-                {creating ? 'Guardando...' : 'Guardar Plantilla'}
-              </button>
+              <Button icon={Save} onClick={onSubmit} loading={creating} className="flex-1">
+                {creating ? 'Guardando...' : 'Guardar plantilla'}
+              </Button>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </Sheet>
   );
 }

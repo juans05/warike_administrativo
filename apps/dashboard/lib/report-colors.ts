@@ -1,20 +1,27 @@
-// Paleta validada (dataviz skill) para los 4 estados de conversación — orden fijo,
-// nunca reordenar por dato ni por filtro. Mismo hex en las 4 vistas donde aparece
-// (donut, gráfico por día, badges de tabla) para que la identidad sea consistente.
-export const STATUS_COLORS: Record<'attended' | 'unassigned' | 'pending' | 'resolved', { light: string; dark: string; bg: string; text: string }> = {
-  attended: { light: '#2a78d6', dark: '#3987e5', bg: 'bg-blue-50', text: 'text-blue-700' },
-  unassigned: { light: '#eb6834', dark: '#d95926', bg: 'bg-orange-50', text: 'text-orange-700' },
-  pending: { light: '#eda100', dark: '#c98500', bg: 'bg-amber-50', text: 'text-amber-700' },
-  resolved: { light: '#1baf7a', dark: '#199e70', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+import { chartColors } from './chartColors';
+
+export type ConversationStatus = 'attended' | 'unassigned' | 'pending' | 'resolved';
+
+// Un color de token fijo por estado, en el mismo orden en todas las vistas (donut, gráfico por día,
+// filtros). Nunca reordenar ni reasignar por dato o filtro: la identidad tiene que ser consistente.
+export const STATUS_COLORS: Record<ConversationStatus, string> = {
+  attended: chartColors.textMuted,
+  unassigned: chartColors.primary,
+  pending: chartColors.secondary,
+  resolved: chartColors.success,
 };
 
-export const STATUS_LABELS: Record<'attended' | 'unassigned' | 'pending' | 'resolved', string> = {
+export const STATUS_LABELS: Record<ConversationStatus, string> = {
   attended: 'Atendidas',
   unassigned: 'Sin asignar',
   pending: 'Pendientes',
   resolved: 'Resueltas',
 };
 
-// Delta / variación porcentual — nunca color solo, siempre con flecha + texto.
-export const DELTA_POSITIVE = '#006300';
-export const DELTA_NEGATIVE = '#d03b3b';
+// Mismo estado, mismo tono de Badge (la leyenda siempre lleva texto, no solo color).
+export const STATUS_TONE = {
+  attended: 'neutral',
+  unassigned: 'primary',
+  pending: 'warning',
+  resolved: 'success',
+} as const;

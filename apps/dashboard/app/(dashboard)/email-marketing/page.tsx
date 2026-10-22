@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Lock, Mail, Plus } from 'lucide-react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useEmailCampaigns } from '../../../hooks/useEmailCampaigns';
+import { useCustomerLabels } from '../../../hooks/useCustomerLabels';
 import { EmailCampaignList } from '../../../components/email-marketing/EmailCampaignList';
 import { EmailCampaignModal } from '../../../components/email-marketing/EmailCampaignModal';
+import { Button, Card, PageHeader, buttonStyles } from '../../../components/ui';
 
 export default function EmailMarketingPage() {
   const { activePlaceId } = useRestaurant();
+  const { customer, customers } = useCustomerLabels();
   const [loading, setLoading] = useState(true);
 
   const {
@@ -32,55 +37,50 @@ export default function EmailMarketingPage() {
     refreshAudienceCount(activePlaceId, campaignForm.audienceSources);
   }, [activePlaceId, showCampaignModal, campaignForm.audienceSources, refreshAudienceCount]);
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto p-8 space-y-6">
-        <div className="h-10 bg-gray-200 rounded-xl w-1/3 animate-pulse" />
-        <div className="h-12 bg-gray-100 rounded-2xl w-48 animate-pulse" />
-        <div className="h-56 bg-gray-100 rounded-2xl animate-pulse" />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-5xl mx-auto p-6 pb-20 space-y-6">
-      <div>
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Email Marketing</h1>
-        <p className="text-gray-500 mt-1 font-medium">Envía correos personalizados con promociones a tus clientes.</p>
-      </div>
+    <div className="max-w-5xl space-y-6 pb-20">
+      <PageHeader
+        title="Email marketing"
+        subtitle={`Envía correos personalizados con promociones a tus ${customers}.`}
+        action={!loading && !subscriptionBlocked ? <Button icon={Plus} onClick={openCreateModal}>Nueva campaña</Button> : undefined}
+      />
 
       {subscriptionBlocked && (
-        <div className="rounded-2xl p-6 border border-[#F26122]/30 bg-[#F26122]/5 space-y-3">
-          <p className="font-black text-sm text-gray-900">Función disponible en un plan superior</p>
-          <p className="text-sm text-gray-600">{subscriptionBlocked}</p>
-          <a
-            href="/suscripcion"
-            className="inline-block bg-[#F26122] text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity"
-          >
-            Ver planes
-          </a>
-        </div>
+        <Card padding="lg" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Lock size={24} aria-hidden />
+          </div>
+          <div className="flex-1">
+            <p className="text-base font-semibold text-text">Función disponible en un plan superior</p>
+            <p className="mt-1 text-sm text-text-muted">{subscriptionBlocked}</p>
+          </div>
+          <Link href="/suscripcion" className={buttonStyles('primary')}>Ver planes</Link>
+        </Card>
       )}
 
-      {!subscriptionBlocked && audienceCount > 0 && (
-        <p className="text-xs font-bold text-gray-500">📬 Tienes <strong>{audienceCount}</strong> cliente{audienceCount === 1 ? '' : 's'} que aceptaron recibir promociones por email.</p>
+      {!loading && !subscriptionBlocked && audienceCount > 0 && (
+        <p className="flex items-center gap-2 text-sm text-text-muted">
+          <Mail size={16} aria-hidden />
+          <span>Tienes <strong className="text-text tabular-nums">{audienceCount}</strong> {audienceCount === 1 ? customer : customers} que aceptaron recibir promociones por email.</span>
+        </p>
       )}
 
       {!subscriptionBlocked && (
-      <EmailCampaignList
-        campaigns={campaigns}
-        audienceCount={audienceCount}
-        sendingId={sendingId}
-        completingId={completingId}
-        unschedulingId={unschedulingId}
-        deletingId={deletingId}
-        onSend={handleSendCampaign}
-        onComplete={handleCompleteCampaign}
-        onUnschedule={handleUnscheduleCampaign}
-        onEdit={openEditModal}
-        onDelete={handleDeleteCampaign}
-        onNew={openCreateModal}
-      />
+        <EmailCampaignList
+          campaigns={campaigns}
+          loading={loading}
+          audienceCount={audienceCount}
+          sendingId={sendingId}
+          completingId={completingId}
+          unschedulingId={unschedulingId}
+          deletingId={deletingId}
+          onSend={handleSendCampaign}
+          onComplete={handleCompleteCampaign}
+          onUnschedule={handleUnscheduleCampaign}
+          onEdit={openEditModal}
+          onDelete={handleDeleteCampaign}
+          onNew={openCreateModal}
+        />
       )}
 
       <EmailCampaignModal

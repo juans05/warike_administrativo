@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { authApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
+import { Button, Card, Input, PageHeader } from '../../../components/ui';
 
 export default function MiCuentaPage() {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -30,44 +31,52 @@ export default function MiCuentaPage() {
     }
   };
 
-  return (
-    <div className="max-w-lg space-y-8 p-8">
-      <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Mi Cuenta</h1>
-        <p className="text-gray-500 mt-1">Cambiá tu contraseña de acceso al panel.</p>
-      </div>
+  const isDirty = Boolean(currentPassword || newPassword || confirmPassword);
 
-      <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm space-y-4">
-        <div>
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Contraseña actual</label>
-          <input
-            type="password" value={currentPassword} required
-            onChange={e => setCurrentPassword(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+  return (
+    <div className="max-w-lg">
+      <PageHeader title="Mi cuenta" subtitle="Cambia tu contraseña de acceso al panel." />
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Card padding="lg" className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-text">Contraseña</h2>
+            <p className="mt-1 text-sm text-text-muted">Usa al menos 6 caracteres.</p>
+          </div>
+          <Input
+            label="Contraseña actual"
+            type="password"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            required
           />
-        </div>
-        <div>
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Contraseña nueva</label>
-          <input
-            type="password" value={newPassword} required minLength={6}
-            onChange={e => setNewPassword(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+          <Input
+            label="Contraseña nueva"
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
           />
-        </div>
-        <div>
-          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1.5">Confirmar contraseña nueva</label>
-          <input
-            type="password" value={confirmPassword} required minLength={6}
-            onChange={e => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+          <Input
+            label="Confirmar contraseña nueva"
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
           />
-        </div>
-        <button
-          type="submit" disabled={isSaving}
-          className="w-full py-3 bg-gray-900 text-white rounded-xl font-black text-sm disabled:opacity-50"
-        >
-          {isSaving ? 'Guardando...' : 'Cambiar contraseña'}
-        </button>
+        </Card>
+
+        {isDirty && (
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3 shadow-modal">
+            <p className="text-sm text-text-muted">Tienes cambios sin guardar.</p>
+            <Button type="submit" loading={isSaving}>{isSaving ? 'Guardando...' : 'Cambiar contraseña'}</Button>
+          </div>
+        )}
       </form>
     </div>
   );

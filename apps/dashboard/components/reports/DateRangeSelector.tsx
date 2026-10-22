@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Calendar, ChevronDown } from 'lucide-react';
 import { DateRangePreset, PRESET_LABELS, PRESET_ORDER, formatDateInput } from '../../lib/date-range';
+import { Button, Input, cn } from '../ui';
 
 interface DateRangeSelectorProps {
   preset: DateRangePreset;
@@ -21,8 +23,13 @@ export function DateRangeSelector({ preset, onChangePreset, customFrom, customTo
     const onClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
   }, []);
 
   const rangeLabel = preset === 'custom'
@@ -31,48 +38,42 @@ export function DateRangeSelector({ preset, onChangePreset, customFrom, customTo
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
-      >
-        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
+      <Button variant="secondary" icon={Calendar} aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((v) => !v)}>
         {rangeLabel}
-        <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+        <ChevronDown size={16} aria-hidden className={cn('transition-transform duration-200 motion-reduce:transition-none', open && 'rotate-180')} />
+      </Button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl z-20 p-2">
-          {PRESET_ORDER.filter(p => p !== 'custom').map(p => (
+        <div className="absolute left-0 z-20 mt-2 w-64 rounded-card border border-border bg-surface p-2 shadow-modal sm:left-auto sm:right-0">
+          {PRESET_ORDER.filter((p) => p !== 'custom').map((p) => (
             <button
               key={p}
               type="button"
+              aria-pressed={preset === p}
               onClick={() => { onChangePreset(p); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-all ${
-                preset === p ? 'bg-orange-50 text-[#F26122]' : 'text-gray-600 hover:bg-gray-50'
-              }`}
+              className={cn(
+                'flex min-h-11 w-full items-center rounded-control px-3 text-left text-sm font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                preset === p ? 'bg-primary-soft text-primary-hover' : 'text-text hover:bg-background',
+              )}
             >
               {PRESET_LABELS[p]}
             </button>
           ))}
-          <div className="border-t border-gray-100 mt-2 pt-2 px-1">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-2">Personalizado</p>
-            <div className="flex flex-col gap-2 px-2">
-              <input
+          <div className="mt-2 space-y-3 border-t border-border px-1 pb-1 pt-3">
+            <p className="px-2 text-xs font-medium text-text-muted">Personalizado</p>
+            <div className="space-y-3 px-2">
+              <Input
+                label="Desde"
                 type="date"
                 value={customFrom}
-                onChange={e => { onChangeCustomFrom(e.target.value); onChangePreset('custom'); }}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs"
+                onChange={(e) => { onChangeCustomFrom(e.target.value); onChangePreset('custom'); }}
               />
-              <input
+              <Input
+                label="Hasta"
                 type="date"
                 value={customTo}
-                onChange={e => { onChangeCustomTo(e.target.value); onChangePreset('custom'); }}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs"
+                onChange={(e) => { onChangeCustomTo(e.target.value); onChangePreset('custom'); }}
               />
             </div>
           </div>

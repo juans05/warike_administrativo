@@ -24,7 +24,13 @@ export interface ProfileUpdate {
   spainCommunity?: string | null;
   spainProvince?: string | null;
   spainMunicipality?: string | null;
+  businessType?: string;
   [key: string]: unknown;
+}
+
+/** `GET /places/business-types`: rubros (vertical) con sus tipos de negocio. */
+export interface BusinessTypesResponse {
+  verticals: { key: string; label: string; catalogLabel: string; types: { key: string; label: string }[] }[];
 }
 
 export interface BotSettingsUpdate {
@@ -44,10 +50,14 @@ export interface MenuItemPayload {
   price: number;
   categoryId: string;
   imageUrl?: string;
+  images?: string[];
   videoUrl?: string;
   isVegetarian?: boolean;
   available?: boolean;
   displayOrder?: number;
+  /** Rubros de servicios: 'servicio' + duración en minutos (entero >= 0; null la quita). */
+  kind?: 'producto' | 'servicio';
+  durationMin?: number | null;
 }
 export interface MenuItemUpdate extends Partial<MenuItemPayload> {}
 
@@ -57,6 +67,7 @@ export interface DeviceUpdate extends Partial<DevicePayload> { isActive?: boolea
 export interface DeviceRequestPayload { tapType: 'generico' | 'personalizado'; quantity: number }
 
 export interface NewPlacePayload {
+  businessType?: string;
   name: string;
   categoryId: string;
   district: string;
@@ -125,10 +136,40 @@ export interface Contact {
   phone: string | null;
   email: string | null;
   dni: string | null;
-  source: 'whatsapp' | 'feedback' | 'import';
+  source: 'whatsapp' | 'feedback' | 'import' | 'order' | 'loyalty';
   tags: string[] | null;
   marketingConsent: boolean;
   createdAt: string;
+}
+
+/** Tarjeta de fidelización de un cliente (tabla loyalty_cards). */
+export interface LoyaltyCard {
+  id: string;
+  customerPhone: string;
+  customerName: string | null;
+  stamps: number;
+  points: number;
+  totalVisits: number;
+  totalRedeemed: number;
+  level: 'BRONCE' | 'PLATA' | 'ORO' | 'VIP';
+  lastVisitAt: string | null;
+  marketingConsent: boolean;
+  createdAt: string;
+}
+
+export interface ContactTimelineEntry {
+  at: string;
+  kind: 'order' | 'conversation' | 'loyalty';
+  title: string;
+  /** Solo en pedidos, en céntimos. */
+  amount?: number;
+}
+
+/** GET business/contacts/:id/profile — la línea de tiempo llega ordenada de la más reciente a la más antigua. */
+export interface ContactProfile {
+  contact: Contact;
+  loyaltyCard: LoyaltyCard | null;
+  timeline: ContactTimelineEntry[];
 }
 
 export interface ContactImport {
@@ -140,6 +181,17 @@ export interface ContactImport {
   errorLog: { row: number; error: string }[] | null;
   status: 'processing' | 'completed' | 'failed';
   createdAt: string;
+}
+
+/** GET business/places/:id/today — pendientes y números de la semana para Inicio. */
+export interface TodaySummary {
+  botChatsSince24h: number;
+  pendingHumanChats: number;
+  inactiveLoyalCustomers: number;
+  winbackEnabled: boolean;
+  winbacksSentThisWeek: number;
+  newOrders: number;
+  weekStats: { chats: number; returningCustomers: number; googleRating: number | null };
 }
 
 // ── Core fetch helper ────────────────────────────────────────────────────────
@@ -244,12 +296,16 @@ export const botApi = {
 export const businessApi = {
   // Onboarding (registration)
   searchOnboarding: (q: string) => fetchWithAuth(`/business/onboarding/search?q=${encodeURIComponent(q)}`),
-  claimPlace: (id: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, { method: 'POST' }),
-  importPlace: (googlePlaceId: string) => fetchWithAuth('/business/onboarding/import', {
+  getBusinessTypes: () => fetchPublic('/places/business-types') as Promise<BusinessTypesResponse>,
+  claimPlace: (id: string, businessType: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, {
     method: 'POST',
-    body: JSON.stringify({ googlePlaceId }),
+    body: JSON.stringify({ businessType }),
   }),
-  createPlace: (data: { name: string; address?: string }) => fetchWithAuth('/business/onboarding/create', {
+  importPlace: (googlePlaceId: string, businessType: string) => fetchWithAuth('/business/onboarding/import', {
+    method: 'POST',
+    body: JSON.stringify({ googlePlaceId, businessType }),
+  }),
+  createPlace: (data: { name: string; address?: string; businessType: string }) => fetchWithAuth('/business/onboarding/create', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -257,6 +313,10 @@ export const businessApi = {
   // Places & Profile
   getMyPlaces: () => fetchWithAuth('/business/my-places'),
   getSubscriptionTier: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription-tier`),
+  getToday: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/today`) as Promise<TodaySummary>,
+  // Aparte de getToday: consulta a Google (con caché), puede tardar.
+  getTodayReviews: (placeId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/today/reviews`) as Promise<{ connected: boolean; unanswered: number }>,
   getProfile: (id: string) => fetchWithAuth(`/business/places/${id}/profile`),
   updateProfile: (id: string, data: ProfileUpdate) =>
     fetchWithAuth(`/business/places/${id}/profile`, {
@@ -370,7 +430,6 @@ export const businessApi = {
   // Google Maps Integration (Places API — sync 5 últimas reseñas)
   syncGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-sync`, { method: 'POST' }),
   getPersistedGoogleReviews: (id: string) => fetchWithAuth(`/business/places/${id}/google-reviews`),
-  findGooglePlaceId: (id: string) => fetchWithAuth(`/business/places/${id}/find-google-place-id`),
 
   // AI Bot Prompt Suggestion
   suggestBotPrompt: (id: string) => fetchWithAuth(`/business/places/${id}/suggest-bot-prompt`, { method: 'POST' }),
@@ -588,6 +647,8 @@ export const businessApi = {
     fetchWithAuth(`/business/contacts?placeId=${placeId}&page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   getContactImports: (placeId: string) =>
     fetchWithAuth(`/business/contacts/imports/list?placeId=${placeId}`),
+  getContactProfile: (placeId: string, contactId: string) =>
+    fetchWithAuth(`/business/contacts/${contactId}/profile?placeId=${placeId}`) as Promise<ContactProfile>,
   uploadContacts: (placeId: string, file: File) => uploadContactsFile(placeId, file),
   syncContacts: (placeId: string) =>
     fetchWithAuth(`/business/contacts/sync?placeId=${placeId}`, { method: 'POST' }),
@@ -615,8 +676,11 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 export const publicApi = {
   getPlatformSettings: () => fetchPublic('/platform-settings'),
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
+  /** Carta pública (categorías con platos): la usa el mozo para tomar pedidos. */
+  getPlaceMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   getScanPromo: (id: string) => fetchPublic(`/places/${id}/scan-promo`),
-  getCategories: () => fetchPublic('/places/categories'),
+  /** Sin `vertical` el backend devuelve solo gastronomía; con `vertical` (o `all`) las del rubro pedido. */
+  getCategories: (vertical?: string) => fetchPublic(`/places/categories${vertical ? `?vertical=${encodeURIComponent(vertical)}` : ''}`),
   getPublicMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   recommendDish: (id: string, message: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     fetchPublic(`/places/${id}/menu/recommend`, { method: 'POST', body: JSON.stringify({ message, history }) }),
@@ -755,6 +819,12 @@ export const adminApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+
+  /** Fija el tipo de negocio de un local; si cambia de rubro, el backend le quita la categoría de otro rubro. */
+  setPlaceBusinessType: (id: string, businessType: string) => fetchWithAuth(`/admin/places/${id}/business-type`, {
+    method: 'PATCH',
+    body: JSON.stringify({ businessType }),
+  }) as Promise<{ message: string; businessType: string }>,
 
   getDeviceRequests: () => fetchWithAuth('/admin/device-requests'),
   updateDeviceRequestStatus: (id: string, status: 'pending' | 'fulfilled' | 'rejected') =>
@@ -914,7 +984,7 @@ export const authApi = {
 
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
-  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'cocina'; whatsappNumberIds?: string[] }) =>
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
   update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -944,6 +1014,17 @@ export const adminCommissionsApi = {
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
 };
 
+export type ReceiptDocType = 'TICKET' | 'BOLETA' | 'FACTURA';
+export type CashMethod = 'EFECTIVO' | 'TARJETA' | 'YAPE_PLIN';
+/** Datos del comprobante: los pide el mozo con la precuenta y caja los confirma al cobrar. */
+export interface ReceiptRequest {
+  docType: ReceiptDocType;
+  customerDocType?: string;
+  customerDocNumber?: string;
+  customerName?: string;
+  customerAddress?: string;
+}
+
 export const ordersApi = {
   me: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/me`),
   list: (placeId: string, params: { status?: string; channel?: string; q?: string; page?: number } = {}) => {
@@ -957,6 +1038,23 @@ export const ordersApi = {
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/payments/manual`, { method: 'POST', body: JSON.stringify(body) }),
+  // Mozo en sala: detalle de mesa, comanda del mozo (platos y otro ítem) y mozo asignado.
+  waiters: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/waiters`),
+  tableDetail: (placeId: string, tableId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}/detail`),
+  staffOrder: (placeId: string, tableId: string, body: { items?: { dishId: string; quantity: number }[]; customItems?: { name: string; unitPrice: number; quantity: number }[]; notes?: string }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}/orders`, { method: 'POST', body: JSON.stringify(body) }),
+  assignWaiter: (placeId: string, tabId: string, waiterUserId: string | null) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/waiter`, { method: 'PATCH', body: JSON.stringify({ waiterUserId }) }),
+  // Caja: precuenta del mozo, apertura, cobro con comprobante y cierre de turno.
+  precuenta: (placeId: string, tabId: string, body: ReceiptRequest) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/precuenta`, { method: 'POST', body: JSON.stringify(body) }),
+  cash: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/cash`),
+  cashOpen: (placeId: string, openingAmount: number) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
+  cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/charge`, { method: 'POST', body: JSON.stringify(body) }),
+  cashClose: (placeId: string, countedCash?: number) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/close`, { method: 'POST', body: JSON.stringify(countedCash == null ? {} : { countedCash }) }),
   getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
   updateSettings: (placeId: string, body: Record<string, unknown>) =>
     fetchWithAuth(`/business/places/${placeId}/orders/settings`, { method: 'PATCH', body: JSON.stringify(body) }),

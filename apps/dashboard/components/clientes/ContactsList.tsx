@@ -1,92 +1,57 @@
 'use client';
 
-import React from 'react';
-import { Contact } from '../../lib/api-client';
+import { Search, Upload, Users } from 'lucide-react';
+import type { Contact } from '../../lib/api-client';
 import { maskPhone } from '../../lib/mask';
-
-const SOURCE_LABEL: Record<Contact['source'], string> = {
-  whatsapp: '💬 WhatsApp',
-  feedback: '💭 Feedback',
-  import: '📤 Importado',
-};
+import { Badge, Button, DataList, EmptyState } from '../ui';
+import { ClientRow, Pager, SOURCE_LABEL, displayName } from './parts';
 
 interface ContactsListProps {
   contacts: Contact[];
   meta: { total: number; page: number; totalPages: number };
   loading: boolean;
+  /** Texto buscado: distingue "aún no hay contactos" de "la búsqueda no encontró nada". */
+  search: string;
+  /** Etiqueta del rubro en plural y minúsculas ("clientes", "pacientes"). */
+  customers: string;
+  selectedId: string | null;
+  onSelect: (contact: Contact) => void;
   onPageChange: (page: number) => void;
-  onNew: () => void;
-  onSync: () => void;
-  syncing: boolean;
+  onImport: () => void;
 }
 
-export function ContactsList({ contacts, meta, loading, onPageChange, onNew, onSync, syncing }: ContactsListProps) {
+export function ContactsList({ contacts, meta, loading, search, customers, selectedId, onSelect, onPageChange, onImport }: ContactsListProps) {
+  const empty = search ? (
+    <EmptyState icon={Search} title="Sin resultados" description="Prueba con otro nombre." />
+  ) : (
+    <EmptyState
+      icon={Users}
+      title={`Aún no tienes ${customers}`}
+      description="Importa tu base desde un archivo o sincroniza los que ya te escribieron."
+      action={<Button icon={Upload} onClick={onImport}>Importar {customers}</Button>}
+    />
+  );
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-gray-800">Contactos ({meta.total})</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onSync}
-            disabled={syncing}
-            title="Trae contactos nuevos desde tus conversaciones de WhatsApp y las reseñas con email/teléfono"
-            className="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 text-xs font-black rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
-          >
-            {syncing ? 'Sincronizando...' : '🔄 Sincronizar'}
-          </button>
-          <button onClick={onNew} className="px-5 py-2.5 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
-            📤 Subir Clientes
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="h-56 bg-gray-100 rounded-2xl animate-pulse" />
-      ) : contacts.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-16 text-center space-y-3">
-          <p className="text-5xl">👥</p>
-          <p className="font-black text-gray-700 text-lg">No hay contactos aún</p>
-          <p className="text-sm text-gray-400">Sube un archivo con tu base de clientes para empezar</p>
-          <button onClick={onNew} className="mt-2 px-6 py-3 bg-[#F26122] text-white text-xs font-black rounded-xl hover:opacity-90 transition-all">
-            📤 Subir Clientes
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="px-5 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Nombre</th>
-                  <th className="px-5 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Celular</th>
-                  <th className="px-5 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Email</th>
-                  <th className="px-5 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">DNI</th>
-                  <th className="px-5 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Origen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contacts.map(c => (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <td className="px-5 py-3 text-sm font-bold text-gray-900">{c.name || '—'}</td>
-                    <td className="px-5 py-3 text-sm text-gray-600">{c.phone ? maskPhone(c.phone) : '—'}</td>
-                    <td className="px-5 py-3 text-sm text-gray-600">{c.email || '—'}</td>
-                    <td className="px-5 py-3 text-sm text-gray-600">{c.dni || '—'}</td>
-                    <td className="px-5 py-3 text-xs font-bold text-gray-500">{SOURCE_LABEL[c.source]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {meta.totalPages > 1 && (
-            <div className="flex justify-center gap-3 pt-2">
-              <button onClick={() => onPageChange(Math.max(1, meta.page - 1))} disabled={meta.page === 1} className="px-5 py-3 rounded-xl bg-white border border-border font-black text-xs disabled:opacity-40">← Anterior</button>
-              <span className="px-5 py-3 font-black text-xs text-text-muted">{meta.page} / {meta.totalPages}</span>
-              <button onClick={() => onPageChange(Math.min(meta.totalPages, meta.page + 1))} disabled={meta.page === meta.totalPages} className="px-5 py-3 rounded-xl bg-white border border-border font-black text-xs disabled:opacity-40">Siguiente →</button>
-            </div>
-          )}
-        </>
+    <div className={loading ? 'px-4' : undefined}>
+      {!loading && contacts.length > 0 && (
+        <p className="px-4 py-2 text-xs tabular-nums text-text-muted">{meta.total} en total</p>
       )}
+      <DataList
+        items={contacts}
+        loading={loading}
+        empty={empty}
+        renderItem={(contact) => (
+          <ClientRow
+            title={displayName(contact.name, contact.phone)}
+            subtitle={contact.phone ? maskPhone(contact.phone) : contact.email || 'Sin datos de contacto'}
+            selected={contact.id === selectedId}
+            onSelect={() => onSelect(contact)}
+            aside={<Badge>{SOURCE_LABEL[contact.source] ?? contact.source}</Badge>}
+          />
+        )}
+      />
+      <Pager page={meta.page} totalPages={meta.totalPages} onPage={onPageChange} />
     </div>
   );
 }
