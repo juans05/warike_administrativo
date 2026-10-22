@@ -676,6 +676,8 @@ export async function fetchPublic(endpoint: string, options: RequestInit = {}) {
 export const publicApi = {
   getPlatformSettings: () => fetchPublic('/platform-settings'),
   getPlace: (id: string) => fetchPublic(`/places/${id}`),
+  /** Carta pública (categorías con platos): la usa el mozo para tomar pedidos. */
+  getPlaceMenu: (id: string) => fetchPublic(`/places/${id}/menu`),
   getScanPromo: (id: string) => fetchPublic(`/places/${id}/scan-promo`),
   /** Sin `vertical` el backend devuelve solo gastronomía; con `vertical` (o `all`) las del rubro pedido. */
   getCategories: (vertical?: string) => fetchPublic(`/places/categories${vertical ? `?vertical=${encodeURIComponent(vertical)}` : ''}`),
@@ -982,7 +984,7 @@ export const authApi = {
 
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
-  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'cocina'; whatsappNumberIds?: string[] }) =>
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
   update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -1036,6 +1038,13 @@ export const ordersApi = {
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/payments/manual`, { method: 'POST', body: JSON.stringify(body) }),
+  // Mozo en sala: detalle de mesa, comanda del mozo (platos y otro ítem) y mozo asignado.
+  waiters: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/waiters`),
+  tableDetail: (placeId: string, tableId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}/detail`),
+  staffOrder: (placeId: string, tableId: string, body: { items?: { dishId: string; quantity: number }[]; customItems?: { name: string; unitPrice: number; quantity: number }[]; notes?: string }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}/orders`, { method: 'POST', body: JSON.stringify(body) }),
+  assignWaiter: (placeId: string, tabId: string, waiterUserId: string | null) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/waiter`, { method: 'PATCH', body: JSON.stringify({ waiterUserId }) }),
   // Caja: precuenta del mozo, apertura, cobro con comprobante y cierre de turno.
   precuenta: (placeId: string, tabId: string, body: ReceiptRequest) =>
     fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/precuenta`, { method: 'POST', body: JSON.stringify(body) }),

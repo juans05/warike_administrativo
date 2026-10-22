@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Banknote, CheckCircle2, ConciergeBell, CreditCard, DoorClosed, FileText, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
-import { ordersApi, type ReceiptRequest } from '../../../lib/api-client';
+import { CheckCircle2, ConciergeBell, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
+import { ordersApi } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button, Card, EmptyState, PageHeader, Sheet, Skeleton } from '../../../components/ui';
 import { TablesQrCard } from '../../../components/orders/TablesQrCard';
-import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../../../components/caja/ReceiptFields';
+import { MesaPanel } from '../../../components/mesas/MesaPanel';
 
 // Estado por color, ícono y texto.
 const STATE_STYLE: Record<string, { label: string; icon: LucideIcon; className: string; pulse?: boolean }> = {
@@ -19,52 +19,52 @@ const STATE_STYLE: Record<string, { label: string; icon: LucideIcon; className: 
   CUENTA_PEDIDA: { label: 'Cuenta pedida', icon: Receipt, className: 'border-danger bg-danger/10 text-danger', pulse: true },
 };
 
+// En pantalla ancha (caja, laptop) el panel de la mesa va al lado del salón; en celular/tablet se abre encima.
+const WIDE = '(min-width: 1280px)';
+const useWide = () => useSyncExternalStore(
+  (cb) => { const m = window.matchMedia(WIDE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
+  () => window.matchMedia(WIDE).matches,
+  () => true,
+);
+
 export default function TablesPage() {
   const { activePlaceId } = useRestaurant();
   // null = todavía no llegó la primera carga (se muestra Skeleton).
   const [rows, setRows] = useState<any[] | null>(null);
-  const [selected, setSelected] = useState<any>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [tables, setTables] = useState<any[]>([]);
-  const [precuenta, setPrecuenta] = useState<ReceiptRequest | null>(null);
-  const [sendingPrecuenta, setSendingPrecuenta] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const wide = useWide();
 
   const load = useCallback(() => {
-    if (activePlaceId) ordersApi.tablesBoard(activePlaceId).then((data: any[]) => {
-      setRows(data);
-      setSelected((prev: any) => (prev ? data.find((r) => r.table.id === prev.table.id) ?? null : null));
-    }).catch((err: Error) => { toast.error(err.message); setRows((r) => r ?? []); });
+    if (activePlaceId) ordersApi.tablesBoard(activePlaceId).then(setRows).catch((err: Error) => { toast.error(err.message); setRows((r) => r ?? []); });
   }, [activePlaceId]);
-
   const loadTables = useCallback(() => {
     if (activePlaceId) ordersApi.tables(activePlaceId).then(setTables).catch(() => undefined);
   }, [activePlaceId]);
   const openEditor = () => { loadTables(); setEditing(true); };
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (activePlaceId) ordersApi.me(activePlaceId).then((r: any) => setRole(r.role)).catch(() => setRole(null));
+  }, [activePlaceId]);
   useOrderStream(staffStreamUrl(activePlaceId), (event) => {
     if (event.type === 'tab.bill_requested') toast.warning('Una mesa pidió la cuenta');
+    if (event.type === 'order.status_changed' && event.status === 'LISTO') toast.info('Hay un pedido listo para servir');
     load();
   });
 
-  const markPaid = async (method: 'EFECTIVO' | 'POS') => {
-    try { await ordersApi.manualPayment(activePlaceId!, { tabId: selected.tab.id, method }); toast.success('Pago registrado'); load(); } catch (err: any) { toast.error(err.message); }
-  };
-  const sendPrecuenta = async () => {
-    setSendingPrecuenta(true);
-    try { await ordersApi.precuenta(activePlaceId!, selected.tab.id, precuenta!); toast.success('Precuenta enviada a caja'); setPrecuenta(null); load(); }
-    catch (err: any) { toast.error(err.message); } finally { setSendingPrecuenta(false); }
-  };
-  const close = async () => {
-    try { await ordersApi.closeTab(activePlaceId!, selected.tab.id); setSelected(null); load(); } catch (err: any) { toast.error(err.message); }
-  };
+  const selected = rows?.find((r) => r.table.id === selectedId) ?? null;
+  const canManageTables = role === 'admin' || role === 'supervisor';
+  const panel = selected && activePlaceId ? <MesaPanel placeId={activePlaceId} row={selected} onChanged={load} /> : null;
 
   return (
     <div className="space-y-6 pb-20">
       <PageHeader
-        title="Mesas"
-        subtitle="Toca una mesa con cuenta abierta para cobrarla o cerrarla."
-        action={<Button variant="secondary" icon={Settings} onClick={openEditor}>Crear y editar mesas</Button>}
+        title="Mesas y pedidos"
+        subtitle="Toca una mesa para tomar el pedido, ver lo que pidieron por la carta digital, pedir la precuenta o liberarla."
+        action={canManageTables && <Button variant="secondary" icon={Settings} onClick={openEditor}>Crear y editar mesas</Button>}
       />
 
       <ul className="flex flex-wrap gap-2" aria-label="Leyenda de estados">
@@ -84,40 +84,24 @@ export default function TablesPage() {
           <EmptyState
             icon={LayoutGrid}
             title="Aún no hay mesas"
-            description="Crea tus mesas aquí. Cada mesa tiene su QR para pedir desde el celular."
-            action={<Button onClick={openEditor}>Crear mesas</Button>}
+            description={canManageTables ? 'Crea tus mesas aquí. Cada mesa tiene su QR para pedir desde el celular.' : 'Pide al administrador que cree las mesas del local.'}
+            action={canManageTables ? <Button onClick={openEditor}>Crear mesas</Button> : undefined}
           />
         </Card>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {rows.map((r) => <TableTile key={r.table.id} row={r} selected={selected?.table.id === r.table.id} onSelect={() => setSelected(r)} />)}
+        <div className={wide && panel ? 'grid grid-cols-[1fr_30rem] items-start gap-6' : ''}>
+          <div className={`grid gap-4 ${wide && panel ? 'grid-cols-3 2xl:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}>
+            {rows.map((r) => <TableTile key={r.table.id} row={r} selected={selectedId === r.table.id} onSelect={() => setSelectedId(r.table.id)} />)}
+          </div>
+          {wide && panel && <Card padding="lg" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">{panel}</Card>}
         </div>
       )}
 
-      {selected?.tab && (
-        <Card padding="lg" className="space-y-4" aria-label={`Detalle de ${selected.table.name}`}>
-          <h2 className="text-xl font-semibold text-text">{selected.table.name} · <span className="tabular-nums">{soles(selected.total)}</span></h2>
-          {selected.tab.precuenta && (
-            <p className="text-sm text-text-muted">Precuenta en caja: {DOC_LABEL[selected.tab.precuenta.docType as keyof typeof DOC_LABEL]}{selected.tab.precuenta.customerName ? ` · ${selected.tab.precuenta.customerName}` : ''}</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" icon={FileText} onClick={() => setPrecuenta(selected.tab.precuenta ?? EMPTY_RECEIPT)}>{selected.tab.precuenta ? 'Editar precuenta' : 'Pedir precuenta'}</Button>
-            <Button icon={Banknote} onClick={() => markPaid('EFECTIVO')}>Pagado en efectivo</Button>
-            <Button icon={CreditCard} onClick={() => markPaid('POS')}>Pagado con POS</Button>
-            <Button variant="secondary" icon={DoorClosed} onClick={close}>Cerrar mesa</Button>
-          </div>
-        </Card>
+      {!wide && (
+        <Sheet open={!!panel} onClose={() => setSelectedId(null)} title={selected?.table.name}>
+          <div className="p-4">{panel}</div>
+        </Sheet>
       )}
-
-      <Sheet open={!!precuenta && !!selected?.tab} onClose={() => setPrecuenta(null)} title={`Precuenta · ${selected?.table.name ?? ''}`}>
-        {precuenta && (
-          <div className="space-y-6 p-4">
-            <p className="text-2xl font-semibold tabular-nums text-text">{soles(selected?.total ?? 0)}</p>
-            <ReceiptFields value={precuenta} onChange={setPrecuenta} />
-            <Button className="w-full" icon={FileText} loading={sendingPrecuenta} onClick={sendPrecuenta}>Enviar a caja</Button>
-          </div>
-        )}
-      </Sheet>
 
       <Sheet open={editing} onClose={() => setEditing(false)} title="Crear y editar mesas">
         {activePlaceId && <TablesQrCard placeId={activePlaceId} tables={tables} onChanged={() => { loadTables(); load(); }} />}

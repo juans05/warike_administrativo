@@ -16,6 +16,7 @@ import {
   Flame,
   Settings,
   ChefHat,
+  LayoutGrid,
   Lock,
   Menu,
   ChevronUp,
@@ -135,11 +136,18 @@ type NavProps = {
   user: DashboardUser | null;
   pathname: string;
   showBusiness: boolean;
-  kitchenOnly: boolean;
+  /** Cocina y mozo ven una sola pantalla (Cocina o Mesas); el resto del panel no aplica a su rol. */
+  soloRoute: SoloRoute | null;
   config: VerticalConfig | undefined;
   tier: string | null | undefined;
   pendingChats: number | null;
   handleLogout: () => void;
+};
+
+type SoloRoute = { href: string; label: string; icon: typeof ChefHat };
+const SOLO_ROUTE: Record<string, SoloRoute> = {
+  cocina: { href: '/cocina', label: 'Cocina', icon: ChefHat },
+  mozo: { href: '/mesas', label: 'Mesas y pedidos', icon: LayoutGrid },
 };
 
 function InnerLayout({ children, user, handleLogout }: { children: React.ReactNode; user: DashboardUser | null; handleLogout: () => void }) {
@@ -157,10 +165,11 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
     if (user?.role !== 'business' || !activePlaceId) { setPlaceRole(null); return; }
     ordersApi.me(activePlaceId).then((r: { role: string }) => setPlaceRole(r.role)).catch(() => setPlaceRole(null));
   }, [user?.role, activePlaceId]);
-  const kitchenOnly = placeRole === 'cocina';
+  const soloRoute = placeRole ? SOLO_ROUTE[placeRole] ?? null : null;
+  const kitchenOnly = soloRoute !== null;
   useEffect(() => {
-    if (kitchenOnly && pathname !== '/cocina') router.replace('/cocina');
-  }, [kitchenOnly, pathname, router]);
+    if (soloRoute && pathname !== soloRoute.href) router.replace(soloRoute.href);
+  }, [soloRoute, pathname, router]);
 
   const pendingChats = usePendingChats(isBusiness && !kitchenOnly ? activePlaceId : null);
 
@@ -178,7 +187,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const navProps: NavProps = {
-    user, pathname, showBusiness: isBusiness && !noPlaces, kitchenOnly, config, tier, pendingChats, handleLogout,
+    user, pathname, showBusiness: isBusiness && !noPlaces, soloRoute, config, tier, pendingChats, handleLogout,
   };
 
   return (
@@ -242,7 +251,7 @@ function Logo() {
 }
 
 function SidebarContent({
-  user, pathname, showBusiness, kitchenOnly, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+  user, pathname, showBusiness, soloRoute, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
 }: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -252,13 +261,13 @@ function SidebarContent({
       {!hideLogo && <div className="px-5 py-5"><Logo /></div>}
 
       <nav aria-label="Menú principal" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-        {showBusiness && kitchenOnly && (
+        {showBusiness && soloRoute && (
           <ul className="pt-2">
-            <SidebarLink href="/cocina" icon={ChefHat} label="Cocina" active={pathname === '/cocina'} />
+            <SidebarLink href={soloRoute.href} icon={soloRoute.icon} label={soloRoute.label} active={pathname === soloRoute.href} />
           </ul>
         )}
 
-        {showBusiness && !kitchenOnly && (
+        {showBusiness && !soloRoute && (
           <>
             <ul className="pt-2">
               <SidebarLink href="/inicio" icon={Home} label="Inicio" active={pathname === '/inicio'} />

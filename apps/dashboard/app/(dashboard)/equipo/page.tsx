@@ -7,9 +7,9 @@ import { teamApi, businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import { Badge, Button, Card, CloseButton, DataList, EmptyState, Input, PageHeader, Select, Sheet } from '../../../components/ui';
 
-type Role = 'admin' | 'supervisor' | 'agente' | 'cocina';
+type Role = 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina';
 
-const ROLE_LABELS: Record<Role, string> = { admin: 'Admin', supervisor: 'Supervisor', agente: 'Agente', cocina: 'Cocina' };
+const ROLE_LABELS: Record<Role, string> = { admin: 'Admin', supervisor: 'Supervisor', agente: 'Agente', mozo: 'Mozo', cocina: 'Cocina' };
 
 interface TeamMember {
   id: string;
@@ -37,6 +37,7 @@ function RoleFields({ role, numberIds, waNumbers, onRole, onToggleNumber }: {
     <>
       <Select label="Rol" value={role} onChange={e => onRole(e.target.value as Role)}>
         <option value="agente">Agente</option>
+        <option value="mozo">Mozo (toma pedidos en mesas desde su celular)</option>
         <option value="cocina">Cocina (solo pantalla de cocina)</option>
         <option value="supervisor">Supervisor</option>
         <option value="admin">Admin</option>
@@ -186,7 +187,7 @@ export default function EquipoPage() {
             <EmptyState
               icon={Users}
               title="Todavía no hay nadie más en el equipo"
-              description="Agrega a quienes atienden el WhatsApp o la cocina de esta sede."
+              description="Agrega a quienes atienden el WhatsApp, las mesas o la cocina de esta sede."
               action={<Button variant="secondary" icon={UserPlus} onClick={() => setShowForm(true)}>Agregar persona</Button>}
             />
           }
