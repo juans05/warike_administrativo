@@ -2,13 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, CheckCircle2, ConciergeBell, CreditCard, DoorClosed, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
-import { ordersApi } from '../../../lib/api-client';
+import { Banknote, CheckCircle2, ConciergeBell, CreditCard, DoorClosed, FileText, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
+import { ordersApi, type ReceiptRequest } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button, Card, EmptyState, PageHeader, Sheet, Skeleton } from '../../../components/ui';
 import { TablesQrCard } from '../../../components/orders/TablesQrCard';
+import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../../../components/caja/ReceiptFields';
 
 // Estado por color, ícono y texto.
 const STATE_STYLE: Record<string, { label: string; icon: LucideIcon; className: string; pulse?: boolean }> = {
@@ -25,6 +26,8 @@ export default function TablesPage() {
   const [selected, setSelected] = useState<any>(null);
   const [editing, setEditing] = useState(false);
   const [tables, setTables] = useState<any[]>([]);
+  const [precuenta, setPrecuenta] = useState<ReceiptRequest | null>(null);
+  const [sendingPrecuenta, setSendingPrecuenta] = useState(false);
 
   const load = useCallback(() => {
     if (activePlaceId) ordersApi.tablesBoard(activePlaceId).then((data: any[]) => {
@@ -46,6 +49,11 @@ export default function TablesPage() {
 
   const markPaid = async (method: 'EFECTIVO' | 'POS') => {
     try { await ordersApi.manualPayment(activePlaceId!, { tabId: selected.tab.id, method }); toast.success('Pago registrado'); load(); } catch (err: any) { toast.error(err.message); }
+  };
+  const sendPrecuenta = async () => {
+    setSendingPrecuenta(true);
+    try { await ordersApi.precuenta(activePlaceId!, selected.tab.id, precuenta!); toast.success('Precuenta enviada a caja'); setPrecuenta(null); load(); }
+    catch (err: any) { toast.error(err.message); } finally { setSendingPrecuenta(false); }
   };
   const close = async () => {
     try { await ordersApi.closeTab(activePlaceId!, selected.tab.id); setSelected(null); load(); } catch (err: any) { toast.error(err.message); }
@@ -89,13 +97,27 @@ export default function TablesPage() {
       {selected?.tab && (
         <Card padding="lg" className="space-y-4" aria-label={`Detalle de ${selected.table.name}`}>
           <h2 className="text-xl font-semibold text-text">{selected.table.name} · <span className="tabular-nums">{soles(selected.total)}</span></h2>
+          {selected.tab.precuenta && (
+            <p className="text-sm text-text-muted">Precuenta en caja: {DOC_LABEL[selected.tab.precuenta.docType as keyof typeof DOC_LABEL]}{selected.tab.precuenta.customerName ? ` · ${selected.tab.precuenta.customerName}` : ''}</p>
+          )}
           <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" icon={FileText} onClick={() => setPrecuenta(selected.tab.precuenta ?? EMPTY_RECEIPT)}>{selected.tab.precuenta ? 'Editar precuenta' : 'Pedir precuenta'}</Button>
             <Button icon={Banknote} onClick={() => markPaid('EFECTIVO')}>Pagado en efectivo</Button>
             <Button icon={CreditCard} onClick={() => markPaid('POS')}>Pagado con POS</Button>
             <Button variant="secondary" icon={DoorClosed} onClick={close}>Cerrar mesa</Button>
           </div>
         </Card>
       )}
+
+      <Sheet open={!!precuenta && !!selected?.tab} onClose={() => setPrecuenta(null)} title={`Precuenta · ${selected?.table.name ?? ''}`}>
+        {precuenta && (
+          <div className="space-y-6">
+            <p className="text-2xl font-semibold tabular-nums text-text">{soles(selected?.total ?? 0)}</p>
+            <ReceiptFields value={precuenta} onChange={setPrecuenta} />
+            <Button className="w-full" icon={FileText} loading={sendingPrecuenta} onClick={sendPrecuenta}>Enviar a caja</Button>
+          </div>
+        )}
+      </Sheet>
 
       <Sheet open={editing} onClose={() => setEditing(false)} title="Crear y editar mesas">
         {activePlaceId && <TablesQrCard placeId={activePlaceId} tables={tables} onChanged={() => { loadTables(); load(); }} />}

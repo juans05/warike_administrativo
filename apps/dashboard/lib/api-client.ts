@@ -1012,6 +1012,17 @@ export const adminCommissionsApi = {
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
 };
 
+export type ReceiptDocType = 'TICKET' | 'BOLETA' | 'FACTURA';
+export type CashMethod = 'EFECTIVO' | 'TARJETA' | 'YAPE_PLIN';
+/** Datos del comprobante: los pide el mozo con la precuenta y caja los confirma al cobrar. */
+export interface ReceiptRequest {
+  docType: ReceiptDocType;
+  customerDocType?: string;
+  customerDocNumber?: string;
+  customerName?: string;
+  customerAddress?: string;
+}
+
 export const ordersApi = {
   me: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/me`),
   list: (placeId: string, params: { status?: string; channel?: string; q?: string; page?: number } = {}) => {
@@ -1025,6 +1036,16 @@ export const ordersApi = {
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/payments/manual`, { method: 'POST', body: JSON.stringify(body) }),
+  // Caja: precuenta del mozo, apertura, cobro con comprobante y cierre de turno.
+  precuenta: (placeId: string, tabId: string, body: ReceiptRequest) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/precuenta`, { method: 'POST', body: JSON.stringify(body) }),
+  cash: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/cash`),
+  cashOpen: (placeId: string, openingAmount: number) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
+  cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/charge`, { method: 'POST', body: JSON.stringify(body) }),
+  cashClose: (placeId: string, countedCash?: number) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/close`, { method: 'POST', body: JSON.stringify(countedCash == null ? {} : { countedCash }) }),
   getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
   updateSettings: (placeId: string, body: Record<string, unknown>) =>
     fetchWithAuth(`/business/places/${placeId}/orders/settings`, { method: 'PATCH', body: JSON.stringify(body) }),

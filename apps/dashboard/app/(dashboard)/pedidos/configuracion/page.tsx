@@ -106,6 +106,22 @@ export default function OrderSettingsPage() {
       </Card>
 
       <Card padding="lg">
+        <SectionTitle title="Series de comprobantes" subtitle="Caja numera cada comprobante con su serie: B001-00000001, B001-00000002..." />
+        <div className="grid gap-3 sm:grid-cols-4">
+          {([['TICKET', 'Serie ticket'], ['BOLETA', 'Serie boleta'], ['FACTURA', 'Serie factura'], ['NOTA_CREDITO', 'Serie nota de crédito']] as const).map(([key, label]) => (
+            <Input
+              key={key}
+              label={label}
+              maxLength={4}
+              className="font-mono uppercase"
+              value={settings.receiptSeries?.[key] ?? ''}
+              onChange={(e) => set({ receiptSeries: { ...settings.receiptSeries, [key]: e.target.value.toUpperCase() } })}
+            />
+          ))}
+        </div>
+      </Card>
+
+      <Card padding="lg">
         <fieldset>
           <legend className="sr-only">¿Dónde recibes el dinero?</legend>
           <SectionTitle title="¿Dónde recibes el dinero?" />
