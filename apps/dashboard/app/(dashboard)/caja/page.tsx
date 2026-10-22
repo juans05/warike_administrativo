@@ -190,7 +190,7 @@ function ChargeSheet({ placeId, pending, series, onClose, onDone }: { placeId: s
 
   return (
     <Sheet open onClose={onClose} title={`Cobrar ${pending.tableName}`}>
-      <div className="space-y-6">
+      <div className="space-y-6 p-4">
         <p className="text-3xl font-semibold tabular-nums text-text">{soles(pending.due)}</p>
         <ReceiptFields value={receipt} onChange={setReceipt} series={series} />
         <fieldset className="space-y-2">

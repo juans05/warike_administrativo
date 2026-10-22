@@ -111,7 +111,7 @@ export default function TablesPage() {
 
       <Sheet open={!!precuenta && !!selected?.tab} onClose={() => setPrecuenta(null)} title={`Precuenta · ${selected?.table.name ?? ''}`}>
         {precuenta && (
-          <div className="space-y-6">
+          <div className="space-y-6 p-4">
             <p className="text-2xl font-semibold tabular-nums text-text">{soles(selected?.total ?? 0)}</p>
             <ReceiptFields value={precuenta} onChange={setPrecuenta} />
             <Button className="w-full" icon={FileText} loading={sendingPrecuenta} onClick={sendPrecuenta}>Enviar a caja</Button>
