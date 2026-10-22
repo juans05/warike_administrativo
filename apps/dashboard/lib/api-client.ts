@@ -67,6 +67,7 @@ export interface DeviceUpdate extends Partial<DevicePayload> { isActive?: boolea
 export interface DeviceRequestPayload { tapType: 'generico' | 'personalizado'; quantity: number }
 
 export interface NewPlacePayload {
+  businessType?: string;
   name: string;
   categoryId: string;
   district: string;

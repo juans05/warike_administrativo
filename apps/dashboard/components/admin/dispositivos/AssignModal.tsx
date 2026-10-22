@@ -3,15 +3,11 @@
 import { useEffect, useId, useState } from 'react';
 import { Info, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { publicApi, qrApi, type AssignQrPayload } from '../../../lib/api-client';
+import { businessApi, publicApi, qrApi, type AssignQrPayload, type BusinessTypesResponse } from '../../../lib/api-client';
 import { Button, Input, Modal, Select, Tabs, controlStyles } from '../../ui';
 import { DESTINATION_LABELS } from './constants';
 
 type Destination = 'REPUTATION' | 'MENU' | 'CUSTOM_URL';
-
-// Un local creado desde acá nace como restaurante (el backend no recibe otro tipo al crearlo),
-// así que su categoría sale del rubro gastronomía. Para otro rubro, se cambia el tipo en Moderación.
-const NEW_PLACE_VERTICAL = 'gastronomia';
 
 /** Asigna o reasigna un QR a un local existente o a uno que se crea en el momento. Se monta solo mientras está abierto. */
 export function AssignModal({ qrCode, mode, places, onClose, onDone }: {
@@ -26,15 +22,21 @@ export function AssignModal({ qrCode, mode, places, onClose, onDone }: {
   const [placeSearch, setPlaceSearch] = useState('');
   const [placeId, setPlaceId] = useState('');
   const [categories, setCategories] = useState<any[]>([]);
-  const [newPlace, setNewPlace] = useState({ name: '', categoryId: '', district: '', address: '', phone: '' });
+  const [newPlace, setNewPlace] = useState({ name: '', businessType: 'restaurante', categoryId: '', district: '', address: '', phone: '' });
+  const [verticals, setVerticals] = useState<BusinessTypesResponse['verticals']>([]);
+  // Las categorías dependen del rubro del tipo elegido.
+  const vertical = verticals.find((v) => v.types.some((t) => t.key === newPlace.businessType))?.key ?? 'gastronomia';
   const [destinationType, setDestinationType] = useState<Destination>('REPUTATION');
   const [destinationUrl, setDestinationUrl] = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    publicApi.getCategories(NEW_PLACE_VERTICAL).then(setCategories).catch(() => setCategories([]));
+    businessApi.getBusinessTypes().then((r) => setVerticals(r.verticals)).catch(() => setVerticals([]));
   }, []);
+  useEffect(() => {
+    publicApi.getCategories(vertical).then(setCategories).catch(() => setCategories([]));
+  }, [vertical]);
 
   const filteredPlaces = placeSearch
     ? places.filter((p) => p.name.toLowerCase().includes(placeSearch.toLowerCase()))
@@ -122,8 +124,19 @@ export function AssignModal({ qrCode, mode, places, onClose, onDone }: {
             <div className="space-y-3">
               <Input label="Nombre del local" type="text" value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })} />
               <Select
+                label="Tipo de negocio"
+                value={newPlace.businessType}
+                onChange={(e) => setNewPlace({ ...newPlace, businessType: e.target.value, categoryId: '' })}
+              >
+                {verticals.length === 0 && <option value="restaurante">Restaurante</option>}
+                {verticals.map((v) => (
+                  <optgroup key={v.key} label={v.label}>
+                    {v.types.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  </optgroup>
+                ))}
+              </Select>
+              <Select
                 label="Categoría"
-                hint="Los locales nuevos se crean como restaurante. Para otro rubro, cambia su tipo de negocio en Moderación."
                 value={newPlace.categoryId}
                 onChange={(e) => setNewPlace({ ...newPlace, categoryId: e.target.value })}
               >
