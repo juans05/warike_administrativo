@@ -140,6 +140,9 @@ export type Access = 'hidden' | 'locked' | 'open';
  */
 export function accessOf(entry: NavLeaf, config: VerticalConfig | undefined, tier: string | null | undefined): Access {
   if (entry.module && !isModuleVisible(config, entry.module)) return 'hidden';
+  // Sin suscripción (null) no se muestran las secciones de pago; con un plan, las de planes mayores salen con candado.
+  // undefined = cargando o error al consultar el plan: no se oculta nada (el backend igual valida el plan).
+  if (entry.tier && tier === null) return 'hidden';
   if (entry.tier && tier !== undefined && !hasTierAccess(tier, entry.tier)) return 'locked';
   return 'open';
 }
