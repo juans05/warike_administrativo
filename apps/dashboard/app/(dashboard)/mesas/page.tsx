@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { CheckCircle2, ConciergeBell, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
+import { Bell, BellRing, CheckCircle2, ConciergeBell, LayoutGrid, Receipt, Settings, Users, type LucideIcon } from 'lucide-react';
 import { ordersApi } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
@@ -10,6 +10,7 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button, Card, EmptyState, PageHeader, Sheet, Skeleton } from '../../../components/ui';
 import { TablesQrCard } from '../../../components/orders/TablesQrCard';
 import { MesaPanel } from '../../../components/mesas/MesaPanel';
+import { enableReadyAlerts, notificationsState, readyAlert } from '../../../lib/ready-alert';
 
 // Estado por color, ícono y texto.
 const STATE_STYLE: Record<string, { label: string; icon: LucideIcon; className: string; pulse?: boolean }> = {
@@ -36,6 +37,20 @@ export default function TablesPage() {
   const [tables, setTables] = useState<any[]>([]);
   const [role, setRole] = useState<string | null>(null);
   const wide = useWide();
+  const [alertsOn, setAlertsOn] = useState(false);
+  // El evento en vivo llega antes de recargar el tablero: se lee el mozo de la mesa del último tablero conocido.
+  const rowsRef = useRef<any[] | null>(null);
+  rowsRef.current = rows;
+  const myId = useRef<string | null>(null);
+  useEffect(() => {
+    try { myId.current = JSON.parse(localStorage.getItem('user') || 'null')?.id ?? null; } catch { myId.current = null; }
+    setAlertsOn(notificationsState() === 'granted');
+  }, []);
+  const turnOnAlerts = async () => {
+    const state = await enableReadyAlerts();
+    setAlertsOn(true);
+    toast.success(state === 'granted' ? 'Avisos activados: te avisaremos cuando cocina termine un pedido de tus mesas' : 'Avisos con sonido activados (las notificaciones del sistema están bloqueadas en este navegador)');
+  };
 
   const load = useCallback(() => {
     if (activePlaceId) ordersApi.tablesBoard(activePlaceId).then(setRows).catch((err: Error) => { toast.error(err.message); setRows((r) => r ?? []); });
@@ -51,7 +66,16 @@ export default function TablesPage() {
   }, [activePlaceId]);
   useOrderStream(staffStreamUrl(activePlaceId), (event) => {
     if (event.type === 'tab.bill_requested') toast.warning('Una mesa pidió la cuenta');
-    if (event.type === 'order.status_changed' && event.status === 'LISTO') toast.info('Hay un pedido listo para servir');
+    if (event.type === 'order.status_changed' && event.status === 'LISTO') {
+      const row = rowsRef.current?.find((r) => r.table.id === event.tableId);
+      const waiter = row?.tab?.waiterUserId ?? null;
+      // Solo avisa al mozo de esa mesa (o a todos si la mesa no tiene mozo asignado).
+      if (row && (!waiter || waiter === myId.current)) {
+        const msg = `${row.table.name}: pedido listo para servir`;
+        readyAlert('Pedido listo', msg);
+        toast.warning(msg, { duration: 15000 });
+      }
+    }
     load();
   });
 
@@ -64,7 +88,14 @@ export default function TablesPage() {
       <PageHeader
         title="Mesas y pedidos"
         subtitle="Toca una mesa para tomar el pedido, ver lo que pidieron por la carta digital, pedir la precuenta o liberarla."
-        action={canManageTables && <Button variant="secondary" icon={Settings} onClick={openEditor}>Crear y editar mesas</Button>}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant={alertsOn ? 'ghost' : 'primary'} icon={alertsOn ? BellRing : Bell} onClick={turnOnAlerts}>
+              {alertsOn ? 'Avisos activos' : 'Activar avisos de pedido listo'}
+            </Button>
+            {canManageTables && <Button variant="secondary" icon={Settings} onClick={openEditor}>Crear y editar mesas</Button>}
+          </div>
+        }
       />
 
       <ul className="flex flex-wrap gap-2" aria-label="Leyenda de estados">

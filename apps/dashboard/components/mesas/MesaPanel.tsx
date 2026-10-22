@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, ChefHat, CreditCard, DoorClosed, FileText, Minus, Plus, Search, Smartphone, Trash2, UserRound } from 'lucide-react';
+import { Banknote, ChefHat, CheckCircle2, CreditCard, DoorClosed, FileText, Minus, Plus, Search, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { ordersApi, publicApi, type ReceiptRequest } from '../../lib/api-client';
 import { STATUS_LABEL, soles, type OrderStatus } from '../../lib/orders-format';
 import { Badge, Button, Input, Select } from '../ui';
@@ -119,6 +119,9 @@ export function MesaPanel({ placeId, row, onChanged }: { placeId: string; row: a
                 ))}
               </ul>
               {o.notes && <p className="mt-2 text-xs text-text-muted">Nota: {o.notes}</p>}
+              {o.status === 'LISTO' && (
+                <Button className="mt-3 w-full" size="sm" icon={CheckCircle2} onClick={() => act(() => ordersApi.changeStatus(placeId, o.id, 'ENTREGADO'), `#${o.number} servido`)}>Marcar servido</Button>
+              )}
             </div>
           ))}
         </section>
