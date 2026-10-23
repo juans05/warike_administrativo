@@ -58,6 +58,17 @@ export default function EmailMarketingPage() {
         </Card>
       )}
 
+      {!loading && !subscriptionBlocked && audienceCount === 0 && (
+        <Card padding="md" className="space-y-2 border-secondary/60 bg-secondary/10">
+          <p className="flex items-center gap-2 font-semibold text-text"><Mail size={16} aria-hidden /> Todavía nadie puede recibir tus correos</p>
+          <p className="text-sm text-text">Para enviar una campaña necesitas {customers} con <strong>correo</strong> que hayan <strong>aceptado recibir promociones</strong>. Puedes conseguirlos así:</p>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-text">
+            <li>En <Link href="/clientes" className="font-medium text-primary-hover underline">Clientes</Link>, agrega el correo y marca el consentimiento, o importa un Excel con ambos datos.</li>
+            <li>Los {customers} que dejan su correo y aceptan promociones en el formulario de opinión (QR o NFC) se suman solos.</li>
+          </ul>
+        </Card>
+      )}
+
       {!loading && !subscriptionBlocked && audienceCount > 0 && (
         <p className="flex items-center gap-2 text-sm text-text-muted">
           <Mail size={16} aria-hidden />
