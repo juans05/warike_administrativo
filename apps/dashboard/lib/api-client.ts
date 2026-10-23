@@ -1014,6 +1014,35 @@ export const adminCommissionsApi = {
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
 };
 
+// ── Agenda de citas por profesional ─────────────────────────────────────
+export type DayHours = { day: string; open: string; close: string };
+export interface Professional {
+  id: string; name: string; photoUrl: string | null; station: string | null; serviceIds: string[];
+  schedule: DayHours[] | null; daysOff: string[]; active: boolean; displayOrder: number;
+}
+export interface BookingInput { serviceId: string; professionalId?: string | null; date: string; time: string; customerName: string; customerPhone?: string; notes?: string }
+const agendaBase = (placeId: string) => `/business/places/${placeId}/agenda`;
+export const agendaApi = {
+  day: (placeId: string, date: string) => fetchWithAuth(`${agendaBase(placeId)}/day?date=${date}`),
+  services: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/services`),
+  availability: (placeId: string, serviceId: string, date: string, professionalId?: string | null) =>
+    fetchWithAuth(`${agendaBase(placeId)}/availability?serviceId=${serviceId}&date=${date}${professionalId ? `&professionalId=${professionalId}` : ''}`),
+  book: (placeId: string, body: BookingInput) => fetchWithAuth(`${agendaBase(placeId)}/appointments`, { method: 'POST', body: JSON.stringify(body) }),
+  update: (placeId: string, id: string, body: Record<string, unknown>) =>
+    fetchWithAuth(`${agendaBase(placeId)}/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  professionals: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/professionals`) as Promise<Professional[]>,
+  saveProfessional: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${agendaBase(placeId)}/professionals${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+};
+export const publicAgendaApi = {
+  info: (placeId: string) => fetchPublic(`/public/agenda/${placeId}`),
+  availability: (placeId: string, serviceId: string, date: string, professionalId?: string | null) =>
+    fetchPublic(`/public/agenda/${placeId}/availability?serviceId=${serviceId}&date=${date}${professionalId ? `&professionalId=${professionalId}` : ''}`),
+  book: (placeId: string, body: BookingInput) => fetchPublic(`/public/agenda/${placeId}/book`, { method: 'POST', body: JSON.stringify(body) }),
+  byToken: (token: string) => fetchPublic(`/public/agenda/cita/${token}`),
+  cancel: (token: string) => fetchPublic(`/public/agenda/cita/${token}/cancel`, { method: 'POST' }),
+};
+
 export type ReceiptDocType = 'TICKET' | 'BOLETA' | 'FACTURA';
 export type CashMethod = 'EFECTIVO' | 'TARJETA' | 'YAPE_PLIN';
 /** Datos del comprobante: los pide el mozo con la precuenta y caja los confirma al cobrar. */

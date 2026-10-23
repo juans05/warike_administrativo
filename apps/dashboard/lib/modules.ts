@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   ChefHat,
   ClipboardList,
   Gift,
@@ -21,7 +22,7 @@ import {
 // Mirrors backend ModuleKey (huarique_backend/src/modules/places/business-types.ts) — keep in sync.
 export type ModuleKey =
   | 'reputacion' | 'social' | 'carta' | 'pedidos' | 'cocina' | 'mesas' | 'fidelizacion' | 'clientes'
-  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia';
+  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia' | 'agenda';
 
 export interface VerticalConfig {
   label: string;
@@ -73,6 +74,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/mi-ficha', label: 'Mi ficha', icon: Store },
       { href: '/carta', label: (l) => l.catalog, icon: UtensilsCrossed, module: 'carta', tier: 'reputacion' },
+      { href: '/agenda', label: 'Agenda', icon: CalendarDays, module: 'agenda', tier: 'reputacion' },
       { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, module: 'pedidos', tier: 'reputacion' },
       { href: '/cocina', label: 'Cocina', icon: ChefHat, module: 'cocina', tier: 'reputacion' },
       { href: '/mesas', label: 'Mesas', icon: LayoutGrid, module: 'mesas', tier: 'reputacion' },
