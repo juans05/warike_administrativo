@@ -982,11 +982,19 @@ export const authApi = {
     fetchWithAuth('/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) }),
 };
 
+export interface TeamProfile { id: string; name: string; baseRole: 'cocina' | 'mozo' | 'agente' | 'supervisor'; modules: string[] }
+type TeamProfileInput = Omit<TeamProfile, 'id'>;
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
-  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; whatsappNumberIds?: string[] }) =>
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; profileId?: string | null; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
-  update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
+  profiles: (placeId: string): Promise<TeamProfile[]> => fetchWithAuth(`/business/places/${placeId}/team/profiles`),
+  createProfile: (placeId: string, data: TeamProfileInput) =>
+    fetchWithAuth(`/business/places/${placeId}/team/profiles`, { method: 'POST', body: JSON.stringify(data) }),
+  updateProfile: (placeId: string, id: string, data: TeamProfileInput) =>
+    fetchWithAuth(`/business/places/${placeId}/team/profiles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProfile: (placeId: string, id: string) => fetchWithAuth(`/business/places/${placeId}/team/profiles/${id}`, { method: 'DELETE' }),
+  update: (placeId: string, memberId: string, data: { role?: string; profileId?: string | null; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (placeId: string, memberId: string) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'DELETE' }),

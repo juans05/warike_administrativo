@@ -138,6 +138,17 @@ export function navLabel(label: NavLeaf['label'], config: VerticalConfig | undef
 
 export type Access = 'hidden' | 'locked' | 'open';
 
+/** Igual que accessOf, pero un miembro con perfil solo ve las secciones de su perfil (allowed = null: sin perfil). */
+export function accessFor(entry: NavLeaf, config: VerticalConfig | undefined, tier: string | null | undefined, allowed: string[] | null): Access {
+  if (allowed && !(entry.module && allowed.includes(entry.module))) return 'hidden';
+  return accessOf(entry, config, tier);
+}
+
+/** Primera sección abierta para quien tiene perfil (adónde mandarlo si entra a una que no le toca). */
+export function firstAllowedHref(config: VerticalConfig | undefined, tier: string | null | undefined, allowed: string[]): string {
+  return NAV_LEAVES.find((l) => accessFor(l, config, tier, allowed) === 'open')?.href ?? '/mi-cuenta';
+}
+
 /**
  * Visibility rule (rubro y plan): hidden when the vertical lacks the module, locked when the plan
  * falls short. `tier === undefined` means "still loading" and never locks, to avoid a flash of locks.
