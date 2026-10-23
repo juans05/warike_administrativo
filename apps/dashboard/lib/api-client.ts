@@ -1030,6 +1030,9 @@ export const agendaApi = {
   book: (placeId: string, body: BookingInput) => fetchWithAuth(`${agendaBase(placeId)}/appointments`, { method: 'POST', body: JSON.stringify(body) }),
   update: (placeId: string, id: string, body: Record<string, unknown>) =>
     fetchWithAuth(`${agendaBase(placeId)}/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  reminders: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders`),
+  createReminderTemplate: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders/template`, { method: 'POST' }),
+  setReminders: (placeId: string, enabled: boolean) => fetchWithAuth(`${agendaBase(placeId)}/reminders`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
   professionals: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/professionals`) as Promise<Professional[]>,
   saveProfessional: (placeId: string, id: string | null, body: Record<string, unknown>) =>
     fetchWithAuth(`${agendaBase(placeId)}/professionals${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),

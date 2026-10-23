@@ -11,6 +11,7 @@ import { NewAppointmentSheet } from '../../../components/agenda/NewAppointmentSh
 import { AppointmentSheet } from '../../../components/agenda/AppointmentSheet';
 import { Avatar, ProfessionalsSheet } from '../../../components/agenda/ProfessionalsSheet';
 import { BookingLinkModal } from '../../../components/agenda/BookingLinkModal';
+import { RemindersCard } from '../../../components/agenda/RemindersCard';
 
 const PX_PER_MIN = 1.4; // 1 hora = 84 px: una cita de 15 min todavía se lee.
 const COL_W = 'min-w-[11rem] flex-1';
@@ -75,6 +76,8 @@ export default function AgendaPage() {
           </div>
         }
       />
+
+      {activePlaceId && pros.length > 0 && <RemindersCard placeId={activePlaceId} />}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" aria-label="Día anterior" onClick={() => setDate(addDays(date, -1))}><ChevronLeft size={18} aria-hidden /></Button>
