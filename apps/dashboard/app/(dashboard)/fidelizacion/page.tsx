@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { fetchWithAuth } from '../../../lib/api-client';
 import { plural } from '../../../lib/modules';
+import { WalletDesignCard } from '../../../components/fidelizacion/WalletDesignCard';
 import {
   Badge, Button, Card, DataList, EmptyState, Input, PageHeader, Skeleton, StatTile, Switch, Textarea, buttonStyles, cn,
 } from '../../../components/ui';
@@ -344,6 +345,8 @@ export default function FidelizacionPage() {
               placeholder="Ej. ¡Te extrañamos! Vuelve por tu sello y no pierdas tu progreso."
             />
           </Card>
+
+          {activePlaceId && <WalletDesignCard placeId={activePlaceId} stampsToReward={form.stampsToReward} isStamps={form.type === 'stamps'} rewardTitle={form.rewardTitle} />}
 
           {/* Wallet */}
           <Card padding="lg" className="space-y-5">
