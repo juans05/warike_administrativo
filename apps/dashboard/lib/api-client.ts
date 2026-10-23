@@ -1043,6 +1043,31 @@ export const publicAgendaApi = {
   cancel: (token: string) => fetchPublic(`/public/agenda/cita/${token}/cancel`, { method: 'POST' }),
 };
 
+// ── Inventario: insumos/productos, kardex, mermas, proveedores y recetas ─────
+const invBase = (placeId: string) => `/business/places/${placeId}/inventory`;
+export const MERMA_REASONS: Record<string, string> = {
+  QUEMADO: 'Producto quemado / dañado', VENCIDO: 'Vencimiento / descomposición', DERRAME: 'Derrame / caída',
+  DEVOLUCION: 'Devolución de cliente', ERROR_COMANDA: 'Error de comanda', CONTAMINACION: 'Contaminación cruzada', OTRO: 'Otro',
+};
+export const inventoryApi = {
+  overview: (placeId: string) => fetchWithAuth(invBase(placeId)),
+  saveItem: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${invBase(placeId)}/items${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+  ingreso: (placeId: string, body: { itemId: string; quantity: number; unitCost?: number; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/ingresos`, { method: 'POST', body: JSON.stringify(body) }),
+  ajuste: (placeId: string, body: { itemId: string; counted: number; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/ajustes`, { method: 'POST', body: JSON.stringify(body) }),
+  merma: (placeId: string, body: { itemId?: string; dishId?: string; quantity: number; mermaReason: string; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/mermas`, { method: 'POST', body: JSON.stringify(body) }),
+  kardex: (placeId: string, type?: string) => fetchWithAuth(`${invBase(placeId)}/kardex${type ? `?type=${type}` : ''}`),
+  suppliers: (placeId: string) => fetchWithAuth(`${invBase(placeId)}/suppliers`),
+  saveSupplier: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${invBase(placeId)}/suppliers${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+  recipes: (placeId: string) => fetchWithAuth(`${invBase(placeId)}/recipes`),
+  setRecipe: (placeId: string, dishId: string, lines: { itemId: string; quantity: number }[]) =>
+    fetchWithAuth(`${invBase(placeId)}/recipes/${dishId}`, { method: 'PUT', body: JSON.stringify({ lines }) }),
+};
+
 export type ReceiptDocType = 'TICKET' | 'BOLETA' | 'FACTURA';
 export type CashMethod = 'EFECTIVO' | 'TARJETA' | 'YAPE_PLIN';
 /** Datos del comprobante: los pide el mozo con la precuenta y caja los confirma al cobrar. */
