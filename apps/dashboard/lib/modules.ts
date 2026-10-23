@@ -22,7 +22,7 @@ import {
 // Mirrors backend ModuleKey (huarique_backend/src/modules/places/business-types.ts) — keep in sync.
 export type ModuleKey =
   | 'reputacion' | 'social' | 'carta' | 'pedidos' | 'cocina' | 'mesas' | 'fidelizacion' | 'clientes'
-  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia' | 'agenda';
+  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia' | 'agenda' | 'caja';
 
 export interface VerticalConfig {
   label: string;
@@ -78,8 +78,8 @@ export const NAV: NavGroup[] = [
       { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, module: 'pedidos', tier: 'reputacion' },
       { href: '/cocina', label: 'Cocina', icon: ChefHat, module: 'cocina', tier: 'reputacion' },
       { href: '/mesas', label: 'Mesas', icon: LayoutGrid, module: 'mesas', tier: 'reputacion' },
-      // Caja cobra las cuentas de mesa: aparece donde aparece Mesas.
-      { href: '/caja', label: 'Caja', icon: Wallet, module: 'mesas', tier: 'reputacion' },
+      // Caja: cuentas de mesa, venta directa en mostrador y cobro de citas (todos los rubros).
+      { href: '/caja', label: 'Caja', icon: Wallet, module: 'caja', tier: 'reputacion' },
       // Not listed in §4.3's plan rule; keeps today's plan (it lived under canReputacion).
       { href: '/social', label: 'Instagram IA', icon: Camera, module: 'social', tier: 'reputacion' },
     ],

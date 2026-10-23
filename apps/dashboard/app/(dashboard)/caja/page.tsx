@@ -2,13 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, CheckCircle2, CreditCard, DoorClosed, Smartphone, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, CalendarCheck2, CheckCircle2, CreditCard, DoorClosed, ShoppingBag, Smartphone, Wallet, type LucideIcon } from 'lucide-react';
 import { ordersApi, type CashMethod, type ReceiptRequest } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Sheet, Skeleton, StatTile } from '../../../components/ui';
 import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../../../components/caja/ReceiptFields';
+import { SaleSheet } from '../../../components/caja/SaleSheet';
 
 const METHODS: { key: CashMethod; label: string; icon: LucideIcon }[] = [
   { key: 'EFECTIVO', label: 'Efectivo', icon: Banknote },
@@ -20,8 +21,10 @@ const toCents = (soles: string) => Math.round((parseFloat(soles.replace(',', '.'
 const hour = (iso: string) => new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
 export default function CajaPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
   const [state, setState] = useState<any>(null);
+  // null = cerrado; {} = venta directa; { appointment } = cobro de una cita.
+  const [selling, setSelling] = useState<{ appointment?: any } | null>(null);
   const [series, setSeries] = useState<Record<string, string> | undefined>();
   const [charging, setCharging] = useState<any>(null);
   const [closing, setClosing] = useState(false);
@@ -50,6 +53,9 @@ export default function CajaPage() {
   }
 
   const { session, totals, pending, receipts } = state;
+  const toCharge: any[] = state.appointments ?? [];
+  // Precuentas de mesa solo donde hay mesas (gastronomía) o si llegó alguna.
+  const hasTables = !!activePlace?.verticalConfig?.modules?.includes('mesas');
   const sales = totals ? totals.EFECTIVO + totals.TARJETA + totals.YAPE_PLIN : 0;
 
   return (
@@ -57,7 +63,12 @@ export default function CajaPage() {
       <PageHeader
         title="Caja"
         subtitle="Control de ingresos, cobro de precuentas y emisión de comprobantes de pago."
-        action={session && <Button variant="secondary" icon={DoorClosed} onClick={() => setClosing(true)}>Cerrar turno</Button>}
+        action={session && (
+          <div className="flex flex-wrap gap-2">
+            <Button icon={ShoppingBag} onClick={() => setSelling({})}>Venta directa</Button>
+            <Button variant="secondary" icon={DoorClosed} onClick={() => setClosing(true)}>Cerrar turno</Button>
+          </div>
+        )}
       />
 
       {!session ? (
@@ -71,6 +82,27 @@ export default function CajaPage() {
         </div>
       )}
 
+      {toCharge.length > 0 && (
+        <Card padding="lg" className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-text">Citas de hoy por cobrar</h2>
+            <Badge tone="warning">{toCharge.length} por cobrar</Badge>
+          </div>
+          <ul className="divide-y divide-border">
+            {toCharge.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="font-semibold text-text">{a.customerName} · <span className="tabular-nums">{soles(a.price)}</span></p>
+                  <p className="text-sm text-text-muted">{hour(a.startsAt)} · {a.serviceName} con {a.professionalName}{a.station ? ` (${a.station})` : ''}</p>
+                </div>
+                <Button icon={CalendarCheck2} disabled={!session} onClick={() => setSelling({ appointment: a })}>{session ? 'Cobrar' : 'Abre la caja para cobrar'}</Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {(hasTables || pending.length > 0) && (
       <Card padding="lg" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-text">Precuentas pendientes por cobrar</h2>
@@ -95,6 +127,7 @@ export default function CajaPage() {
           </ul>
         )}
       </Card>
+      )}
 
       {session && (
         <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
@@ -107,13 +140,16 @@ export default function CajaPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="text-xs uppercase text-text-muted">
-                    <tr>{['Comprobante', 'Mesa', 'Cliente', 'Tipo', 'Método de pago', 'Monto', 'Hora'].map((h) => <th key={h} className="whitespace-nowrap px-2 py-2 font-medium">{h}</th>)}</tr>
+                    <tr>{['Comprobante', 'Origen', 'Cliente', 'Tipo', 'Método de pago', 'Monto', 'Hora'].map((h) => <th key={h} className="whitespace-nowrap px-2 py-2 font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {receipts.map((r: any) => (
                       <tr key={r.id}>
                         <td className="whitespace-nowrap px-2 py-2 font-mono text-primary-hover">{r.code}</td>
-                        <td className="whitespace-nowrap px-2 py-2">{r.tableName ?? '—'}</td>
+                        <td className="px-2 py-2">
+                          <span className="whitespace-nowrap">{r.tableName ?? '—'}</span>
+                          {r.items?.length > 0 && <span className="block max-w-[14rem] truncate text-xs text-text-muted">{r.items.map((i: any) => `${i.quantity}× ${i.description}`).join(', ')}</span>}
+                        </td>
                         <td className="px-2 py-2">{r.customerName ?? 'Cliente genérico'}</td>
                         <td className="px-2 py-2"><Badge>{DOC_LABEL[r.docType as keyof typeof DOC_LABEL]}</Badge></td>
                         <td className="whitespace-nowrap px-2 py-2">{METHOD_LABEL[r.paymentMethod as CashMethod]}</td>
@@ -146,6 +182,7 @@ export default function CajaPage() {
         </div>
       )}
 
+      {selling && <SaleSheet placeId={activePlaceId!} appointment={selling.appointment} series={series} onClose={() => setSelling(null)} onDone={() => { setSelling(null); load(); }} />}
       {charging && <ChargeSheet placeId={activePlaceId!} pending={charging} series={series} onClose={() => setCharging(null)} onDone={() => { setCharging(null); load(); }} />}
       {closing && session && <CloseCashModal placeId={activePlaceId!} expectedCash={session.openingAmount + totals.EFECTIVO} onClose={() => setClosing(false)} onDone={() => { setClosing(false); load(); }} />}
     </div>

@@ -1082,6 +1082,9 @@ export const ordersApi = {
     fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
   cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/charge`, { method: 'POST', body: JSON.stringify(body) }),
+  /** Venta directa (mostrador) o cobro de una cita (appointmentId agrega su servicio). */
+  cashSale: (placeId: string, body: ReceiptRequest & { method: CashMethod; appointmentId?: string; items?: { dishId?: string; name?: string; unitPrice?: number; quantity: number }[] }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/sale`, { method: 'POST', body: JSON.stringify(body) }),
   cashClose: (placeId: string, countedCash?: number) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/close`, { method: 'POST', body: JSON.stringify(countedCash == null ? {} : { countedCash }) }),
   getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
