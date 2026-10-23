@@ -54,8 +54,8 @@ function LoginContent() {
 
       const data = await response.json();
 
-      if (data.user.role !== 'admin' && data.user.role !== 'business') {
-        throw new Error('Acceso restringido a administradores y dueños');
+      if (!['admin', 'business', 'sales'].includes(data.user.role)) {
+        throw new Error('Acceso restringido a negocios y al equipo de Wuarikes');
       }
 
       localStorage.setItem('token', data.accessToken);

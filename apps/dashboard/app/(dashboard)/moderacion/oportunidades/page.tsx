@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { adminApi } from '../../../../lib/api-client';
 import { toast } from 'sonner';
 import { PageHeader } from '../../../../components/ui';
+import { can, usePlatformPermissions } from '../../../../lib/platform';
 import {
   OpportunitiesSection,
   RequestsSection,
@@ -15,6 +16,8 @@ export default function OportunidadesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [requests, setRequests] = useState<WuarikesHereRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const perms = usePlatformPermissions(true);
+  const canAssign = can(perms, 'oportunidades.todas');
   const [salesUsers, setSalesUsers] = useState<{ id: string; fullName: string }[]>([]);
 
   const loadData = () => {
@@ -28,7 +31,7 @@ export default function OportunidadesPage() {
   };
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { adminApi.listSalesUsers().then(setSalesUsers).catch(() => setSalesUsers([])); }, []);
+  useEffect(() => { if (canAssign) adminApi.listSalesUsers().then(setSalesUsers).catch(() => setSalesUsers([])); }, [canAssign]);
 
   const handleAssignSeller = async (placeId: string, salesUserId: string) => {
     setOpportunities((prev) => prev.map((o) => (o.id === placeId ? { ...o, assignedSalesUserId: salesUserId || null } : o)));
@@ -72,7 +75,7 @@ export default function OportunidadesPage() {
       <OpportunitiesSection
         opportunities={opportunities}
         loading={loading}
-        salesUsers={salesUsers}
+        salesUsers={canAssign ? salesUsers : null}
         onAssign={handleAssignSeller}
         onStatus={handleOpportunityStatus}
       />

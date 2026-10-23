@@ -114,7 +114,7 @@ export interface AdminUserPayload {
   email: string;
   password: string;
   fullName: string;
-  role: 'admin' | 'business' | 'sales';
+  role: 'admin' | 'business' | 'sales' | 'user';
 }
 
 export interface AdminPlaceUpdate {
@@ -1012,6 +1012,25 @@ export const adminCommissionsApi = {
   payout: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`),
   pay: (id: string, note?: string) => fetchWithAuth(`/admin/commissions/payouts/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ note }) }),
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
+  mine: (period?: string) => fetchWithAuth(`/admin/commissions/mine${period ? `?period=${period}` : ''}`),
+  minePayout: (id: string) => fetchWithAuth(`/admin/commissions/mine/${id}`),
+};
+
+// ── Perfiles, permisos y equipo de Wuarikes ─────────────────────────────
+export interface PlatformProfile { id: string; name: string; description: string | null; permissions: string[]; isSystem: boolean; usersCount: number }
+export interface PlatformStaff { id: string; fullName: string; email: string; role: 'admin' | 'sales'; isBanned: boolean; isVerified: boolean; profileId: string | null; profileName: string; createdAt: string }
+export interface SalesClient { id: string; name: string; address: string | null; commercialStatus: string | null; claimed: boolean; salesUserName: string | null; tier: string | null; subscriptionStatus: string | null; periodEnd: string | null }
+type ProfileInput = { name: string; description?: string | null; permissions: string[] };
+export const platformAccessApi = {
+  catalog: (): Promise<{ key: string; group: string; label: string }[]> => fetchWithAuth('/admin/access/catalog'),
+  profiles: (): Promise<PlatformProfile[]> => fetchWithAuth('/admin/access/profiles'),
+  createProfile: (body: ProfileInput) => fetchWithAuth('/admin/access/profiles', { method: 'POST', body: JSON.stringify(body) }),
+  updateProfile: (id: string, body: ProfileInput) => fetchWithAuth(`/admin/access/profiles/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteProfile: (id: string) => fetchWithAuth(`/admin/access/profiles/${id}`, { method: 'DELETE' }),
+  staff: (): Promise<PlatformStaff[]> => fetchWithAuth('/admin/access/staff'),
+  createStaff: (body: { fullName: string; email: string; profileId: string }) => fetchWithAuth('/admin/access/staff', { method: 'POST', body: JSON.stringify(body) }),
+  assignProfile: (id: string, profileId: string) => fetchWithAuth(`/admin/access/staff/${id}/profile`, { method: 'PATCH', body: JSON.stringify({ profileId }) }),
+  myClients: (): Promise<SalesClient[]> => fetchWithAuth('/admin/my-clients'),
 };
 
 // ── Agenda de citas por profesional ─────────────────────────────────────

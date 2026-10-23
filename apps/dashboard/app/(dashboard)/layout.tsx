@@ -32,13 +32,14 @@ import TermsGate from '../../components/TermsGate';
 import { AuthLogo } from '../../components/AuthCard';
 import { businessApi, ordersApi } from '../../lib/api-client';
 import { NAV, accessOf, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
+import { PLATFORM_NAV, can, clearPlatformPermissions, platformRoute, usePlatformPermissions } from '../../lib/platform';
 import { Badge, EmptyState, Sheet, buttonStyles, cn } from '../../components/ui';
 
 interface DashboardUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'admin' | 'business';
+  role: 'admin' | 'business' | 'sales';
 }
 
 // El plan es de la SEDE activa (lo paga su dueño), no del usuario logueado — un
@@ -101,6 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const handleLogout = () => {
+    clearPlatformPermissions();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
@@ -119,23 +121,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-const ADMIN_NAV: Array<{ href: string; icon: LucideIcon; label: string }> = [
-  { href: '/moderacion', icon: Shield, label: 'Control de Locales' },
-  { href: '/comunidad', icon: Users, label: 'Gestión de Usuarios' },
-  { href: '/suscripciones', icon: CreditCard, label: 'Suscripciones' },
-  { href: '/liquidaciones', icon: CreditCard, label: 'Liquidaciones' },
-  { href: '/moderacion/whatsapp', icon: Bot, label: 'WhatsApp Bot' },
-  { href: '/moderacion/dispositivos', icon: QrCode, label: 'Códigos QR' },
-  { href: '/moderacion/reclamaciones', icon: FileWarning, label: 'Libro de Reclamaciones' },
-  { href: '/moderacion/oportunidades', icon: Flame, label: 'Oportunidades' },
-  { href: '/moderacion/comisiones', icon: Wallet, label: 'Comisiones' },
-  { href: '/configuracion', icon: Settings, label: 'Configuración del Sitio' },
-];
-
 type NavProps = {
   user: DashboardUser | null;
   pathname: string;
   showBusiness: boolean;
+  /** Secciones de la plataforma que el usuario del equipo de Wuarikes puede ver según su perfil. */
+  platformNav: typeof PLATFORM_NAV;
   /** Cocina y mozo ven una sola pantalla (Cocina o Mesas); el resto del panel no aplica a su rol. */
   soloRoute: SoloRoute | null;
   config: VerticalConfig | undefined;
@@ -183,11 +174,23 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
     if (pageAccess === 'hidden') router.replace('/inicio');
   }, [pageAccess, router]);
 
+  // Equipo de Wuarikes: el menú y las rutas de la plataforma dependen de los permisos de su perfil.
+  const isStaff = user?.role === 'admin' || user?.role === 'sales';
+  const platformPerms = usePlatformPermissions(isStaff);
+  const platformNav = PLATFORM_NAV.filter((item) => can(platformPerms, ...item.perms) && !(item.hideWith && can(platformPerms, item.hideWith)));
+  const platformEntry = isStaff ? platformRoute(pathname) : undefined;
+  const platformDenied = isStaff && platformPerms !== null && pathname !== '/mi-cuenta'
+    && (platformEntry ? !can(platformPerms, ...platformEntry.perms) : user?.role === 'sales');
+  const waitForPerms = Boolean(platformEntry) && platformPerms === null;
+  useEffect(() => {
+    if (platformDenied) router.replace(platformNav[0]?.href ?? '/mi-cuenta');
+  }, [platformDenied, platformNav, router]);
+
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const navProps: NavProps = {
-    user, pathname, showBusiness: isBusiness && !noPlaces, soloRoute, config, tier, pendingChats, handleLogout,
+    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, config, tier, pendingChats, handleLogout,
   };
 
   return (
@@ -228,7 +231,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           )}
           {noPlaces ? (
             <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} />
-          ) : pageAccess === 'hidden' || waitForPlaces ? null : pageAccess === 'locked' ? (
+          ) : pageAccess === 'hidden' || waitForPlaces || waitForPerms || platformDenied ? null : pageAccess === 'locked' ? (
             <EmptyState
               icon={Lock}
               title="Esta sección no está en tu plan"
@@ -251,7 +254,7 @@ function Logo() {
 }
 
 function SidebarContent({
-  user, pathname, showBusiness, soloRoute, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+  user, pathname, showBusiness, platformNav, soloRoute, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
 }: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -312,9 +315,9 @@ function SidebarContent({
           </>
         )}
 
-        {user?.role === 'admin' && (
+        {platformNav.length > 0 && (
           <NavSection title="Plataforma">
-            {ADMIN_NAV.map((item) => (
+            {platformNav.map((item) => (
               <SidebarLink key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} />
             ))}
           </NavSection>
@@ -388,7 +391,7 @@ function UserMenu({ user, pathname, showBusiness, handleLogout }: { user: Dashbo
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-text">{user?.fullName || 'Administrador'}</span>
-          <span className="block text-xs text-text-muted">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</span>
+          <span className="block text-xs text-text-muted">{user?.role === 'business' ? 'Propietario' : user?.role === 'sales' ? 'Comercial' : 'Equipo Wuarikes'}</span>
         </span>
         <ChevronUp size={16} aria-hidden className="shrink-0 text-text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
       </summary>
