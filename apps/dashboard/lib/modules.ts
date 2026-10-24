@@ -20,6 +20,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+export type AssetKind = 'PET' | 'VEHICLE';
+
 // Mirrors backend ModuleKey (huarique_backend/src/modules/places/business-types.ts) — keep in sync.
 export type ModuleKey =
   | 'reputacion' | 'social' | 'carta' | 'pedidos' | 'cocina' | 'mesas' | 'fidelizacion' | 'clientes'
@@ -32,6 +34,8 @@ export interface VerticalConfig {
   catalogKind: 'producto' | 'servicio' | 'mixto';
   teamRoles: string[];
   botPersona?: string;
+  /** Ficha que se atiende en la cita: mascota (veterinaria, grooming) o vehículo (taller, lavadero). */
+  assetKind?: AssetKind | null;
 }
 
 // Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.

@@ -17,7 +17,8 @@ const PX_PER_MIN = 1.4; // 1 hora = 84 px: una cita de 15 min todavía se lee.
 const COL_W = 'min-w-[11rem] flex-1';
 
 export default function AgendaPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const assetKind = activePlace?.verticalConfig?.assetKind ?? null;
   const [date, setDate] = useState(todayLima());
   const [day, setDay] = useState<any>(null);
   const [services, setServices] = useState<any[]>([]);
@@ -141,7 +142,7 @@ export default function AgendaPage() {
                       aria-label={`${time12(a.time)} ${a.customerName}, ${a.serviceName}, ${STATUS[a.status]?.label}`}
                     >
                       <span className="block truncate font-semibold">{time12(a.time)} · {a.customerName}</span>
-                      {a.durationMin >= 25 && <span className="block truncate">{a.serviceName}</span>}
+                      {a.durationMin >= 25 && <span className="block truncate">{a.asset ? `${a.asset.name} · ` : ''}{a.serviceName}</span>}
                     </button>
                   ))}
                 </div>
@@ -152,7 +153,7 @@ export default function AgendaPage() {
       )}
 
       {creating && activePlaceId && (
-        <NewAppointmentSheet placeId={activePlaceId} services={services} professionals={pros.filter((p) => p.active)} initial={{ date, ...creating }} onClose={() => setCreating(null)} onDone={done} />
+        <NewAppointmentSheet placeId={activePlaceId} services={services} professionals={pros.filter((p) => p.active)} initial={{ date, ...creating }} assetKind={assetKind} onClose={() => setCreating(null)} onDone={done} />
       )}
       {selected && activePlaceId && (
         <AppointmentSheet placeId={activePlaceId} appt={selected} professionals={pros.filter((p) => p.active)} onClose={() => setSelected(null)} onDone={done} />

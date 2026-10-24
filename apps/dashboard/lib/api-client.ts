@@ -1047,7 +1047,12 @@ export interface Professional {
   id: string; name: string; photoUrl: string | null; station: string | null; serviceIds: string[];
   schedule: DayHours[] | null; daysOff: string[]; active: boolean; displayOrder: number;
 }
-export interface BookingInput { serviceId: string; professionalId?: string | null; date: string; time: string; customerName: string; customerPhone?: string; notes?: string }
+export interface BookingInput {
+  serviceId: string; professionalId?: string | null; date: string; time: string; customerName: string; customerPhone?: string; notes?: string;
+  /** Ficha existente del cliente, o una nueva por nombre/placa. */
+  assetId?: string; assetName?: string; assetData?: Record<string, string>;
+}
+export interface CustomerAsset { id: string; kind: 'PET' | 'VEHICLE'; name: string; data: Record<string, string | null>; notes: string | null; customerPhone: string; customerName: string | null }
 const agendaBase = (placeId: string) => `/business/places/${placeId}/agenda`;
 export const agendaApi = {
   day: (placeId: string, date: string) => fetchWithAuth(`${agendaBase(placeId)}/day?date=${date}`),
@@ -1061,6 +1066,9 @@ export const agendaApi = {
   createReminderTemplate: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders/template`, { method: 'POST' }),
   setReminders: (placeId: string, enabled: boolean) => fetchWithAuth(`${agendaBase(placeId)}/reminders`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
   professionals: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/professionals`) as Promise<Professional[]>,
+  assets: (placeId: string, phone: string): Promise<CustomerAsset[]> => fetchWithAuth(`${agendaBase(placeId)}/assets?phone=${encodeURIComponent(phone)}`),
+  saveAsset: (placeId: string, id: string | null, body: { customerPhone: string; customerName?: string; name: string; data?: Record<string, string>; notes?: string | null }) =>
+    fetchWithAuth(`${agendaBase(placeId)}/assets${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
   saveProfessional: (placeId: string, id: string | null, body: Record<string, unknown>) =>
     fetchWithAuth(`${agendaBase(placeId)}/professionals${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
 };

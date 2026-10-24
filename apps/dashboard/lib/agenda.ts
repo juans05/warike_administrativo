@@ -23,9 +23,22 @@ export const fromMin = (m: number) => `${String(Math.floor(m / 60)).padStart(2, 
 
 export const STATUS: Record<string, { label: string; className: string }> = {
   RESERVADA: { label: 'Reservada', className: 'border-primary/50 bg-primary-soft text-primary-hover' },
+  LISTO: { label: 'Listo para recoger', className: 'border-secondary bg-secondary/30 text-text' },
   ATENDIDA: { label: 'Atendida', className: 'border-success/50 bg-success/10 text-success' },
   NO_ASISTIO: { label: 'No asistió', className: 'border-secondary bg-secondary/20 text-text' },
   CANCELADA: { label: 'Cancelada', className: 'border-border bg-background text-text-muted line-through' },
 };
 export const SOURCE_LABEL: Record<string, string> = { PANEL: 'Panel', BOT: 'WhatsApp', WEB: 'Link de reservas' };
 export const soles = (cents: number) => `S/ ${(cents / 100).toFixed(2)}`;
+
+// Fichas por rubro (mismas claves que ASSET_FIELDS del backend). `name` es el nombre de la mascota o la placa.
+export const ASSET_META = {
+  PET: { title: 'Mascota', nameLabel: 'Nombre de la mascota', fields: [['species', 'Especie'], ['breed', 'Raza'], ['sex', 'Sexo'], ['birthDate', 'Nacimiento'], ['weight', 'Peso (kg)'], ['vaccines', 'Vacunas']] },
+  VEHICLE: { title: 'Vehículo', nameLabel: 'Placa', fields: [['brand', 'Marca'], ['model', 'Modelo'], ['year', 'Año'], ['color', 'Color'], ['mileage', 'Kilometraje']] },
+} as const;
+/** "Firulais · Perro, Labrador" / "ABC-123 · Toyota Yaris" */
+export const assetSummary = (asset: { name: string; data?: Record<string, unknown> | null }) => {
+  const d = asset.data ?? {};
+  const extra = [d.species ?? d.brand, d.breed ?? d.model].filter(Boolean).join(d.species ? ', ' : ' ');
+  return extra ? `${asset.name} · ${extra}` : asset.name;
+};

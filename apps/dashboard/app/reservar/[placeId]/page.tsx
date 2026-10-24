@@ -6,6 +6,7 @@ import { CalendarCheck2, Check, ChevronLeft } from 'lucide-react';
 import { publicAgendaApi } from '../../../lib/api-client';
 import { addDays, longDate, shortDate, soles, time12, todayLima } from '../../../lib/agenda';
 import { Button, Input } from '../../../components/ui';
+import { AssetFields, emptyAsset } from '../../../components/agenda/AssetFields';
 import { SlotPicker } from '../../../components/agenda/SlotPicker';
 import { Avatar } from '../../../components/agenda/ProfessionalsSheet';
 
@@ -24,6 +25,8 @@ export default function ReservarPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [time, setTime] = useState<string | null>(null);
   const [form, setForm] = useState({ customerName: '', customerPhone: '' });
+  // Veterinaria / taller: qué mascota o vehículo se atiende (se guarda en la ficha del cliente).
+  const [asset, setAsset] = useState(emptyAsset());
   const [sending, setSending] = useState(false);
   const [booked, setBooked] = useState<any>(null);
 
@@ -47,7 +50,7 @@ export default function ReservarPage() {
   const book = async () => {
     setSending(true); setError('');
     try {
-      setBooked(await publicAgendaApi.book(placeId, { serviceId: serviceId!, professionalId: proId === ANY ? null : proId, date, time: time!, ...form }));
+      setBooked(await publicAgendaApi.book(placeId, { serviceId: serviceId!, professionalId: proId === ANY ? null : proId, date, time: time!, ...form, ...(info.assetKind && asset.name.trim() ? { assetName: asset.name, assetData: asset.data } : {}) }));
     } catch (err: any) { setError(err.message); } finally { setSending(false); }
   };
 
@@ -114,9 +117,10 @@ export default function ReservarPage() {
         <Section title="Tus datos">
           <Input label="Tu nombre" value={form.customerName} maxLength={120} onChange={(e) => setForm({ ...form, customerName: e.target.value })} />
           <Input label="Tu celular" type="tel" inputMode="tel" placeholder="9XX XXX XXX" value={form.customerPhone} maxLength={20} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} />
+          {info.assetKind && <AssetFields kind={info.assetKind} value={asset} onChange={setAsset} compact />}
           <p className="rounded-control bg-background p-3 text-sm capitalize text-text">{service?.name} · {longDate(date)}, {time12(time!)}</p>
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button className="w-full" icon={Check} loading={sending} disabled={form.customerName.trim().length < 2 || form.customerPhone.replace(/\D/g, '').length < 7} onClick={book}>
+          <Button className="w-full" icon={Check} loading={sending} disabled={form.customerName.trim().length < 2 || form.customerPhone.replace(/\D/g, '').length < 7 || (info.assetKind && !asset.name.trim())} onClick={book}>
             Reservar cita
           </Button>
         </Section>

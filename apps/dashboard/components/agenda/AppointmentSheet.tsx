@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Ban, CalendarClock, CheckCircle2, MessageCircle, UserX } from 'lucide-react';
+import { Ban, CalendarClock, CheckCircle2, MessageCircle, PackageCheck, UserX } from 'lucide-react';
 import { agendaApi } from '../../lib/api-client';
-import { SOURCE_LABEL, STATUS, longDate, soles, time12 } from '../../lib/agenda';
+import { ASSET_META, SOURCE_LABEL, STATUS, longDate, soles, time12 } from '../../lib/agenda';
 import { Badge, Button, Input, Select, Sheet } from '../ui';
 
 /** Detalle de una cita: marcar atendida / no asistió / cancelar, o reprogramar (otro día, hora o profesional). */
@@ -16,7 +16,11 @@ export function AppointmentSheet({ placeId, appt, professionals, onClose, onDone
 
   const patch = async (body: Record<string, unknown>, ok: string) => {
     setSaving(true);
-    try { await agendaApi.update(placeId, appt.id, body); toast.success(ok); onDone(); }
+    try {
+      const res = await agendaApi.update(placeId, appt.id, body);
+      toast.success(res?.notified ? `${ok}. Le avisamos al cliente por WhatsApp.` : ok);
+      onDone();
+    }
     catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
   };
 
@@ -28,6 +32,12 @@ export function AppointmentSheet({ placeId, appt, professionals, onClose, onDone
           <p className="text-lg font-semibold text-text">{appt.serviceName} · {soles(appt.price)}</p>
           <p className="text-sm text-text">{longDate(appt.date)}, {time12(appt.time)} – {time12(appt.endTime)}</p>
           <p className="text-sm text-text">Con {appt.professional?.name}{appt.professional?.station ? ` · ${appt.professional.station}` : ''}</p>
+          {appt.asset && (
+            <p className="text-sm text-text">
+              {ASSET_META[appt.asset.kind as 'PET' | 'VEHICLE'].title}: <span className="font-semibold">{appt.asset.name}</span>
+              {ASSET_META[appt.asset.kind as 'PET' | 'VEHICLE'].fields.map(([k, label]) => appt.asset.data?.[k] ? ` · ${label}: ${appt.asset.data[k]}` : '').join('')}
+            </p>
+          )}
           <p className="text-xs text-text-muted">Reservada por {SOURCE_LABEL[appt.source] ?? appt.source}{appt.notes ? ` · Nota: ${appt.notes}` : ''}</p>
         </div>
 
@@ -39,10 +49,20 @@ export function AppointmentSheet({ placeId, appt, professionals, onClose, onDone
 
         {appt.status === 'RESERVADA' && !moving && (
           <div className="grid gap-2 sm:grid-cols-2">
+            {appt.asset && (
+              <Button className="sm:col-span-2" icon={PackageCheck} loading={saving} onClick={() => patch({ status: 'LISTO' }, 'Marcado como listo para recoger')}>
+                Listo para recoger
+              </Button>
+            )}
             <Button icon={CheckCircle2} loading={saving} onClick={() => patch({ status: 'ATENDIDA' }, 'Cita atendida')}>Atendida</Button>
             <Button variant="secondary" icon={UserX} onClick={() => patch({ status: 'NO_ASISTIO' }, 'Marcada como no asistió')}>No asistió</Button>
             <Button variant="secondary" icon={CalendarClock} onClick={() => setMoving(true)}>Reprogramar</Button>
             <Button variant="secondary" icon={Ban} onClick={() => patch({ status: 'CANCELADA' }, 'Cita cancelada')}>Cancelar cita</Button>
+          </div>
+        )}
+        {appt.status === 'LISTO' && (
+          <div className="grid">
+            <Button icon={CheckCircle2} loading={saving} onClick={() => patch({ status: 'ATENDIDA' }, 'Entregado al cliente')}>Entregado</Button>
           </div>
         )}
         {appt.status !== 'RESERVADA' && (
