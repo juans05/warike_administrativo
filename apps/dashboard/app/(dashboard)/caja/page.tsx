@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, CalendarCheck2, CheckCircle2, CreditCard, DoorClosed, ShoppingBag, Smartphone, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, CalendarCheck2, CheckCircle2, CreditCard, DoorClosed, Printer, ShoppingBag, Smartphone, Wallet, type LucideIcon } from 'lucide-react';
 import { ordersApi, type CashMethod, type ReceiptRequest } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { soles } from '../../../lib/orders-format';
@@ -10,6 +10,8 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Sheet, Skeleton, StatTile } from '../../../components/ui';
 import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../../../components/caja/ReceiptFields';
 import { SaleSheet } from '../../../components/caja/SaleSheet';
+import { PrintSettingsButton } from '../../../components/print/PrintSettingsButton';
+import { getPrintSettings, printReceipt } from '../../../lib/print';
 
 const METHODS: { key: CashMethod; label: string; icon: LucideIcon }[] = [
   { key: 'EFECTIVO', label: 'Efectivo', icon: Banknote },
@@ -65,6 +67,7 @@ export default function CajaPage() {
         subtitle="Control de ingresos, cobro de precuentas y emisión de comprobantes de pago."
         action={session && (
           <div className="flex flex-wrap gap-2">
+            <PrintSettingsButton />
             <Button icon={ShoppingBag} onClick={() => setSelling({})}>Venta directa</Button>
             <Button variant="secondary" icon={DoorClosed} onClick={() => setClosing(true)}>Cerrar turno</Button>
           </div>
@@ -140,7 +143,7 @@ export default function CajaPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="text-xs uppercase text-text-muted">
-                    <tr>{['Comprobante', 'Origen', 'Cliente', 'Tipo', 'Método de pago', 'Monto', 'Hora'].map((h) => <th key={h} className="whitespace-nowrap px-2 py-2 font-medium">{h}</th>)}</tr>
+                    <tr>{['Comprobante', 'Origen', 'Cliente', 'Tipo', 'Método de pago', 'Monto', 'Hora', ''].map((h) => <th key={h} className="whitespace-nowrap px-2 py-2 font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {receipts.map((r: any) => (
@@ -155,6 +158,10 @@ export default function CajaPage() {
                         <td className="whitespace-nowrap px-2 py-2">{METHOD_LABEL[r.paymentMethod as CashMethod]}</td>
                         <td className="whitespace-nowrap px-2 py-2 font-semibold tabular-nums">{soles(r.total)}</td>
                         <td className="whitespace-nowrap px-2 py-2 tabular-nums">{hour(r.createdAt)}</td>
+                        <td className="px-2 py-1">
+                          <Button size="sm" variant="ghost" icon={Printer} aria-label={`Imprimir ${r.code}`}
+                            onClick={() => printReceipt(activePlaceId!, r.id).then((ok) => ok || toast.error('No se pudo preparar el ticket'))}>Imprimir</Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -221,6 +228,7 @@ function ChargeSheet({ placeId, pending, series, onClose, onDone }: { placeId: s
     try {
       const r = await ordersApi.cashCharge(placeId, { ...receipt, tabId: pending.tabId, method });
       toast.success(`Cobrado: ${r.code}. ${pending.tableName} liberada.`);
+      if (getPrintSettings().autoTicket) printReceipt(placeId, r.id);
       onDone();
     } catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
   };

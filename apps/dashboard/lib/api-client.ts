@@ -1141,6 +1141,8 @@ export const ordersApi = {
   precuenta: (placeId: string, tabId: string, body: ReceiptRequest) =>
     fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/precuenta`, { method: 'POST', body: JSON.stringify(body) }),
   cash: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/cash`),
+  /** Comprobante con sus líneas y los datos del local, para imprimir el ticket. */
+  receiptForPrint: (placeId: string, receiptId: string) => fetchWithAuth(`/business/places/${placeId}/orders/cash/receipts/${receiptId}`),
   cashOpen: (placeId: string, openingAmount: number) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
   cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
