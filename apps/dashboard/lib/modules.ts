@@ -1,5 +1,7 @@
 import {
   BarChart3,
+  Boxes,
+  CalendarDays,
   ChefHat,
   ClipboardList,
   Gift,
@@ -18,10 +20,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+export type AssetKind = 'PET' | 'VEHICLE';
+
 // Mirrors backend ModuleKey (huarique_backend/src/modules/places/business-types.ts) — keep in sync.
 export type ModuleKey =
   | 'reputacion' | 'social' | 'carta' | 'pedidos' | 'cocina' | 'mesas' | 'fidelizacion' | 'clientes'
-  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia';
+  | 'email-marketing' | 'whatsapp' | 'plazbot' | 'chat' | 'reportes' | 'equipo' | 'broadcasts' | 'ia' | 'agenda' | 'caja' | 'inventario';
 
 export interface VerticalConfig {
   label: string;
@@ -30,6 +34,8 @@ export interface VerticalConfig {
   catalogKind: 'producto' | 'servicio' | 'mixto';
   teamRoles: string[];
   botPersona?: string;
+  /** Ficha que se atiende en la cita: mascota (veterinaria, grooming) o vehículo (taller, lavadero). */
+  assetKind?: AssetKind | null;
 }
 
 // Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.
@@ -73,11 +79,13 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/mi-ficha', label: 'Mi ficha', icon: Store },
       { href: '/carta', label: (l) => l.catalog, icon: UtensilsCrossed, module: 'carta', tier: 'reputacion' },
+      { href: '/agenda', label: 'Agenda', icon: CalendarDays, module: 'agenda', tier: 'reputacion' },
       { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, module: 'pedidos', tier: 'reputacion' },
       { href: '/cocina', label: 'Cocina', icon: ChefHat, module: 'cocina', tier: 'reputacion' },
       { href: '/mesas', label: 'Mesas', icon: LayoutGrid, module: 'mesas', tier: 'reputacion' },
-      // Caja cobra las cuentas de mesa: aparece donde aparece Mesas.
-      { href: '/caja', label: 'Caja', icon: Wallet, module: 'mesas', tier: 'reputacion' },
+      { href: '/inventario', label: 'Inventario', icon: Boxes, module: 'inventario', tier: 'reputacion' },
+      // Caja: cuentas de mesa, venta directa en mostrador y cobro de citas (todos los rubros).
+      { href: '/caja', label: 'Caja', icon: Wallet, module: 'caja', tier: 'reputacion' },
       // Not listed in §4.3's plan rule; keeps today's plan (it lived under canReputacion).
       { href: '/social', label: 'Instagram IA', icon: Camera, module: 'social', tier: 'reputacion' },
     ],
@@ -134,12 +142,26 @@ export function navLabel(label: NavLeaf['label'], config: VerticalConfig | undef
 
 export type Access = 'hidden' | 'locked' | 'open';
 
+/** Igual que accessOf, pero un miembro con perfil solo ve las secciones de su perfil (allowed = null: sin perfil). */
+export function accessFor(entry: NavLeaf, config: VerticalConfig | undefined, tier: string | null | undefined, allowed: string[] | null): Access {
+  if (allowed && !(entry.module && allowed.includes(entry.module))) return 'hidden';
+  return accessOf(entry, config, tier);
+}
+
+/** Primera sección abierta para quien tiene perfil (adónde mandarlo si entra a una que no le toca). */
+export function firstAllowedHref(config: VerticalConfig | undefined, tier: string | null | undefined, allowed: string[]): string {
+  return NAV_LEAVES.find((l) => accessFor(l, config, tier, allowed) === 'open')?.href ?? '/mi-cuenta';
+}
+
 /**
  * Visibility rule (rubro y plan): hidden when the vertical lacks the module, locked when the plan
  * falls short. `tier === undefined` means "still loading" and never locks, to avoid a flash of locks.
  */
 export function accessOf(entry: NavLeaf, config: VerticalConfig | undefined, tier: string | null | undefined): Access {
   if (entry.module && !isModuleVisible(config, entry.module)) return 'hidden';
+  // Sin suscripción (null) no se muestran las secciones de pago; con un plan, las de planes mayores salen con candado.
+  // undefined = cargando o error al consultar el plan: no se oculta nada (el backend igual valida el plan).
+  if (entry.tier && tier === null) return 'hidden';
   if (entry.tier && tier !== undefined && !hasTierAccess(tier, entry.tier)) return 'locked';
   return 'open';
 }

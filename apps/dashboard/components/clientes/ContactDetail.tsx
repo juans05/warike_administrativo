@@ -5,6 +5,8 @@ import { AlertCircle, Clock, Gift, MessageCircle, ShoppingBag, type LucideIcon }
 import { businessApi, type ContactProfile, type ContactTimelineEntry } from '../../lib/api-client';
 import { Button, EmptyState, Skeleton } from '../ui';
 import { LoyaltyCardSection } from './LoyaltyCardSection';
+import { ContactAssetsSection } from './ContactAssetsSection';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { ClientHeader, ConsentRow, SOURCE_LABEL, SectionTitle, formatDate, formatSoles } from './parts';
 
 const KIND_ICON: Record<ContactTimelineEntry['kind'], LucideIcon> = {
@@ -18,6 +20,7 @@ export function ContactDetail({ placeId, contactId }: { placeId: string; contact
   const [profile, setProfile] = useState<ContactProfile | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const assetKind = useRestaurant().activePlace?.verticalConfig?.assetKind ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +91,8 @@ export function ContactDetail({ placeId, contactId }: { placeId: string; contact
           <ConsentRow label="Promociones (tarjeta)" granted={loyaltyCard ? loyaltyCard.marketingConsent : null} />
         </div>
       </section>
+
+      {assetKind && contact.phone && <ContactAssetsSection placeId={placeId} kind={assetKind} phone={contact.phone} customerName={contact.name} />}
 
       {loyaltyCard && <LoyaltyCardSection placeId={placeId} card={loyaltyCard} />}
 

@@ -114,7 +114,7 @@ export interface AdminUserPayload {
   email: string;
   password: string;
   fullName: string;
-  role: 'admin' | 'business' | 'sales';
+  role: 'admin' | 'business' | 'sales' | 'user';
 }
 
 export interface AdminPlaceUpdate {
@@ -982,11 +982,19 @@ export const authApi = {
     fetchWithAuth('/users/me/password', { method: 'PATCH', body: JSON.stringify({ currentPassword, newPassword }) }),
 };
 
+export interface TeamProfile { id: string; name: string; baseRole: 'cocina' | 'mozo' | 'agente' | 'supervisor'; modules: string[] }
+type TeamProfileInput = Omit<TeamProfile, 'id'>;
 export const teamApi = {
   list: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/team`),
-  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; whatsappNumberIds?: string[] }) =>
+  create: (placeId: string, data: { email: string; fullName: string; role: 'admin' | 'supervisor' | 'agente' | 'mozo' | 'cocina'; profileId?: string | null; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team`, { method: 'POST', body: JSON.stringify(data) }),
-  update: (placeId: string, memberId: string, data: { role?: string; whatsappNumberIds?: string[] }) =>
+  profiles: (placeId: string): Promise<TeamProfile[]> => fetchWithAuth(`/business/places/${placeId}/team/profiles`),
+  createProfile: (placeId: string, data: TeamProfileInput) =>
+    fetchWithAuth(`/business/places/${placeId}/team/profiles`, { method: 'POST', body: JSON.stringify(data) }),
+  updateProfile: (placeId: string, id: string, data: TeamProfileInput) =>
+    fetchWithAuth(`/business/places/${placeId}/team/profiles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProfile: (placeId: string, id: string) => fetchWithAuth(`/business/places/${placeId}/team/profiles/${id}`, { method: 'DELETE' }),
+  update: (placeId: string, memberId: string, data: { role?: string; profileId?: string | null; whatsappNumberIds?: string[] }) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (placeId: string, memberId: string) =>
     fetchWithAuth(`/business/places/${placeId}/team/${memberId}`, { method: 'DELETE' }),
@@ -1012,6 +1020,90 @@ export const adminCommissionsApi = {
   payout: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`),
   pay: (id: string, note?: string) => fetchWithAuth(`/admin/commissions/payouts/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ note }) }),
   cancel: (id: string) => fetchWithAuth(`/admin/commissions/payouts/${id}`, { method: 'DELETE' }),
+  mine: (period?: string) => fetchWithAuth(`/admin/commissions/mine${period ? `?period=${period}` : ''}`),
+  minePayout: (id: string) => fetchWithAuth(`/admin/commissions/mine/${id}`),
+};
+
+// ── Perfiles, permisos y equipo de Wuarikes ─────────────────────────────
+export interface PlatformProfile { id: string; name: string; description: string | null; permissions: string[]; isSystem: boolean; usersCount: number }
+export interface PlatformStaff { id: string; fullName: string; email: string; role: 'admin' | 'sales'; isBanned: boolean; isVerified: boolean; profileId: string | null; profileName: string; createdAt: string }
+export interface SalesClient { id: string; name: string; address: string | null; commercialStatus: string | null; claimed: boolean; salesUserName: string | null; tier: string | null; subscriptionStatus: string | null; periodEnd: string | null }
+type ProfileInput = { name: string; description?: string | null; permissions: string[] };
+export const platformAccessApi = {
+  catalog: (): Promise<{ key: string; group: string; label: string }[]> => fetchWithAuth('/admin/access/catalog'),
+  profiles: (): Promise<PlatformProfile[]> => fetchWithAuth('/admin/access/profiles'),
+  createProfile: (body: ProfileInput) => fetchWithAuth('/admin/access/profiles', { method: 'POST', body: JSON.stringify(body) }),
+  updateProfile: (id: string, body: ProfileInput) => fetchWithAuth(`/admin/access/profiles/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteProfile: (id: string) => fetchWithAuth(`/admin/access/profiles/${id}`, { method: 'DELETE' }),
+  staff: (): Promise<PlatformStaff[]> => fetchWithAuth('/admin/access/staff'),
+  createStaff: (body: { fullName: string; email: string; profileId: string }) => fetchWithAuth('/admin/access/staff', { method: 'POST', body: JSON.stringify(body) }),
+  assignProfile: (id: string, profileId: string) => fetchWithAuth(`/admin/access/staff/${id}/profile`, { method: 'PATCH', body: JSON.stringify({ profileId }) }),
+  myClients: (): Promise<SalesClient[]> => fetchWithAuth('/admin/my-clients'),
+};
+
+// ── Agenda de citas por profesional ─────────────────────────────────────
+export type DayHours = { day: string; open: string; close: string };
+export interface Professional {
+  id: string; name: string; photoUrl: string | null; station: string | null; serviceIds: string[];
+  schedule: DayHours[] | null; daysOff: string[]; active: boolean; displayOrder: number;
+}
+export interface BookingInput {
+  serviceId: string; professionalId?: string | null; date: string; time: string; customerName: string; customerPhone?: string; notes?: string;
+  /** Ficha existente del cliente, o una nueva por nombre/placa. */
+  assetId?: string; assetName?: string; assetData?: Record<string, string>;
+}
+export interface CustomerAsset { id: string; kind: 'PET' | 'VEHICLE'; name: string; data: Record<string, string | null>; notes: string | null; customerPhone: string; customerName: string | null }
+const agendaBase = (placeId: string) => `/business/places/${placeId}/agenda`;
+export const agendaApi = {
+  day: (placeId: string, date: string) => fetchWithAuth(`${agendaBase(placeId)}/day?date=${date}`),
+  services: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/services`),
+  availability: (placeId: string, serviceId: string, date: string, professionalId?: string | null) =>
+    fetchWithAuth(`${agendaBase(placeId)}/availability?serviceId=${serviceId}&date=${date}${professionalId ? `&professionalId=${professionalId}` : ''}`),
+  book: (placeId: string, body: BookingInput) => fetchWithAuth(`${agendaBase(placeId)}/appointments`, { method: 'POST', body: JSON.stringify(body) }),
+  update: (placeId: string, id: string, body: Record<string, unknown>) =>
+    fetchWithAuth(`${agendaBase(placeId)}/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  reminders: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders`),
+  createReminderTemplate: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders/template`, { method: 'POST' }),
+  setReminders: (placeId: string, enabled: boolean) => fetchWithAuth(`${agendaBase(placeId)}/reminders`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  professionals: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/professionals`) as Promise<Professional[]>,
+  assets: (placeId: string, phone: string): Promise<CustomerAsset[]> => fetchWithAuth(`${agendaBase(placeId)}/assets?phone=${encodeURIComponent(phone)}`),
+  saveAsset: (placeId: string, id: string | null, body: { customerPhone: string; customerName?: string; name: string; data?: Record<string, string>; notes?: string | null }) =>
+    fetchWithAuth(`${agendaBase(placeId)}/assets${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+  saveProfessional: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${agendaBase(placeId)}/professionals${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+};
+export const publicAgendaApi = {
+  info: (placeId: string) => fetchPublic(`/public/agenda/${placeId}`),
+  availability: (placeId: string, serviceId: string, date: string, professionalId?: string | null) =>
+    fetchPublic(`/public/agenda/${placeId}/availability?serviceId=${serviceId}&date=${date}${professionalId ? `&professionalId=${professionalId}` : ''}`),
+  book: (placeId: string, body: BookingInput) => fetchPublic(`/public/agenda/${placeId}/book`, { method: 'POST', body: JSON.stringify(body) }),
+  byToken: (token: string) => fetchPublic(`/public/agenda/cita/${token}`),
+  cancel: (token: string) => fetchPublic(`/public/agenda/cita/${token}/cancel`, { method: 'POST' }),
+};
+
+// ── Inventario: insumos/productos, kardex, mermas, proveedores y recetas ─────
+const invBase = (placeId: string) => `/business/places/${placeId}/inventory`;
+export const MERMA_REASONS: Record<string, string> = {
+  QUEMADO: 'Producto quemado / dañado', VENCIDO: 'Vencimiento / descomposición', DERRAME: 'Derrame / caída',
+  DEVOLUCION: 'Devolución de cliente', ERROR_COMANDA: 'Error de comanda', CONTAMINACION: 'Contaminación cruzada', OTRO: 'Otro',
+};
+export const inventoryApi = {
+  overview: (placeId: string) => fetchWithAuth(invBase(placeId)),
+  saveItem: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${invBase(placeId)}/items${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+  ingreso: (placeId: string, body: { itemId: string; quantity: number; unitCost?: number; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/ingresos`, { method: 'POST', body: JSON.stringify(body) }),
+  ajuste: (placeId: string, body: { itemId: string; counted: number; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/ajustes`, { method: 'POST', body: JSON.stringify(body) }),
+  merma: (placeId: string, body: { itemId?: string; dishId?: string; quantity: number; mermaReason: string; reason?: string }) =>
+    fetchWithAuth(`${invBase(placeId)}/mermas`, { method: 'POST', body: JSON.stringify(body) }),
+  kardex: (placeId: string, type?: string) => fetchWithAuth(`${invBase(placeId)}/kardex${type ? `?type=${type}` : ''}`),
+  suppliers: (placeId: string) => fetchWithAuth(`${invBase(placeId)}/suppliers`),
+  saveSupplier: (placeId: string, id: string | null, body: Record<string, unknown>) =>
+    fetchWithAuth(`${invBase(placeId)}/suppliers${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', body: JSON.stringify(body) }),
+  recipes: (placeId: string) => fetchWithAuth(`${invBase(placeId)}/recipes`),
+  setRecipe: (placeId: string, dishId: string, lines: { itemId: string; quantity: number }[]) =>
+    fetchWithAuth(`${invBase(placeId)}/recipes/${dishId}`, { method: 'PUT', body: JSON.stringify({ lines }) }),
 };
 
 export type ReceiptDocType = 'TICKET' | 'BOLETA' | 'FACTURA';
@@ -1053,6 +1145,9 @@ export const ordersApi = {
     fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
   cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/charge`, { method: 'POST', body: JSON.stringify(body) }),
+  /** Venta directa (mostrador) o cobro de una cita (appointmentId agrega su servicio). */
+  cashSale: (placeId: string, body: ReceiptRequest & { method: CashMethod; appointmentId?: string; items?: { dishId?: string; name?: string; unitPrice?: number; quantity: number }[] }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/sale`, { method: 'POST', body: JSON.stringify(body) }),
   cashClose: (placeId: string, countedCash?: number) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/close`, { method: 'POST', body: JSON.stringify(countedCash == null ? {} : { countedCash }) }),
   getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),

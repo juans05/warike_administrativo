@@ -34,7 +34,8 @@ function BusinessTypeSelect({ place, verticals, onChange }: { place: Place; vert
   );
 }
 
-export function PlacesSection({ places, total, loading, search, onSearch, verticals, onToggleVerified, onStatus, onBusinessType }: {
+export function PlacesSection({ places, total, loading, search, onSearch, verticals, onToggleVerified, onStatus, onBusinessType, readOnly }: {
+  readOnly?: boolean;
   places: Place[];
   total: number;
   loading: boolean;
@@ -73,7 +74,7 @@ export function PlacesSection({ places, total, loading, search, onSearch, vertic
                 <p className="text-xs text-text-muted">{place.district?.district || '—'}</p>
               </Td>
               <Td>
-                {verticals.length > 0 ? (
+                {verticals.length > 0 && !readOnly ? (
                   <BusinessTypeSelect place={place} verticals={verticals} onChange={(type) => onBusinessType(place, type)} />
                 ) : (
                   <span className="text-text-muted">{place.businessType}</span>
@@ -86,13 +87,14 @@ export function PlacesSection({ places, total, loading, search, onSearch, vertic
                   variant="secondary"
                   icon={BadgeCheck}
                   className={cn(place.isVerified && 'text-success')}
+                  disabled={readOnly}
                   onClick={() => onToggleVerified(place)}
                 >
                   {place.isVerified ? 'Verificado' : 'No verificado'}
                 </Button>
               </Td>
               <Td>
-                <InlineSelect aria-label={`Estado de ${place.name}`} value={place.status} onChange={(e) => onStatus(place, e.target.value)}>
+                <InlineSelect aria-label={`Estado de ${place.name}`} value={place.status} disabled={readOnly} onChange={(e) => onStatus(place, e.target.value)}>
                   {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </InlineSelect>
               </Td>

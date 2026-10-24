@@ -31,14 +31,15 @@ import OnboardingSearch from '../../components/OnboardingSearch';
 import TermsGate from '../../components/TermsGate';
 import { AuthLogo } from '../../components/AuthCard';
 import { businessApi, ordersApi } from '../../lib/api-client';
-import { NAV, accessOf, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
+import { NAV, accessFor, firstAllowedHref, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
+import { PLATFORM_NAV, can, clearPlatformPermissions, platformRoute, usePlatformPermissions } from '../../lib/platform';
 import { Badge, EmptyState, Sheet, buttonStyles, cn } from '../../components/ui';
 
 interface DashboardUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'admin' | 'business';
+  role: 'admin' | 'business' | 'sales';
 }
 
 // El plan es de la SEDE activa (lo paga su dueño), no del usuario logueado — un
@@ -101,6 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const handleLogout = () => {
+    clearPlatformPermissions();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
@@ -119,25 +121,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 }
 
-const ADMIN_NAV: Array<{ href: string; icon: LucideIcon; label: string }> = [
-  { href: '/moderacion', icon: Shield, label: 'Control de Locales' },
-  { href: '/comunidad', icon: Users, label: 'Gestión de Usuarios' },
-  { href: '/suscripciones', icon: CreditCard, label: 'Suscripciones' },
-  { href: '/liquidaciones', icon: CreditCard, label: 'Liquidaciones' },
-  { href: '/moderacion/whatsapp', icon: Bot, label: 'WhatsApp Bot' },
-  { href: '/moderacion/dispositivos', icon: QrCode, label: 'Códigos QR' },
-  { href: '/moderacion/reclamaciones', icon: FileWarning, label: 'Libro de Reclamaciones' },
-  { href: '/moderacion/oportunidades', icon: Flame, label: 'Oportunidades' },
-  { href: '/moderacion/comisiones', icon: Wallet, label: 'Comisiones' },
-  { href: '/configuracion', icon: Settings, label: 'Configuración del Sitio' },
-];
-
 type NavProps = {
   user: DashboardUser | null;
   pathname: string;
   showBusiness: boolean;
+  /** Secciones de la plataforma que el usuario del equipo de Wuarikes puede ver según su perfil. */
+  platformNav: typeof PLATFORM_NAV;
   /** Cocina y mozo ven una sola pantalla (Cocina o Mesas); el resto del panel no aplica a su rol. */
   soloRoute: SoloRoute | null;
+  placeModules: string[] | null;
   config: VerticalConfig | undefined;
   tier: string | null | undefined;
   pendingChats: number | null;
@@ -161,11 +153,16 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
 
   const router = useRouter();
   const [placeRole, setPlaceRole] = useState<string | null>(null);
+  // Secciones del perfil del miembro en esta sede (null = sin perfil: ve lo que su rol permite).
+  const [placeModules, setPlaceModules] = useState<string[] | null>(null);
   useEffect(() => {
-    if (user?.role !== 'business' || !activePlaceId) { setPlaceRole(null); return; }
-    ordersApi.me(activePlaceId).then((r: { role: string }) => setPlaceRole(r.role)).catch(() => setPlaceRole(null));
+    if (user?.role !== 'business' || !activePlaceId) { setPlaceRole(null); setPlaceModules(null); return; }
+    ordersApi.me(activePlaceId)
+      .then((r: { role: string; modules?: string[] | null }) => { setPlaceRole(r.role); setPlaceModules(r.modules ?? null); })
+      .catch(() => { setPlaceRole(null); setPlaceModules(null); });
   }, [user?.role, activePlaceId]);
-  const soloRoute = placeRole ? SOLO_ROUTE[placeRole] ?? null : null;
+  // Con perfil, el menú lo arma el perfil (un cajero con nivel mozo no queda encerrado en Mesas).
+  const soloRoute = placeRole && !placeModules ? SOLO_ROUTE[placeRole] ?? null : null;
   const kitchenOnly = soloRoute !== null;
   useEffect(() => {
     if (soloRoute && pathname !== soloRoute.href) router.replace(soloRoute.href);
@@ -176,18 +173,32 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   // Rubro y plan solo aplican al dueño/equipo; cocina sigue viendo solo Cocina, como hoy.
   const config = activePlace?.verticalConfig;
   const routeEntry = matchRoute(pathname);
-  const pageAccess = isBusiness && !kitchenOnly && routeEntry ? accessOf(routeEntry, config, tier) : 'open';
+  const pageAccess = isBusiness && !kitchenOnly && routeEntry ? accessFor(routeEntry, config, tier, placeModules)
+    // Con perfil, lo que no es una sección del menú (inicio, mi ficha…) tampoco le toca, salvo su cuenta.
+    : placeModules && pathname !== '/mi-cuenta' ? 'hidden' : 'open';
   // No montar una página de módulo antes de saber el rubro (evita que /mesas empiece a pedir datos antes del redirect).
   const waitForPlaces = isBusiness && contextLoading && Boolean(routeEntry?.module);
   useEffect(() => {
-    if (pageAccess === 'hidden') router.replace('/inicio');
-  }, [pageAccess, router]);
+    if (pageAccess === 'hidden') router.replace(placeModules ? firstAllowedHref(config, tier, placeModules) : '/inicio');
+  }, [pageAccess, placeModules, config, tier, router]);
+
+  // Equipo de Wuarikes: el menú y las rutas de la plataforma dependen de los permisos de su perfil.
+  const isStaff = user?.role === 'admin' || user?.role === 'sales';
+  const platformPerms = usePlatformPermissions(isStaff);
+  const platformNav = PLATFORM_NAV.filter((item) => can(platformPerms, ...item.perms) && !(item.hideWith && can(platformPerms, item.hideWith)));
+  const platformEntry = isStaff ? platformRoute(pathname) : undefined;
+  const platformDenied = isStaff && platformPerms !== null && pathname !== '/mi-cuenta'
+    && (platformEntry ? !can(platformPerms, ...platformEntry.perms) : user?.role === 'sales');
+  const waitForPerms = Boolean(platformEntry) && platformPerms === null;
+  useEffect(() => {
+    if (platformDenied) router.replace(platformNav[0]?.href ?? '/mi-cuenta');
+  }, [platformDenied, platformNav, router]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const navProps: NavProps = {
-    user, pathname, showBusiness: isBusiness && !noPlaces, soloRoute, config, tier, pendingChats, handleLogout,
+    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, placeModules, config, tier, pendingChats, handleLogout,
   };
 
   return (
@@ -228,7 +239,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           )}
           {noPlaces ? (
             <NoPlacesScreen userName={user?.fullName} onComplete={refreshPlaces} />
-          ) : pageAccess === 'hidden' || waitForPlaces ? null : pageAccess === 'locked' ? (
+          ) : pageAccess === 'hidden' || waitForPlaces || waitForPerms || platformDenied ? null : pageAccess === 'locked' ? (
             <EmptyState
               icon={Lock}
               title="Esta sección no está en tu plan"
@@ -251,7 +262,7 @@ function Logo() {
 }
 
 function SidebarContent({
-  user, pathname, showBusiness, soloRoute, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+  user, pathname, showBusiness, platformNav, soloRoute, placeModules, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
 }: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -269,16 +280,18 @@ function SidebarContent({
 
         {showBusiness && !soloRoute && (
           <>
-            <ul className="pt-2">
-              <SidebarLink href="/inicio" icon={Home} label="Inicio" active={pathname === '/inicio'} />
-            </ul>
+            {!placeModules && (
+              <ul className="pt-2">
+                <SidebarLink href="/inicio" icon={Home} label="Inicio" active={pathname === '/inicio'} />
+              </ul>
+            )}
             {NAV.map((group) => {
-              const items = group.items.filter((item) => accessOf(item, config, tier) !== 'hidden');
+              const items = group.items.filter((item) => accessFor(item, config, tier, placeModules) !== 'hidden');
               if (items.length === 0) return null;
               return (
                 <NavSection key={group.group} title={group.group} subtitle={group.subtitle}>
                   {items.map((item) => {
-                    const children = (item.children ?? []).filter((c) => accessOf(c, config, tier) !== 'hidden');
+                    const children = (item.children ?? []).filter((c) => accessFor(c, config, tier, placeModules) !== 'hidden');
                     return (
                       <SidebarLink
                         key={item.href}
@@ -286,7 +299,7 @@ function SidebarContent({
                         icon={item.icon}
                         label={navLabel(item.label, config)}
                         active={isActive(item.href)}
-                        locked={accessOf(item, config, tier) === 'locked'}
+                        locked={accessFor(item, config, tier, placeModules) === 'locked'}
                       >
                         {children.length > 0 && (
                           <ul className="mt-0.5 space-y-0.5">
@@ -296,7 +309,7 @@ function SidebarContent({
                                 href={child.href}
                                 label={navLabel(child.label, config)}
                                 active={isActive(child.href)}
-                                locked={accessOf(child, config, tier) === 'locked'}
+                                locked={accessFor(child, config, tier, placeModules) === 'locked'}
                                 count={child.href === '/chat' ? pendingChats : null}
                                 nested
                               />
@@ -312,9 +325,9 @@ function SidebarContent({
           </>
         )}
 
-        {user?.role === 'admin' && (
+        {platformNav.length > 0 && (
           <NavSection title="Plataforma">
-            {ADMIN_NAV.map((item) => (
+            {platformNav.map((item) => (
               <SidebarLink key={item.href} href={item.href} icon={item.icon} label={item.label} active={pathname === item.href} />
             ))}
           </NavSection>
@@ -323,7 +336,7 @@ function SidebarContent({
 
       <div className="space-y-3 border-t border-border p-3">
         {showBusiness && <RestaurantSelector />}
-        <UserMenu user={user} pathname={pathname} showBusiness={showBusiness} handleLogout={handleLogout} />
+        <UserMenu user={user} pathname={pathname} showBusiness={showBusiness} isStaffMember={Boolean(placeModules)} handleLogout={handleLogout} />
       </div>
     </div>
   );
@@ -374,7 +387,7 @@ function SidebarLink({
   );
 }
 
-function UserMenu({ user, pathname, showBusiness, handleLogout }: { user: DashboardUser | null; pathname: string; showBusiness: boolean; handleLogout: () => void }) {
+function UserMenu({ user, pathname, showBusiness, isStaffMember, handleLogout }: { user: DashboardUser | null; pathname: string; showBusiness: boolean; isStaffMember: boolean; handleLogout: () => void }) {
   const ref = useRef<HTMLDetailsElement>(null);
   useEffect(() => { if (ref.current) ref.current.open = false; }, [pathname]);
 
@@ -388,7 +401,7 @@ function UserMenu({ user, pathname, showBusiness, handleLogout }: { user: Dashbo
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-text">{user?.fullName || 'Administrador'}</span>
-          <span className="block text-xs text-text-muted">{user?.role === 'business' ? 'Propietario' : 'Administrador'}</span>
+          <span className="block text-xs text-text-muted">{isStaffMember ? 'Equipo' : user?.role === 'business' ? 'Propietario' : user?.role === 'sales' ? 'Comercial' : 'Equipo Wuarikes'}</span>
         </span>
         <ChevronUp size={16} aria-hidden className="shrink-0 text-text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
       </summary>
