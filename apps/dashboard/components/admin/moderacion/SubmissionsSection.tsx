@@ -3,7 +3,9 @@ import { Button, DataList, EmptyState } from '../../ui';
 import { SectionCard } from '../SectionCard';
 import type { PlaceSubmission } from './types';
 
-export function SubmissionsSection({ submissions, onApprove, onReject }: {
+export function SubmissionsSection({ submissions, onApprove, onReject, readOnly }: {
+  /** Sin locales.gestionar (ej. comercial): solo ver. */
+  readOnly?: boolean;
   submissions: PlaceSubmission[];
   onApprove(id: string): void;
   onReject(id: string): void;
@@ -35,10 +37,10 @@ export function SubmissionsSection({ submissions, onApprove, onReject }: {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              {!readOnly && <div className="flex gap-2">
                 <Button size="sm" icon={Check} onClick={() => onApprove(s.id)}>Aprobar</Button>
                 <Button size="sm" variant="secondary" icon={X} className="text-danger" onClick={() => onReject(s.id)}>Rechazar</Button>
-              </div>
+              </div>}
             </div>
           )}
         />

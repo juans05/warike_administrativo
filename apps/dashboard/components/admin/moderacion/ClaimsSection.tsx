@@ -23,7 +23,8 @@ function isHttpsUrl(url: string) {
   }
 }
 
-export function ClaimsSection({ claims, onVerify, onReject }: {
+export function ClaimsSection({ claims, onVerify, onReject, readOnly }: {
+  readOnly?: boolean;
   claims: PlaceClaim[];
   onVerify(id: string): void;
   onReject(id: string): void;
@@ -85,10 +86,10 @@ export function ClaimsSection({ claims, onVerify, onReject }: {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2">
+                {!readOnly && <div className="flex gap-2">
                   <Button size="sm" icon={Check} onClick={() => onVerify(c.id)}>Verificar</Button>
                   <Button size="sm" variant="secondary" icon={X} className="text-danger" onClick={() => onReject(c.id)}>Rechazar</Button>
-                </div>
+                </div>}
               </div>
             );
           }}
