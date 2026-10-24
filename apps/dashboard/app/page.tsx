@@ -18,7 +18,6 @@ import {
   LayoutGrid,
   Tag,
   Users,
-  TrendingUp,
   Instagram,
   Facebook,
   Twitter,
@@ -26,6 +25,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { publicApi } from '../lib/api-client';
+import { ChannelsMarquee, OldVsNew, ProductTour, ShowcaseHero, VerticalsStrip } from '../components/landing/PlatformShowcase';
 
 const WHATSAPP_NUMBER = '51902191948';
 const waLink = (message: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
@@ -112,92 +112,6 @@ function Reveal({ children, className = '', delay = 0, scale = false }: { childr
       style={{ transitionDelay: inView ? `${delay}ms` : '0ms' }}
     >
       {children}
-    </div>
-  );
-}
-
-// --- Category pills: signals "software de marketing, comunicación e IA" up front ---
-
-function CategoryPills() {
-  const items = [
-    { label: 'Marketing', color: 'var(--primary)' },
-    { label: 'Comunicación', color: 'var(--secondary)' },
-    { label: 'Inteligencia Artificial', color: 'var(--accent)' },
-  ];
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
-      {items.map((it) => (
-        <span
-          key={it.label}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[var(--border)] text-xs font-medium text-[var(--text)] shadow-sm"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ backgroundColor: it.color }} />
-            <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: it.color }} />
-          </span>
-          {it.label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// --- Animated WhatsApp/AI demo: shows the product doing the thing, not just naming it ---
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    setReduced(typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }, []);
-  return reduced;
-}
-
-function WhatsAppDemo() {
-  const reduced = useReducedMotion();
-  const [step, setStep] = useState(reduced ? 2 : 0); // 0: cliente escribe, 1: IA escribiendo, 2: respuesta IA
-
-  useEffect(() => {
-    if (reduced) return;
-    const id = setInterval(() => setStep((s) => (s + 1) % 3), 2200);
-    return () => clearInterval(id);
-  }, [reduced]);
-
-  return (
-    <div className="w-full max-w-xs rounded-[24px] bg-white border border-[var(--border)] shadow-[0_20px_50px_rgba(45,36,36,0.16)] p-5">
-      <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-        <div className="w-9 h-9 rounded-full bg-[var(--text)] flex items-center justify-center text-white shrink-0">
-          <Bot size={17} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--text)] truncate">PlazBot · IA</p>
-          <p className="text-[11px] text-[var(--accent)] flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" /> Respondiendo por WhatsApp
-          </p>
-        </div>
-      </div>
-      <div className="pt-4 space-y-2.5 min-h-[112px]">
-        <div className="flex justify-end">
-          <div className="bg-[var(--background)] rounded-2xl rounded-tr-sm px-3.5 py-2 text-[13px] text-[var(--text)] max-w-[85%] animate-in fade-in slide-in-from-bottom-1 duration-300">
-            ¿Tienen mesa para 4 hoy a las 8pm?
-          </div>
-        </div>
-        {step === 1 && (
-          <div className="flex justify-start animate-in fade-in duration-200">
-            <div className="bg-[var(--primary)]/10 rounded-2xl rounded-tl-sm px-3.5 py-2.5 inline-flex gap-1 items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:-0.2s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce [animation-delay:-0.1s]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-bounce" />
-            </div>
-          </div>
-        )}
-        {step === 2 && (
-          <div className="flex justify-start animate-in fade-in slide-in-from-bottom-1 duration-300">
-            <div className="bg-[var(--primary)]/10 rounded-2xl rounded-tl-sm px-3.5 py-2 text-[13px] text-[var(--text)] max-w-[90%]">
-              ¡Sí! Te reservo mesa para 4 a las 8:00pm. Te confirmo en un momento 🎉
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -332,73 +246,7 @@ function PlatformSection() {
   );
 }
 
-// --- Before / after ---
 
-function ImpactCard({ name, rating, reviews, status, positive }: { name: string; rating: number; reviews: number; status: string; positive?: boolean }) {
-  const { ref, inView } = useInView<HTMLDivElement>();
-  const animatedRating = useCountUp(rating, inView, 1000, 1);
-  return (
-    <div
-      ref={ref}
-      className={`rounded-[28px] bg-white border shadow-[0_2px_20px_rgba(45,36,36,0.06)] p-8 space-y-6 max-w-md mx-auto transition-all duration-300 hover:-translate-y-1.5 hover:rotate-0 hover:shadow-[0_16px_34px_rgba(45,36,36,0.14)] ${
-        positive
-          ? 'border-[var(--accent)]/40 hover:shadow-[0_16px_34px_rgba(58,125,68,0.18)]'
-          : 'border-[var(--border)] -rotate-1 saturate-[0.85]'
-      }`}
-    >
-      <div className="flex justify-between items-start">
-        <div>
-          <h4 className="text-lg font-semibold text-[var(--text)] font-warike">{name}</h4>
-          <p className="text-xs text-[var(--text-muted)]">Restaurante de comida marina</p>
-        </div>
-        <span className="px-3 py-1 rounded-full bg-[var(--background)] text-[var(--text-muted)] text-[11px] font-medium">Google</span>
-      </div>
-      <div className="flex items-center gap-3 py-4 border-y border-[var(--border)]">
-        <span className="text-2xl font-semibold text-[var(--text)] tabular-nums">{animatedRating.toFixed(1)}</span>
-        <StarRating rating={animatedRating} size={17} />
-        <span className="text-sm text-[var(--text-muted)]">({reviews})</span>
-      </div>
-      <p className={`text-sm leading-relaxed flex items-start gap-2 ${positive ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>
-        {positive && inView && <Check size={16} className="shrink-0 mt-0.5 animate-in zoom-in-50 fade-in duration-500 delay-500 fill-mode-backwards" />}
-        <span>{status}</span>
-      </p>
-    </div>
-  );
-}
-
-function ComparisonSection() {
-  return (
-    <section className="py-28 md:py-36 px-6 md:px-8 bg-[var(--background)]">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div className="space-y-6">
-          <Reveal>
-            <ImpactCard name="Cevichería El Puerto" rating={4.2} reviews={52} status="Antes: sus clientes casi no dejaban reseñas, y las malas pesaban demasiado." />
-          </Reveal>
-          <div className="relative isolate">
-            <span className="absolute -inset-3 -z-10 rounded-[32px] bg-[var(--accent)]/15 blur-xl animate-pulse pointer-events-none" aria-hidden="true" />
-            <Reveal delay={200} scale>
-              <ImpactCard name="Cevichería El Puerto" rating={4.8} reviews={683} status="Con Wuarike: Nº1 en Google Maps de su categoría." positive />
-            </Reveal>
-            <Reveal delay={500} scale className="absolute -top-5 left-1/2 -translate-x-1/2 z-20">
-              <span className="inline-flex items-center gap-1.5 bg-[var(--accent)] text-white text-xs font-bold px-4 py-2 rounded-full shadow-[0_8px_20px_rgba(58,125,68,0.35)] whitespace-nowrap">
-                <TrendingUp size={14} className="shrink-0" />
-                +0.6 en 60 días
-              </span>
-            </Reveal>
-          </div>
-        </div>
-        <Reveal delay={100} className="space-y-8">
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-[var(--text)] font-warike leading-tight">¿Por qué necesitas más reseñas?</h2>
-          <div className="p-8 bg-white rounded-[28px] border border-[var(--border)] shadow-[0_2px_20px_rgba(45,36,36,0.06)] space-y-3">
-            <div className="text-4xl font-semibold text-[var(--primary)]"><CountUpStat target={83} suffix="%" /></div>
-            <p className="text-[var(--text-muted)] leading-relaxed">de las personas miran reseñas antes de elegir a qué restaurante ir.</p>
-          </div>
-          <p className="text-lg text-[var(--text-muted)] leading-relaxed">Cuantas más y mejores reseñas tengas, más arriba apareces en las búsquedas de Google.</p>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
 
 // --- FAQ ---
 
@@ -761,7 +609,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--text-muted)]">
-            <a href="#plataforma" className="hover:text-[var(--text)] transition-colors">Plataforma</a>
+            <a href="#producto" className="hover:text-[var(--text)] transition-colors">Plataforma</a>
             <a href="#planes" className="hover:text-[var(--text)] transition-colors">Membresías</a>
             <a href="#hardware" className="hover:text-[var(--text)] transition-colors">Hardware</a>
           </div>
@@ -774,57 +622,36 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative pt-40 md:pt-48 pb-24 md:pb-32 px-6 md:px-8 bg-[var(--background)]">
         <HeroAurora />
-        <div className="relative z-10 max-w-6xl mx-auto text-center space-y-8">
-          <Reveal className="space-y-5">
-            <span className="inline-block text-xs font-semibold text-[var(--primary)] tracking-wide uppercase">El club de restaurantes que crecen juntos</span>
-            <CategoryPills />
-          </Reveal>
-          <Reveal delay={60}>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-semibold tracking-tight text-[var(--text)] font-warike leading-[1.05] max-w-4xl mx-auto">
-              La sazón es <span className="italic text-[var(--primary)]">tuya</span>.<br />
-              La reputación, <span className="underline decoration-[var(--secondary)] decoration-[6px] underline-offset-8">nuestra</span>.
-            </h1>
-          </Reveal>
-          <Reveal delay={120}>
-            <p className="text-lg md:text-xl text-[var(--text-muted)] max-w-2xl mx-auto leading-relaxed">
-              Una mala reseña te cuesta 30 clientes al mes. Únete al Club <strong className="text-[var(--primary)] font-semibold">Wuarike</strong>: sistemas para proteger tu prestigio en Google, fidelizar a tus clientes y automatizar tu WhatsApp con IA — más descuentos y acompañamiento para llevar tu restaurante.
-            </p>
-          </Reveal>
-          <Reveal delay={180} className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+        <ShowcaseHero
+          primaryCta={
             <a href="#planes" className="bg-[var(--primary)] text-white text-[15px] font-medium px-8 py-4 rounded-full hover:bg-[var(--primary-light)] transition-colors inline-flex items-center justify-center gap-2">
               Ver Membresías <ArrowRight size={16} />
             </a>
+          }
+          secondaryCta={
             <a
-              href={waLink('Hola equipo Wuarike! Quiero hablar con ventas sobre la plataforma para mi restaurante.')}
+              href={waLink('Hola equipo Wuarike! Quiero hablar con ventas sobre la plataforma para mi negocio.')}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[15px] font-medium text-[var(--text)] px-8 py-4 rounded-full border border-[var(--border)] hover:bg-white transition-colors inline-flex items-center justify-center"
+              className="text-[15px] font-medium text-[var(--text)] px-8 py-4 rounded-full border border-[var(--border)] bg-white hover:bg-[var(--background)] transition-colors inline-flex items-center justify-center"
             >
               Hablar con el Club
             </a>
-          </Reveal>
-
-          <Reveal delay={240} className="pt-10">
-            <div className="relative max-w-4xl mx-auto">
-              <div className="rounded-[32px] overflow-hidden shadow-[0_20px_60px_rgba(45,36,36,0.15)]">
-                <img src="/images/hero.png" alt="Restaurante usando la plataforma Wuarike" className="w-full h-[380px] md:h-[460px] object-cover" />
-              </div>
-              <div className="hidden md:block absolute -bottom-10 -right-6 lg:-right-10">
-                <WhatsAppDemo />
-              </div>
-            </div>
-            <div className="md:hidden mt-6 flex justify-center">
-              <WhatsAppDemo />
-            </div>
-          </Reveal>
-        </div>
+          }
+        />
       </section>
 
-      <ClubBenefitsSection />
+      <ChannelsMarquee />
+
+      <ProductTour />
+
+      <VerticalsStrip />
 
       <StatsBand />
 
-      <div id="impact"><ComparisonSection /></div>
+      <div id="impact"><OldVsNew /></div>
+
+      <ClubBenefitsSection />
 
       <PlatformSection />
 
