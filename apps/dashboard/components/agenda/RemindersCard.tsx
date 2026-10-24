@@ -9,7 +9,7 @@ import { Badge, Button, Card, Switch } from '../ui';
 
 const STATE: Record<string, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral'; help: string }> = {
   NO_WHATSAPP: { label: 'Sin WhatsApp', tone: 'neutral', help: 'Conecta el WhatsApp de tu negocio para enviar recordatorios desde tu número.' },
-  NOT_CREATED: { label: 'Por activar', tone: 'warning', help: 'Crea la plantilla de recordatorio; Meta la revisa (minutos u horas).' },
+  NOT_CREATED: { label: 'Por activar', tone: 'warning', help: 'Crea las plantillas de recordatorio y de "listo para recoger" (mascotas y vehículos); Meta las revisa (minutos u horas).' },
   PENDING: { label: 'En revisión de Meta', tone: 'warning', help: 'Apenas Meta la apruebe, los recordatorios salen solos.' },
   APPROVED: { label: 'Activos', tone: 'success', help: 'Tus clientes reciben un WhatsApp 24 h y 2 h antes, con el enlace para cancelar.' },
   REJECTED: { label: 'Rechazada por Meta', tone: 'danger', help: 'Meta rechazó la plantilla. Escríbenos y la ajustamos.' },
