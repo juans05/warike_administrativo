@@ -1,18 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Briefcase, Building2, ShieldCheck, User, UserPlus, type LucideIcon } from 'lucide-react';
+import { Building2, User, UserPlus, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { adminApi } from '../../../lib/api-client';
 import { Button, Input, Modal, cn } from '../../ui';
 
-type Role = 'admin' | 'business' | 'sales';
+type Role = 'business' | 'user';
 
 const ROLES: { value: string; label: string; icon: LucideIcon }[] = [
   { value: 'business', label: 'Negocio', icon: Building2 },
   { value: 'user', label: 'Usuario', icon: User },
-  { value: 'admin', label: 'Admin', icon: ShieldCheck },
-  { value: 'sales', label: 'Comercial', icon: Briefcase },
 ];
 
 const EMPTY = { fullName: '', email: '', password: '', role: 'business' as Role };
@@ -51,7 +49,7 @@ export function CreateUserModal({ onClose, onCreated }: { onClose(): void; onCre
       }
     >
       <form id="create-user-form" onSubmit={submit} className="space-y-4">
-        <p className="text-text-muted">Registra un nuevo socio, comercial o administrador.</p>
+        <p className="text-text-muted">Registra un negocio o un usuario. El equipo de Wuarikes se crea en Equipo Wuarikes, con su perfil.</p>
         <Input label="Nombre completo" required type="text" placeholder="Ej. Juan Pérez" value={newUser.fullName} onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })} />
         <Input label="Correo" required type="email" placeholder="socio@wuarike.com" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
         <Input label="Contraseña temporal" required type="password" autoComplete="new-password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />

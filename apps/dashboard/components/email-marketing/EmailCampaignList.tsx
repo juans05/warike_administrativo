@@ -78,7 +78,7 @@ export function EmailCampaignList({ campaigns, loading, audienceCount, sendingId
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-1">
                 {c.status === 'DRAFT' && (
-                  <Button size="sm" icon={Send} onClick={() => handleSendClick(c)} loading={sendingId === c.id}>
+                  <Button size="sm" icon={Send} onClick={() => handleSendClick(c)} loading={sendingId === c.id} disabled={audienceCount === 0} title={audienceCount === 0 ? 'Nadie aceptó recibir correos todavía' : undefined}>
                     {sendingId === c.id ? 'Enviando...' : 'Enviar'}
                   </Button>
                 )}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { adminApi, businessApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import { PageHeader, Skeleton, StatTile } from '../../../components/ui';
+import { can, usePlatformPermissions } from '../../../lib/platform';
 import { LoadingRows } from '../../../components/admin/Table';
 import { ClaimsSection } from '../../../components/admin/moderacion/ClaimsSection';
 import { PlacesSection } from '../../../components/admin/moderacion/PlacesSection';
@@ -14,6 +15,8 @@ import type { Place, PlaceClaim, PlaceSubmission, Verticals } from '../../../com
 const number = (n: unknown) => Number(n || 0).toLocaleString('es-PE');
 
 export default function ModeracionPage() {
+  // Comercial (locales.ver sin locales.gestionar): ve todo, sin botones de aprobar ni editar.
+  const readOnly = !can(usePlatformPermissions(true), 'locales.gestionar');
   const [places, setPlaces] = useState<Place[]>([]);
   const [placesTotal, setPlacesTotal] = useState(0);
   const [submissions, setSubmissions] = useState<PlaceSubmission[]>([]);
@@ -152,9 +155,10 @@ export default function ModeracionPage() {
         <StatTile label="Check-ins" value={number(stats?.overview?.totalCheckins)} />
       </div>
 
-      <SubmissionsSection submissions={submissions} onApprove={approveSubmission} onReject={setRejectSubmissionId} />
-      <ClaimsSection claims={claims} onVerify={verifyClaim} onReject={rejectClaim} />
+      <SubmissionsSection submissions={submissions} onApprove={approveSubmission} onReject={setRejectSubmissionId} readOnly={readOnly} />
+      <ClaimsSection claims={claims} onVerify={verifyClaim} onReject={rejectClaim} readOnly={readOnly} />
       <PlacesSection
+        readOnly={readOnly}
         places={places}
         total={placesTotal}
         loading={loading}

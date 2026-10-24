@@ -11,11 +11,12 @@ export function PayoutsList({ payouts, loading, period, onDetail, onPay, onCance
   loading: boolean;
   period: string;
   onDetail(payout: CommissionPayout): void;
-  onPay(payout: CommissionPayout): void;
-  onCancel(payout: CommissionPayout): void;
+  /** Sin estas acciones (vista del comercial) la lista es de solo lectura. */
+  onPay?(payout: CommissionPayout): void;
+  onCancel?(payout: CommissionPayout): void;
 }) {
   return (
-    <SectionCard title="Liquidaciones del mes" subtitle={`Comisiones de los comerciales en ${period}`}>
+    <SectionCard title="Liquidaciones del mes" subtitle={onPay ? `Comisiones de los comerciales en ${period}` : `Tus comisiones de ${period}`}>
       {loading ? (
         <LoadingRows />
       ) : (
@@ -46,7 +47,7 @@ export function PayoutsList({ payouts, loading, period, onDetail, onPay, onCance
                 <p className="text-base font-semibold tabular-nums text-text">{money(p.totalAmount)}</p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="ghost" icon={Eye} aria-label={`Ver detalle de ${p.salesUserName}`} onClick={() => onDetail(p)}>Ver detalle</Button>
-                  {p.status === 'pending' && (
+                  {p.status === 'pending' && onPay && onCancel && (
                     <>
                       <Button size="sm" icon={Check} onClick={() => onPay(p)}>Marcar pagada</Button>
                       <Button size="sm" variant="secondary" icon={X} className="text-danger" onClick={() => onCancel(p)}>Anular</Button>

@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { KeyRound, Pencil, Trash2, UserPlus, Users } from 'lucide-react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { teamApi, businessApi } from '../../../lib/api-client';
+import { teamApi, businessApi, type TeamProfile } from '../../../lib/api-client';
+import { ProfilesSection } from '../../../components/equipo/ProfilesSection';
 import { toast } from 'sonner';
 import { Badge, Button, Card, CloseButton, DataList, EmptyState, Input, PageHeader, Select, Sheet } from '../../../components/ui';
 
@@ -17,6 +18,8 @@ interface TeamMember {
   fullName: string;
   email: string;
   role: Role;
+  profileId: string | null;
+  profileName: string | null;
   whatsappNumberIds: string[];
 }
 
@@ -25,24 +28,36 @@ interface WaNumber {
   phoneNumber: string;
 }
 
-/** Rol y, para agentes, qué números de WhatsApp ve. Lo usan el alta y la edición. */
-function RoleFields({ role, numberIds, waNumbers, onRole, onToggleNumber }: {
+/** Perfil (o rol sin perfil) y, para agentes, qué números de WhatsApp ve. Lo usan el alta y la edición. */
+function RoleFields({ role, profileId, profiles, numberIds, waNumbers, onRole, onProfile, onToggleNumber }: {
   role: Role;
+  profileId: string;
+  profiles: TeamProfile[];
   numberIds: string[];
   waNumbers: WaNumber[];
   onRole(role: Role): void;
+  onProfile(profileId: string): void;
   onToggleNumber(id: string): void;
 }) {
+  const profile = profiles.find(p => p.id === profileId);
+  const effectiveRole = profile ? profile.baseRole : role;
   return (
     <>
-      <Select label="Rol" value={role} onChange={e => onRole(e.target.value as Role)}>
-        <option value="agente">Agente</option>
-        <option value="mozo">Mozo (toma pedidos en mesas desde su celular)</option>
-        <option value="cocina">Cocina (solo pantalla de cocina)</option>
-        <option value="supervisor">Supervisor</option>
-        <option value="admin">Admin</option>
+      <Select label="Perfil" value={profileId} onChange={e => onProfile(e.target.value)}
+        hint={profile ? 'Solo verá las secciones de este perfil.' : 'Sin perfil ve todo lo que su rol permite.'}>
+        <option value="">Sin perfil (elegir rol)</option>
+        {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
       </Select>
-      {role === 'agente' && (
+      {!profile && (
+        <Select label="Rol" value={role} onChange={e => onRole(e.target.value as Role)}>
+          <option value="agente">Agente</option>
+          <option value="mozo">Mozo (toma pedidos en mesas desde su celular)</option>
+          <option value="cocina">Cocina (solo pantalla de cocina)</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="admin">Admin</option>
+        </Select>
+      )}
+      {effectiveRole === 'agente' && (
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium text-text">Números de WhatsApp visibles</legend>
           {waNumbers.length === 0 && <p className="text-sm text-text-muted">Sin números registrados en esta sede.</p>}
@@ -61,28 +76,31 @@ function RoleFields({ role, numberIds, waNumbers, onRole, onToggleNumber }: {
 const toggleId = (ids: string[], id: string) => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
 
 export default function EquipoPage() {
-  const { activePlaceId } = useRestaurant();
+  const { activePlaceId, activePlace } = useRestaurant();
+  const [profiles, setProfiles] = useState<TeamProfile[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ email: '', fullName: '', role: 'agente' as Role, whatsappNumberIds: [] as string[] });
+  const [form, setForm] = useState({ email: '', fullName: '', role: 'agente' as Role, profileId: '', whatsappNumberIds: [] as string[] });
   const [isSaving, setIsSaving] = useState(false);
   const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ role: 'agente' as Role, whatsappNumberIds: [] as string[] });
+  const [editForm, setEditForm] = useState({ role: 'agente' as Role, profileId: '', whatsappNumberIds: [] as string[] });
   const [isEditSaving, setIsEditSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!activePlaceId) { setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const [teamRes, numbersRes] = await Promise.all([
+      const [teamRes, numbersRes, profilesRes] = await Promise.all([
         teamApi.list(activePlaceId),
         businessApi.getWhatsappNumbers(activePlaceId),
+        teamApi.profiles(activePlaceId).catch(() => []),
       ]);
       setMembers(teamRes.data || []);
       setWaNumbers(numbersRes.data || []);
+      setProfiles(profilesRes);
     } catch {
       toast.error('No se pudo cargar el equipo. Puede que no seas Admin de esta sede.');
     } finally {
@@ -97,7 +115,7 @@ export default function EquipoPage() {
     if (!activePlaceId || !form.email || !form.fullName) return;
     setIsSaving(true);
     try {
-      const result = await teamApi.create(activePlaceId, form);
+      const result = await teamApi.create(activePlaceId, { ...form, profileId: form.profileId || null });
       if (result.emailSent) {
         toast.success(
           result.isExistingAccount
@@ -110,7 +128,7 @@ export default function EquipoPage() {
         toast.error('Agente agregado, pero no se pudo enviar el correo. Pasale la contraseña manualmente.');
         setPendingCredentials({ email: form.email, password: result.temporaryPassword });
       }
-      setForm({ email: '', fullName: '', role: 'agente', whatsappNumberIds: [] });
+      setForm({ email: '', fullName: '', role: 'agente', profileId: '', whatsappNumberIds: [] });
       setShowForm(false);
       await load();
     } catch (err: any) {
@@ -133,14 +151,14 @@ export default function EquipoPage() {
 
   const startEdit = (m: TeamMember) => {
     setEditingId(m.id);
-    setEditForm({ role: m.role, whatsappNumberIds: m.whatsappNumberIds });
+    setEditForm({ role: m.role, profileId: m.profileId ?? '', whatsappNumberIds: m.whatsappNumberIds });
   };
 
   const handleUpdate = async (memberId: string) => {
     if (!activePlaceId) return;
     setIsEditSaving(true);
     try {
-      await teamApi.update(activePlaceId, memberId, editForm);
+      await teamApi.update(activePlaceId, memberId, { ...editForm, profileId: editForm.profileId || null });
       toast.success('Cambios guardados');
       setEditingId(null);
       await load();
@@ -157,7 +175,7 @@ export default function EquipoPage() {
     <div className="max-w-4xl space-y-6 pb-20">
       <PageHeader
         title="Equipo"
-        subtitle="Quién puede ver y trabajar el inbox de WhatsApp de esta sede."
+        subtitle="Las personas de esta sede y qué secciones del panel ve cada una."
         action={<Button icon={UserPlus} onClick={() => setShowForm(true)}>Agregar persona</Button>}
       />
 
@@ -200,7 +218,7 @@ export default function EquipoPage() {
                 <p className="truncate text-sm font-semibold text-text">{m.fullName}</p>
                 <p className="truncate text-sm text-text-muted">{m.email}</p>
               </div>
-              <Badge>{ROLE_LABELS[m.role]}</Badge>
+              <Badge>{m.profileName ?? ROLE_LABELS[m.role]}</Badge>
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" icon={Pencil} onClick={() => startEdit(m)} aria-label={`Editar a ${m.fullName}`}>Editar</Button>
                 <Button size="sm" variant="ghost" icon={Trash2} className="text-danger hover:bg-danger/10 hover:text-danger" onClick={() => handleRemove(m.id)} aria-label={`Eliminar a ${m.fullName}`}>
@@ -212,15 +230,20 @@ export default function EquipoPage() {
         />
       </Card>
 
+      {activePlaceId && <ProfilesSection placeId={activePlaceId} config={activePlace?.verticalConfig} profiles={profiles} onChanged={load} />}
+
       <Sheet open={showForm} onClose={() => setShowForm(false)} title="Agregar persona al equipo">
         <form onSubmit={handleCreate} className="space-y-4 p-4">
           <Input label="Nombre" type="text" value={form.fullName} required onChange={e => setForm(p => ({ ...p, fullName: e.target.value }))} />
           <Input label="Email" type="email" value={form.email} required onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
           <RoleFields
             role={form.role}
+            profileId={form.profileId}
+            profiles={profiles}
             numberIds={form.whatsappNumberIds}
             waNumbers={waNumbers}
             onRole={role => setForm(p => ({ ...p, role }))}
+            onProfile={profileId => setForm(p => ({ ...p, profileId }))}
             onToggleNumber={id => setForm(p => ({ ...p, whatsappNumberIds: toggleId(p.whatsappNumberIds, id) }))}
           />
           <Button type="submit" loading={isSaving} className="w-full">{isSaving ? 'Guardando...' : 'Agregar al equipo'}</Button>
@@ -236,9 +259,12 @@ export default function EquipoPage() {
             </div>
             <RoleFields
               role={editForm.role}
+              profileId={editForm.profileId}
+              profiles={profiles}
               numberIds={editForm.whatsappNumberIds}
               waNumbers={waNumbers}
               onRole={role => setEditForm(p => ({ ...p, role }))}
+              onProfile={profileId => setEditForm(p => ({ ...p, profileId }))}
               onToggleNumber={id => setEditForm(p => ({ ...p, whatsappNumberIds: toggleId(p.whatsappNumberIds, id) }))}
             />
             <div className="flex gap-2">

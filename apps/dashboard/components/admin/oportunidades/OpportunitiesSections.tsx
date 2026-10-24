@@ -58,7 +58,8 @@ function StatusSelect({ label, value, onChange }: { label: string; value: string
 export function OpportunitiesSection({ opportunities, loading, salesUsers, onAssign, onStatus }: {
   opportunities: Opportunity[];
   loading: boolean;
-  salesUsers: { id: string; fullName: string }[];
+  /** null = sin permiso para asignar (comercial): la columna queda de solo lectura. */
+  salesUsers: { id: string; fullName: string }[] | null;
   onAssign(placeId: string, salesUserId: string): void;
   onStatus(placeId: string, status: string): void;
 }) {
@@ -82,10 +83,12 @@ export function OpportunitiesSection({ opportunities, loading, salesUsers, onAss
               <Td className="text-xs text-text-muted">{o.checkinsCount} check-ins · {o.favoritesCount} favoritos · {o.totalReviews} reseñas</Td>
               <Td right className="text-base font-semibold text-primary">{o.score}</Td>
               <Td>
-                <InlineSelect aria-label={`Comercial de ${o.name}`} value={o.assignedSalesUserId ?? ''} onChange={(e) => onAssign(o.id, e.target.value)}>
-                  <option value="">Sin vendedor</option>
-                  {salesUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
-                </InlineSelect>
+                {salesUsers ? (
+                  <InlineSelect aria-label={`Comercial de ${o.name}`} value={o.assignedSalesUserId ?? ''} onChange={(e) => onAssign(o.id, e.target.value)}>
+                    <option value="">Sin vendedor</option>
+                    {salesUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+                  </InlineSelect>
+                ) : <span className="text-sm text-text-muted">{o.assignedSalesUserId ? 'Asignado a ti' : 'Sin vendedor'}</span>}
               </Td>
               <Td><StatusSelect label={`Estado comercial de ${o.name}`} value={o.commercialStatus} onChange={(status) => onStatus(o.id, status)} /></Td>
             </Tr>
