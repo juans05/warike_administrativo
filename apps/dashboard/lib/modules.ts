@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Boxes,
+  Briefcase,
   CalendarDays,
   ChefHat,
   ClipboardList,
@@ -10,13 +11,19 @@ import {
   MessageSquareText,
   MessagesSquare,
   Nfc,
+  PawPrint,
+  Scissors,
+  ShoppingBag,
+  Stethoscope,
   Star,
+  Ticket,
   Store,
   Camera,
   UserPlus,
   Users,
   UtensilsCrossed,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -60,6 +67,8 @@ export interface NavLeaf {
 }
 export interface NavItem extends NavLeaf {
   icon: LucideIcon;
+  /** Icono según el rubro (vertical); si falta, `icon`. */
+  icons?: Record<string, LucideIcon>;
   children?: NavLeaf[];
 }
 export interface NavGroup {
@@ -78,7 +87,10 @@ export const NAV: NavGroup[] = [
     subtitle: 'Tu ficha, catálogo y operación',
     items: [
       { href: '/mi-ficha', label: 'Mi ficha', icon: Store },
-      { href: '/carta', label: (l) => l.catalog, icon: UtensilsCrossed, module: 'carta', tier: 'reputacion' },
+      {
+        href: '/carta', label: (l) => l.catalog, icon: UtensilsCrossed, module: 'carta', tier: 'reputacion',
+        icons: { belleza: Scissors, comercio: ShoppingBag, salud: Stethoscope, mascotas: PawPrint, automotriz: Wrench, servicios: Briefcase, entretenimiento: Ticket },
+      },
       { href: '/agenda', label: 'Agenda', icon: CalendarDays, module: 'agenda', tier: 'reputacion' },
       { href: '/pedidos', label: 'Pedidos', icon: ClipboardList, module: 'pedidos', tier: 'reputacion' },
       { href: '/cocina', label: 'Cocina', icon: ChefHat, module: 'cocina', tier: 'reputacion' },

@@ -131,6 +131,8 @@ type NavProps = {
   soloRoute: SoloRoute | null;
   placeModules: string[] | null;
   config: VerticalConfig | undefined;
+  /** Rubro del local activo: elige el icono del catálogo. */
+  vertical?: string;
   tier: string | null | undefined;
   pendingChats: number | null;
   handleLogout: () => void;
@@ -198,7 +200,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const navProps: NavProps = {
-    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, placeModules, config, tier, pendingChats, handleLogout,
+    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, placeModules, config, vertical: activePlace?.vertical, tier, pendingChats, handleLogout,
   };
 
   return (
@@ -262,7 +264,7 @@ function Logo() {
 }
 
 function SidebarContent({
-  user, pathname, showBusiness, platformNav, soloRoute, placeModules, config, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+  user, pathname, showBusiness, platformNav, soloRoute, placeModules, config, vertical, tier, pendingChats, handleLogout, hideLogo, onNavigate,
 }: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -296,7 +298,7 @@ function SidebarContent({
                       <SidebarLink
                         key={item.href}
                         href={item.href}
-                        icon={item.icon}
+                        icon={item.icons?.[vertical ?? ''] ?? item.icon}
                         label={navLabel(item.label, config)}
                         active={isActive(item.href)}
                         locked={accessFor(item, config, tier, placeModules) === 'locked'}
