@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import { Info, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { businessApi, publicApi, qrApi, type AssignQrPayload, type BusinessTypesResponse } from '../../../lib/api-client';
+import { adminApi, businessApi, publicApi, qrApi, type AssignQrPayload, type BusinessTypesResponse } from '../../../lib/api-client';
 import { Button, Input, Modal, Select, Tabs, controlStyles } from '../../ui';
 import { DESTINATION_LABELS } from './constants';
 
@@ -38,9 +38,23 @@ export function AssignModal({ qrCode, mode, places, onClose, onDone }: {
     publicApi.getCategories(vertical).then(setCategories).catch(() => setCategories([]));
   }, [vertical]);
 
-  const filteredPlaces = placeSearch
-    ? places.filter((p) => p.name.toLowerCase().includes(placeSearch.toLowerCase()))
-    : places;
+  // `places` es solo la primera página (10 locales): la búsqueda va al servidor, que busca en todos.
+  const [found, setFound] = useState<any[] | null>(null);
+  useEffect(() => {
+    const q = placeSearch.trim();
+    if (!q) { setFound(null); return; }
+    const t = setTimeout(() => {
+      adminApi.getPlaces(1, q)
+        .then((r) => {
+          const list = r.data || [];
+          setFound(list);
+          if (list.length === 1) setPlaceId(list[0].id); // un solo resultado: queda elegido
+        })
+        .catch(() => setFound([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [placeSearch]);
+  const filteredPlaces = found ?? places;
 
   const handleSubmit = async () => {
     if (!creatingNew && !placeId) {
@@ -118,6 +132,8 @@ export function AssignModal({ qrCode, mode, places, onClose, onDone }: {
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
+                {found?.length === 0 && <p className="text-xs text-text-muted">Ningún local se llama así. Revisa el nombre o créalo en &quot;Crear local nuevo&quot;.</p>}
+                {!placeSearch.trim() && <p className="text-xs text-text-muted">Escribe el nombre para buscar entre todos los locales.</p>}
               </div>
             </div>
           ) : (
