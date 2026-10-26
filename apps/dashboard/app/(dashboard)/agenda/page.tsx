@@ -12,6 +12,7 @@ import { AppointmentSheet } from '../../../components/agenda/AppointmentSheet';
 import { Avatar, ProfessionalsSheet } from '../../../components/agenda/ProfessionalsSheet';
 import { BookingLinkModal } from '../../../components/agenda/BookingLinkModal';
 import { RemindersCard } from '../../../components/agenda/RemindersCard';
+import { BillingAlert } from '../../../components/whatsapp/BillingAlert';
 import { RecallCard } from '../../../components/agenda/RecallCard';
 import { UpcomingRecalls } from '../../../components/agenda/UpcomingRecalls';
 import { WeekView } from '../../../components/agenda/WeekView';
@@ -106,6 +107,7 @@ export default function AgendaPage() {
         }
       />
 
+      {activePlaceId && pros.length > 0 && <BillingAlert placeId={activePlaceId} />}
       {activePlaceId && pros.length > 0 && <RemindersCard placeId={activePlaceId} />}
       {activePlaceId && pros.length > 0 && <RecallCard placeId={activePlaceId} />}
 

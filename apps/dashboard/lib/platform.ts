@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bot, Briefcase, CreditCard, FileWarning, Flame, KeyRound, QrCode, Settings, Shield, UserCog, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { Bot, Briefcase, CreditCard, Receipt, FileWarning, Flame, KeyRound, QrCode, Settings, Shield, UserCog, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { fetchWithAuth } from './api-client';
 
 /** Menú de la plataforma (equipo de Wuarikes): cada sección pide uno de estos permisos (ver backend permissions.ts). */
@@ -14,6 +14,7 @@ export const PLATFORM_NAV: { href: string; icon: LucideIcon; label: string; perm
   { href: '/liquidaciones', icon: CreditCard, label: 'Liquidaciones', perms: ['liquidaciones.gestionar'] },
   { href: '/moderacion/comisiones', icon: Wallet, label: 'Comisiones', perms: ['comisiones.todas'] },
   { href: '/moderacion/whatsapp', icon: Bot, label: 'WhatsApp Bot', perms: ['whatsapp.gestionar'] },
+  { href: '/plataforma/consumo-whatsapp', icon: Receipt, label: 'Consumo de WhatsApp', perms: ['whatsapp.gestionar'] },
   { href: '/moderacion/dispositivos', icon: QrCode, label: 'Códigos QR', perms: ['qr.gestionar'] },
   { href: '/moderacion/reclamaciones', icon: FileWarning, label: 'Libro de Reclamaciones', perms: ['reclamaciones.gestionar'] },
   { href: '/comunidad', icon: Users, label: 'Usuarios', perms: ['usuarios.ver', 'usuarios.gestionar'] },

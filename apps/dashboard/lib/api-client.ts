@@ -922,6 +922,55 @@ export const metaAdsApi = {
     fetchWithAuth(`/business/meta-ads/place/${placeId}/sync`, {
       method: 'POST',
     }),
+  insights: (placeId: string, preset: AdsPreset): Promise<AdsInsights> =>
+    fetchWithAuth(`/business/meta-ads/place/${placeId}/insights?preset=${preset}`),
+};
+
+export type AdsPreset = 'last_7d' | 'last_30d' | 'this_month' | 'last_month';
+export interface AdsInsights {
+  currency: string | null;
+  totals: { spend: number; reach: number; impressions: number; clicks: number; messages: number; costPerMessage: number | null };
+  daily: { date: string; spend: number }[];
+  campaigns: { name: string; spend: number; reach: number; clicks: number; cpc: number | null; ctr: number | null; messages: number }[];
+  spendCap: { cap: number; spent: number } | null;
+}
+
+// Consumo de WhatsApp: lo cobra Meta al método de pago de la cuenta de cada local.
+export type BillingStatus = { status: 'OK' | 'SIN_PAGO'; at: string } | null;
+export type MessageSource = 'reminder' | 'recall' | 'broadcast' | 'bot' | 'agent' | 'ready';
+export interface WhatsAppConsumption {
+  month: string;
+  currency: string | null;
+  hasNumber: boolean;
+  paidByWuarikes: boolean;
+  estimated: number;
+  official: number | null;
+  officialUntil: string | null;
+  projection: number | null;
+  unpriced: number;
+  bySource: { source: MessageSource; messages: number; billable: number; free: number; freeEntryPoint: number; cost: number }[];
+  freeService: { phoneNumber: string; used: number; limit: number }[];
+  billing: BillingStatus;
+}
+export interface PlatformConsumption {
+  month: string;
+  wuarikesWaba: string;
+  paidByWuarikes: { estimated: number; official: number | null };
+  places: {
+    placeId: string; placeName: string; wabaId: string | null; currency: string | null; billing: 'OK' | 'SIN_PAGO';
+    billable: { marketing: number; utility: number; service: number }; serviceUsed: number; serviceLimit: number;
+    estimated: number; official: number | null; paidByWuarikes: boolean;
+  }[];
+}
+export interface WhatsAppRate { market: string; category: 'marketing' | 'utility' | 'authentication' | 'service'; currency: string; rate: number; validFrom: string }
+export const whatsappCostsApi = {
+  consumption: (placeId: string, month: string): Promise<WhatsAppConsumption> =>
+    fetchWithAuth(`/business/places/${placeId}/whatsapp/consumption?month=${month}`),
+  billing: (placeId: string): Promise<{ billing: BillingStatus }> => fetchWithAuth(`/business/places/${placeId}/whatsapp/billing`),
+  platform: (month: string): Promise<PlatformConsumption> => fetchWithAuth(`/admin/whatsapp-consumption?month=${month}`),
+  rates: (): Promise<WhatsAppRate[]> => fetchWithAuth('/admin/whatsapp-consumption/rates'),
+  saveRate: (rate: WhatsAppRate): Promise<WhatsAppRate[]> =>
+    fetchWithAuth('/admin/whatsapp-consumption/rates', { method: 'PUT', body: JSON.stringify(rate) }),
 };
 
 // PlazBot API Integration
