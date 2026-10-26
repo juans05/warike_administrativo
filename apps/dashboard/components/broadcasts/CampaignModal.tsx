@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { CheckCircle2, Save } from 'lucide-react';
-import { CampaignFormData, ContactImportItem, MetaTemplate, WaNumber } from '../../hooks/useBroadcasts';
+import { allowsReminder, CampaignFormData, ContactImportItem, MetaTemplate, ReminderUnit, WaNumber } from '../../hooks/useBroadcasts';
 import { Template } from '../../hooks/useTemplates';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { plural } from '../../lib/modules';
@@ -21,6 +21,8 @@ interface CampaignModalProps {
   /** Flag del local: sin él no se muestra nada de Meta. */
   metaEnabled: boolean;
   imports: ContactImportItem[];
+  /** Se edita una campaña existente (el tipo ya no cambia). */
+  editing: boolean;
 }
 
 const notice = 'rounded-control border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-text';
@@ -31,9 +33,10 @@ function optionStyles(selected: boolean) {
   }`;
 }
 
-/** Creación de una campaña en un panel lateral. Se guarda como borrador; se envía desde la lista. */
-export function CampaignModal({ open, onClose, form, onChange, onSubmit, creating, waNumbers, approvedTemplates, metaTemplates, metaEnabled, imports }: CampaignModalProps) {
+/** Creación y edición de una campaña en un panel lateral. Se guarda como borrador; se envía desde la lista. */
+export function CampaignModal({ open, onClose, form, onChange, onSubmit, creating, waNumbers, approvedTemplates, metaTemplates, metaEnabled, imports, editing }: CampaignModalProps) {
   const { activePlace } = useRestaurant();
+  const reminder = form.kind === 'reminder';
   const customer = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
   const Customers = plural(customer);
   const customers = Customers.toLowerCase();
@@ -45,7 +48,7 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
   const chosenMeta = useMeta ? approvedMeta.find(t => t.name === form.templateName) : undefined;
 
   return (
-    <Sheet open={open} onClose={onClose} title="Nueva campaña de WhatsApp">
+    <Sheet open={open} onClose={onClose} title={editing ? 'Editar campaña' : 'Nueva campaña de WhatsApp'}>
       {open && (
         <div className="flex min-h-full flex-col">
           <div className="flex-1 space-y-5 px-4 py-4">
@@ -55,6 +58,20 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
               onChange={e => onChange(p => ({ ...p, campaignName: e.target.value }))}
               placeholder="Ej: Promo fin de semana"
             />
+
+            {!editing && allowsReminder(activePlace?.businessType) && (
+              <fieldset className="space-y-2">
+                <legend className="mb-1.5 text-sm font-medium text-text">Tipo de campaña</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['mass', 'Masiva', 'Un envío a un grupo'], ['reminder', 'Recordatorio de cita', 'Sale solo antes de cada cita']] as const).map(([k, label, hint]) => (
+                    <button key={k} type="button" aria-pressed={form.kind === k} onClick={() => onChange(p => ({ ...p, kind: k }))} className={optionStyles(form.kind === k)}>
+                      <span className="text-sm font-semibold text-text">{label}</span>
+                      <p className="mt-0.5 text-xs text-text-muted">{hint}</p>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
             {waNumbers.length === 0 ? (
               <div className="space-y-1.5">
@@ -127,7 +144,11 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
               )}
               {chosenMeta && chosenMeta.variableCount > 0 && (
                 <div className="space-y-2 pt-1">
-                  <p className="text-xs text-text-muted">Valores de las variables (usa {'{nombre}'} para el nombre del {customer.toLowerCase()})</p>
+                  <p className="text-xs text-text-muted">
+                    {reminder
+                      ? <>Valores de las variables. Datos de la cita: {'{nombre} {servicio} {profesional} {fecha} {hora} {local} {enlace}'}</>
+                      : <>Valores de las variables (usa {'{nombre}'} para el nombre del {customer.toLowerCase()})</>}
+                  </p>
                   {form.bodyVariables.map((v, i) => (
                     <Input
                       key={i}
@@ -141,7 +162,28 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
               )}
             </fieldset>
 
-            <div className="space-y-3">
+            {reminder && (
+              <div className="space-y-2">
+                {selected && !useMeta && <p className={notice}>El recordatorio sale por un número de la <strong>API de Meta</strong>. Elige uno.</p>}
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    label="Enviar antes de la cita"
+                    type="number"
+                    min={1}
+                    value={form.offsetValue}
+                    onChange={e => onChange(p => ({ ...p, offsetValue: e.target.value }))}
+                  />
+                  <Select label="Unidad" value={form.offsetUnit} onChange={e => onChange(p => ({ ...p, offsetUnit: e.target.value as ReminderUnit }))}>
+                    <option value="min">Minutos</option>
+                    <option value="h">Horas</option>
+                    <option value="d">Días</option>
+                  </Select>
+                </div>
+                <p className="text-xs text-text-muted">Mínimo 15 minutos, máximo 7 días. Se envía a cada cita reservada con teléfono, una sola vez.</p>
+              </div>
+            )}
+
+            {!reminder && <div className="space-y-3">
               <Select
                 label={`Segmento de ${customers}`}
                 value={form.segment}
@@ -210,13 +252,13 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
                   Solo reciben quienes <strong className="text-text">aceptaron recibir promociones</strong> al unirse a la fidelización. Quienes se unieron antes de que existiera esa casilla no aparecen hasta que la marquen en su próxima visita.
                 </p>
               )}
-            </div>
+            </div>}
           </div>
 
           <div className="sticky bottom-0 flex gap-2 border-t border-border bg-surface px-4 py-3">
             <Button variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
             <Button icon={Save} onClick={onSubmit} loading={creating} className="flex-1">
-              {creating ? 'Creando...' : 'Guardar borrador'}
+              {creating ? 'Guardando...' : editing ? 'Guardar cambios' : reminder ? 'Guardar recordatorio' : 'Guardar borrador'}
             </Button>
           </div>
         </div>
