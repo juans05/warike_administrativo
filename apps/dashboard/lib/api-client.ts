@@ -58,6 +58,8 @@ export interface MenuItemPayload {
   /** Rubros de servicios: 'servicio' + duración en minutos (entero >= 0; null la quita). */
   kind?: 'producto' | 'servicio';
   durationMin?: number | null;
+  recallDays?: number | null;
+  recallNoticeDays?: number | null;
 }
 export interface MenuItemUpdate extends Partial<MenuItemPayload> {}
 
@@ -1054,6 +1056,19 @@ export interface BookingInput {
 }
 export interface CustomerAsset { id: string; kind: 'PET' | 'VEHICLE'; name: string; data: Record<string, string | null>; notes: string | null; customerPhone: string; customerName: string | null }
 const agendaBase = (placeId: string) => `/business/places/${placeId}/agenda`;
+/** Vista Semana/Mes: citas resumidas, conteo por día y clientes de rutina a los que les toca (sin cita). */
+export interface AgendaRange {
+  from: string;
+  to: string;
+  appointments: { id: string; date: string; time: string; endTime: string; durationMin: number; status: string; professionalId: string; professional: { id: string; name: string } | null; serviceName: string; customerName: string }[];
+  byDay: Record<string, { reserved: number; attended: number; total: number }>;
+  recallDue: Record<string, number>;
+}
+export interface RecallSettings { enabled: boolean; template: string; category: string | null }
+export interface RecallClient {
+  appointmentId: string; customerName: string; customerPhone: string; serviceId: string; serviceName: string;
+  lastVisit: string; dueDate: string; noticeDate: string; notifiedAt: string | null; hasFuture: boolean; optedOut: boolean; canNotify: boolean;
+}
 export const agendaApi = {
   day: (placeId: string, date: string) => fetchWithAuth(`${agendaBase(placeId)}/day?date=${date}`),
   services: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/services`),
@@ -1064,7 +1079,14 @@ export const agendaApi = {
     fetchWithAuth(`${agendaBase(placeId)}/appointments/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   reminders: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders`),
   createReminderTemplate: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/reminders/template`, { method: 'POST' }),
-  setReminders: (placeId: string, enabled: boolean) => fetchWithAuth(`${agendaBase(placeId)}/reminders`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  setReminders: (placeId: string, body: { enabled?: boolean; offsetsMin?: number[] }) => fetchWithAuth(`${agendaBase(placeId)}/reminders`, { method: 'PATCH', body: JSON.stringify(body) }),
+  range: (placeId: string, from: string, to: string): Promise<AgendaRange> => fetchWithAuth(`${agendaBase(placeId)}/range?from=${from}&to=${to}`),
+  appointment: (placeId: string, id: string) => fetchWithAuth(`${agendaBase(placeId)}/appointments/${id}`),
+  recall: (placeId: string): Promise<RecallSettings> => fetchWithAuth(`${agendaBase(placeId)}/recall`),
+  setRecall: (placeId: string, enabled: boolean): Promise<RecallSettings> => fetchWithAuth(`${agendaBase(placeId)}/recall`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  createRecallTemplate: (placeId: string): Promise<RecallSettings> => fetchWithAuth(`${agendaBase(placeId)}/recall/template`, { method: 'POST' }),
+  recallUpcoming: (placeId: string): Promise<RecallClient[]> => fetchWithAuth(`${agendaBase(placeId)}/recall/upcoming`),
+  recallNotify: (placeId: string, appointmentId: string) => fetchWithAuth(`${agendaBase(placeId)}/recall/${appointmentId}/notify`, { method: 'POST' }),
   professionals: (placeId: string) => fetchWithAuth(`${agendaBase(placeId)}/professionals`) as Promise<Professional[]>,
   assets: (placeId: string, phone: string): Promise<CustomerAsset[]> => fetchWithAuth(`${agendaBase(placeId)}/assets?phone=${encodeURIComponent(phone)}`),
   saveAsset: (placeId: string, id: string | null, body: { customerPhone: string; customerName?: string; name: string; data?: Record<string, string>; notes?: string | null }) =>

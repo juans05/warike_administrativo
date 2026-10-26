@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Film, ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { businessApi } from '../../lib/api-client';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { Button, Input, Select, Sheet, Switch, Textarea } from '../ui';
 import { uploadFile } from './upload';
 import type { CatalogCtx, ItemKind, MenuCategory, MenuItem } from './types';
@@ -54,7 +55,11 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
     // Solo el catálogo mixto deja elegir; en los demás el tipo lo fija el rubro.
     kind: (catalogKind === 'mixto' ? (item?.kind ?? 'producto') : catalogKind) as ItemKind,
     durationMin: item?.durationMin != null ? String(item.durationMin) : '',
+    recallDays: item?.recallDays != null ? String(item.recallDays) : '',
+    recallNoticeDays: item?.recallNoticeDays != null ? String(item.recallNoticeDays) : '2',
   }));
+  // El aviso de rutina sale de la agenda: solo lo ven los rubros que atienden con cita.
+  const hasAgenda = useRestaurant().activePlace?.verticalConfig?.modules.includes('agenda') ?? false;
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -67,6 +72,11 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
     isService && minutes !== null && (!Number.isInteger(minutes) || minutes < 0)
       ? 'Escribe los minutos como un número entero, 0 o más'
       : undefined;
+  const recallOn = isService && hasAgenda && form.recallDays.trim() !== '';
+  const recallDays = recallOn ? Number(form.recallDays) : null;
+  const noticeDays = recallOn ? Number(form.recallNoticeDays || '2') : null;
+  const recallError = recallOn && (!Number.isInteger(recallDays) || recallDays! < 1 || recallDays! > 365) ? 'Entre 1 y 365 días' : undefined;
+  const noticeError = recallOn && (!Number.isInteger(noticeDays) || noticeDays! < 0 || noticeDays! > 30) ? 'Entre 0 y 30 días' : undefined;
 
   const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -99,7 +109,7 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || durationError) return;
+    if (!form.name.trim() || durationError || recallError || noticeError) return;
     setIsSaving(true);
     try {
       const payload = {
@@ -112,6 +122,8 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
         categoryId: form.categoryId,
         kind: form.kind,
         durationMin: isService ? minutes : null,
+        // Fuera de la agenda no se toca lo que ya tenga guardado.
+        ...(hasAgenda ? { recallDays, recallNoticeDays: recallOn ? noticeDays : null } : {}),
       };
       if (item) {
         await businessApi.updateMenuItem(placeId, item.id, payload);
@@ -185,6 +197,39 @@ function ItemForm({ placeId, item, defaultCategoryId, categories, catalog, onSav
             value={form.durationMin}
             onChange={(e) => patch({ durationMin: e.target.value })}
           />
+        )}
+
+        {isService && hasAgenda && (
+          <fieldset className="space-y-3 rounded-control border border-border p-3">
+            <legend className="px-1 text-sm font-medium text-text">Aviso de rutina <span className="font-normal text-text-muted">(opcional)</span></legend>
+            <p className="text-xs text-text-muted">Para servicios que el cliente repite (ej. corte cada 20 días): le avisamos por WhatsApp cuando se acerque su próximo turno, contando desde su última visita.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label="Repetir cada (días)"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={365}
+                placeholder="Ej: 20"
+                hint="Déjalo vacío si no se repite."
+                error={recallError}
+                value={form.recallDays}
+                onChange={(e) => patch({ recallDays: e.target.value })}
+              />
+              <Input
+                label="Avisar antes (días)"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={30}
+                disabled={!recallOn}
+                hint="0 = el mismo día que le toca."
+                error={noticeError}
+                value={form.recallNoticeDays}
+                onChange={(e) => patch({ recallNoticeDays: e.target.value })}
+              />
+            </div>
+          </fieldset>
         )}
 
         <fieldset>
