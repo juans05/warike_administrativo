@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { useBroadcasts } from '../../../hooks/useBroadcasts';
+import { Broadcast, useBroadcasts } from '../../../hooks/useBroadcasts';
 import { useTemplates } from '../../../hooks/useTemplates';
 import { CampaignList } from '../../../components/broadcasts/CampaignList';
 import { CampaignModal } from '../../../components/broadcasts/CampaignModal';
+import { CampaignView } from '../../../components/broadcasts/CampaignView';
 import { TemplateList } from '../../../components/broadcasts/TemplateList';
 import { TemplateModal } from '../../../components/broadcasts/TemplateModal';
 import { MetaTemplates } from '../../../components/broadcasts/MetaTemplates';
@@ -21,6 +22,7 @@ export default function BroadcastsPage() {
   const customers = plural(activePlace?.verticalConfig?.labels.customer ?? 'Cliente').toLowerCase();
   const [tab, setTab] = useState<Tab>('campaigns');
   const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState<Broadcast | null>(null);
 
   const {
     broadcasts, waNumbers, metaTemplates, metaEnabled, imports, loadMetaTemplates,
@@ -29,6 +31,7 @@ export default function BroadcastsPage() {
     creatingCampaign,
     subscriptionBlocked,
     loadBroadcasts, handleSendBroadcast, handleCreateCampaign,
+    handlePauseReminder, editingId, openNewCampaign, openEditCampaign,
   } = useBroadcasts();
 
   const {
@@ -57,7 +60,7 @@ export default function BroadcastsPage() {
         title="Campañas"
         subtitle={`Envía mensajes personalizados de WhatsApp a tus ${customers}.`}
         action={!subscriptionBlocked && !loading && (
-          <Button icon={Plus} onClick={() => setShowCampaignModal(true)}>Nueva campaña</Button>
+          <Button icon={Plus} onClick={openNewCampaign}>Nueva campaña</Button>
         )}
       />
 
@@ -90,7 +93,10 @@ export default function BroadcastsPage() {
               broadcasts={broadcasts}
               customers={customers}
               onSend={handleSendBroadcast}
-              onNew={() => setShowCampaignModal(true)}
+              onNew={openNewCampaign}
+              onView={setViewing}
+              onEdit={openEditCampaign}
+              onPause={handlePauseReminder}
             />
           )}
 
@@ -129,7 +135,10 @@ export default function BroadcastsPage() {
         metaTemplates={metaTemplates}
         metaEnabled={metaEnabled}
         imports={imports}
+        editing={!!editingId}
       />
+
+      <CampaignView broadcast={viewing} templates={metaTemplates} onClose={() => setViewing(null)} />
 
       <TemplateModal
         open={showTemplateModal}

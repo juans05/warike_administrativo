@@ -26,6 +26,26 @@ export interface Broadcast {
   templateName?: string | null;
   createdAt: string;
   whatsappNumber?: { phoneNumber: string };
+  whatsappNumberId?: string;
+  templateLanguage?: string | null;
+  bodyVariables?: string[] | null;
+  segmentFilter?: { type?: string; templateId?: string; levels?: string[] } | null;
+  csvImportId?: string | null;
+  /** 'reminder' = recordatorio de cita: SCHEDULED es "activa" y DRAFT es "pausada". */
+  kind?: 'mass' | 'reminder';
+  reminderOffsetMin?: number | null;
+}
+
+/** Recordatorio de cita: solo para el rubro belleza (mismo criterio que el backend). */
+export const allowsReminder = (businessType?: string) => ['barberia', 'peluqueria', 'spa'].includes(businessType ?? '');
+export const REMINDER_UNITS = { min: 1, h: 60, d: 1440 } as const;
+export type ReminderUnit = keyof typeof REMINDER_UNITS;
+
+export function formatOffset(min?: number | null) {
+  if (!min) return '';
+  if (min % 1440 === 0) return `${min / 1440} ${min === 1440 ? 'día' : 'días'}`;
+  if (min % 60 === 0) return `${min / 60} ${min === 60 ? 'hora' : 'horas'}`;
+  return `${min} minutos`;
 }
 
 export interface ContactImportItem {
@@ -55,6 +75,10 @@ export interface CampaignFormData {
   levels: string[];
   /** Lista de Excel elegida. */
   csvImportId: string;
+  kind: 'mass' | 'reminder';
+  /** Tiempo antes de la cita, en la unidad elegida (mínimo 15 min, máximo 7 días). */
+  offsetValue: string;
+  offsetUnit: ReminderUnit;
 }
 
 const makeEmptyCampaign = (): CampaignFormData => ({
@@ -67,7 +91,29 @@ const makeEmptyCampaign = (): CampaignFormData => ({
   segment: 'all',
   levels: [],
   csvImportId: '',
+  kind: 'mass',
+  offsetValue: '1',
+  offsetUnit: 'd',
 });
+
+const formFrom = (b: Broadcast): CampaignFormData => {
+  const min = b.reminderOffsetMin ?? 1440;
+  const offsetUnit: ReminderUnit = min % 1440 === 0 ? 'd' : min % 60 === 0 ? 'h' : 'min';
+  return {
+    campaignName: b.campaignName,
+    whatsappNumberId: b.whatsappNumberId ?? '',
+    templateId: b.segmentFilter?.templateId ?? '',
+    templateName: b.templateName ?? '',
+    templateLanguage: b.templateLanguage ?? 'es',
+    bodyVariables: b.bodyVariables ?? [],
+    segment: b.segmentFilter?.type ?? 'all',
+    levels: b.segmentFilter?.levels ?? [],
+    csvImportId: b.csvImportId ?? '',
+    kind: b.kind ?? 'mass',
+    offsetValue: String(min / REMINDER_UNITS[offsetUnit]),
+    offsetUnit,
+  };
+};
 
 export function useBroadcasts() {
   const { activePlaceId } = useRestaurant();
@@ -80,6 +126,8 @@ export function useBroadcasts() {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [campaignForm, setCampaignForm] = useState<CampaignFormData>(makeEmptyCampaign);
   const [creatingCampaign, setCreatingCampaign] = useState(false);
+  /** Campaña que se está editando (null = nueva). */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
   const loadBroadcasts = useCallback(async (placeId: string) => {
@@ -116,13 +164,37 @@ export function useBroadcasts() {
   const handleSendBroadcast = async (broadcastId: string) => {
     try {
       await businessApi.sendBroadcast(broadcastId);
+      // Un recordatorio no se envía de golpe: queda activo y sale solo antes de cada cita.
+      const reminder = broadcasts.find(b => b.id === broadcastId)?.kind === 'reminder';
       setBroadcasts(prev => prev.map(b =>
-        b.id === broadcastId ? { ...b, status: 'SENDING' as const } : b
+        b.id === broadcastId ? { ...b, status: reminder ? 'SCHEDULED' as const : 'SENDING' as const } : b
       ));
-      toast.success('Campaña enviada');
+      toast.success(reminder ? 'Recordatorio activado' : 'Campaña enviada');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Error al enviar');
     }
+  };
+
+  const handlePauseReminder = async (broadcastId: string) => {
+    try {
+      await businessApi.cancelBroadcast(broadcastId);
+      setBroadcasts(prev => prev.map(b => (b.id === broadcastId ? { ...b, status: 'DRAFT' as const } : b)));
+      toast.success('Recordatorio pausado');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Error al pausar');
+    }
+  };
+
+  const openNewCampaign = () => {
+    setEditingId(null);
+    setCampaignForm(makeEmptyCampaign());
+    setShowCampaignModal(true);
+  };
+
+  const openEditCampaign = (b: Broadcast) => {
+    setEditingId(b.id);
+    setCampaignForm(formFrom(b));
+    setShowCampaignModal(true);
   };
 
   const handleCreateCampaign = async () => {
@@ -157,11 +229,30 @@ export function useBroadcasts() {
           payload.useCsvMerge = true;
         }
       }
-      const created = await businessApi.createBroadcast(payload);
-      setBroadcasts(prev => [created, ...prev]);
+      if (campaignForm.kind === 'reminder') {
+        // El recordatorio sale por la API de Meta con la plantilla elegida; el segmento no aplica.
+        if (!(metaEnabled && number?.provider === 'meta')) { toast.warning('El recordatorio necesita un número de la API de Meta'); setCreatingCampaign(false); return; }
+        const min = Number(campaignForm.offsetValue) * REMINDER_UNITS[campaignForm.offsetUnit];
+        if (!Number.isInteger(min) || min < 15 || min > 10080) { toast.warning('El tiempo debe ser entre 15 minutos y 7 días'); setCreatingCampaign(false); return; }
+        payload.kind = 'reminder';
+        payload.reminderOffsetMin = min;
+        delete payload.segmentFilter;
+        delete payload.csvImportId;
+        delete payload.useCsvMerge;
+      }
+      if (editingId) {
+        const { placeId: _placeId, kind: _kind, ...changes } = payload;
+        const saved = await businessApi.updateBroadcast(editingId, changes);
+        setBroadcasts(prev => prev.map(b => (b.id === editingId ? { ...b, ...saved, whatsappNumber: waNumbers.find(n => n.id === saved.whatsappNumberId) ?? b.whatsappNumber } : b)));
+        toast.success('Cambios guardados');
+      } else {
+        const created = await businessApi.createBroadcast(payload);
+        setBroadcasts(prev => [created, ...prev]);
+        toast.success(campaignForm.kind === 'reminder' ? 'Recordatorio creado (pausado): actívalo desde la lista' : 'Campaña creada como borrador');
+      }
       setShowCampaignModal(false);
+      setEditingId(null);
       setCampaignForm(makeEmptyCampaign());
-      toast.success('Campaña creada como borrador');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Error al crear campaña');
     } finally {
@@ -185,5 +276,9 @@ export function useBroadcasts() {
     loadBroadcasts,
     handleSendBroadcast,
     handleCreateCampaign,
+    handlePauseReminder,
+    editingId,
+    openNewCampaign,
+    openEditCampaign,
   };
 }

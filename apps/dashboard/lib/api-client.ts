@@ -99,6 +99,9 @@ export interface BroadcastPayload {
   /** Lista de Excel (importación) a la que se envía. */
   csvImportId?: string;
   useCsvMerge?: boolean;
+  /** 'reminder' = recordatorio de cita (solo belleza): se envía solo, X minutos antes de cada cita. */
+  kind?: 'mass' | 'reminder';
+  reminderOffsetMin?: number;
 }
 
 export interface EmailCampaignPayload {
@@ -609,6 +612,12 @@ export const businessApi = {
     fetchWithAuth(`/business/broadcasts/${broadcastId}/send`, {
       method: 'POST',
     }),
+  updateBroadcast: (broadcastId: string, data: Partial<BroadcastPayload>) =>
+    fetchWithAuth(`/business/broadcasts/${broadcastId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  cancelBroadcast: (broadcastId: string) =>
+    fetchWithAuth(`/business/broadcasts/${broadcastId}/cancel`, { method: 'POST' }),
+  getReminderSends: (broadcastId: string) =>
+    fetchWithAuth(`/business/broadcasts/${broadcastId}/reminder-sends`) as Promise<{ sentAt: string; ok: boolean | null; customerName: string | null; serviceName: string | null; startsAt: string | null }[]>,
 
   // Email Campaigns
   getEmailCampaigns: (placeId: string) =>
