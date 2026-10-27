@@ -15,6 +15,9 @@ export interface MenuItem {
   isVegetarian?: boolean;
   kind?: ItemKind;
   durationMin?: number | null;
+  /** Servicio de rutina: cada cuántos días vuelve el cliente y cuántos días antes se le avisa. */
+  recallDays?: number | null;
+  recallNoticeDays?: number | null;
   categoryId: string;
 }
 

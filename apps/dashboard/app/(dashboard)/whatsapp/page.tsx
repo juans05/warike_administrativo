@@ -6,6 +6,7 @@ import { businessApi } from '../../../lib/api-client';
 import { Smartphone, Unplug } from 'lucide-react';
 import { Badge, Button, Card, DataList, EmptyState, PageHeader } from '../../../components/ui';
 import WhatsAppSetupWizard from '../../../components/WhatsAppSetupWizard';
+import { ConsumptionCard } from '../../../components/whatsapp/ConsumptionCard';
 import { toast } from 'sonner';
 
 export default function WhatsAppConfigPage() {
@@ -81,6 +82,8 @@ export default function WhatsAppConfigPage() {
           />
         </div>
       </Card>
+
+      {activePlaceId && numbers.some((n) => n.provider === 'meta') && <ConsumptionCard placeId={activePlaceId} />}
     </div>
   );
 }

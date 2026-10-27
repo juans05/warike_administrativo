@@ -15,19 +15,19 @@ export function NewAppointmentSheet({ placeId, services, professionals, initial,
   placeId: string;
   services: any[];
   professionals: any[];
-  initial: { date: string; professionalId?: string; time?: string };
+  initial: { date: string; professionalId?: string; time?: string; serviceId?: string; customerName?: string; customerPhone?: string };
   /** Rubros con ficha (veterinaria, taller): la cita indica qué mascota o vehículo se atiende. */
   assetKind?: AssetKind | null;
   onClose(): void;
   onDone(): void;
 }) {
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? '');
+  const [serviceId, setServiceId] = useState(services.some((s) => s.id === initial.serviceId) ? initial.serviceId! : services[0]?.id ?? '');
   const [proId, setProId] = useState(initial.professionalId ?? '');
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState<string | null>(initial.time ?? null);
   const [slots, setSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ customerName: '', customerPhone: '', notes: '' });
+  const [form, setForm] = useState({ customerName: initial.customerName ?? '', customerPhone: initial.customerPhone ?? '', notes: '' });
   const [saving, setSaving] = useState(false);
   // Fichas del cliente (por teléfono): elegir una ('' = nueva) o crearla aquí mismo.
   const [assets, setAssets] = useState<CustomerAsset[]>([]);

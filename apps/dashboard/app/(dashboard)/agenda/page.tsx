@@ -3,18 +3,28 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, Users } from 'lucide-react';
-import { agendaApi, type Professional } from '../../../lib/api-client';
+import { agendaApi, type AgendaRange, type Professional, type RecallClient } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
-import { STATUS, addDays, fromMin, longDate, time12, toMin, todayLima } from '../../../lib/agenda';
-import { Button, Card, EmptyState, PageHeader, Skeleton } from '../../../components/ui';
+import { STATUS, addDays, addMonths, fromMin, longDate, monthGrid, monthLabel, shortDate, time12, toMin, todayLima, weekStart } from '../../../lib/agenda';
+import { Button, Card, EmptyState, PageHeader, Skeleton, Tabs } from '../../../components/ui';
 import { NewAppointmentSheet } from '../../../components/agenda/NewAppointmentSheet';
 import { AppointmentSheet } from '../../../components/agenda/AppointmentSheet';
 import { Avatar, ProfessionalsSheet } from '../../../components/agenda/ProfessionalsSheet';
 import { BookingLinkModal } from '../../../components/agenda/BookingLinkModal';
 import { RemindersCard } from '../../../components/agenda/RemindersCard';
+import { BillingAlert } from '../../../components/whatsapp/BillingAlert';
+import { RecallCard } from '../../../components/agenda/RecallCard';
+import { UpcomingRecalls } from '../../../components/agenda/UpcomingRecalls';
+import { WeekView } from '../../../components/agenda/WeekView';
+import { MonthView } from '../../../components/agenda/MonthView';
 
 const PX_PER_MIN = 1.4; // 1 hora = 84 px: una cita de 15 min todavía se lee.
 const COL_W = 'min-w-[11rem] flex-1';
+type View = 'day' | 'week' | 'month' | 'recall';
+const VIEWS: { key: View; label: string }[] = [{ key: 'day', label: 'Día' }, { key: 'week', label: 'Semana' }, { key: 'month', label: 'Mes' }, { key: 'recall', label: 'Por volver' }];
+const VIEW_KEY = 'agenda:view';
+// La vista elegida se recuerda en este navegador; si el almacenamiento no está disponible, se parte en Día.
+const savedView = (): View => { try { const v = localStorage.getItem(VIEW_KEY); return VIEWS.some((x) => x.key === v) ? (v as View) : 'day'; } catch { return 'day'; } };
 
 export default function AgendaPage() {
   const { activePlaceId, activePlace } = useRestaurant();
@@ -23,15 +33,25 @@ export default function AgendaPage() {
   const [day, setDay] = useState<any>(null);
   const [services, setServices] = useState<any[]>([]);
   const [pros, setPros] = useState<Professional[]>([]);
-  const [creating, setCreating] = useState<{ professionalId?: string; time?: string } | null>(null);
+  const [creating, setCreating] = useState<{ professionalId?: string; time?: string; serviceId?: string; customerName?: string; customerPhone?: string } | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [managing, setManaging] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [view, setViewState] = useState<View>('day');
+  const [range, setRange] = useState<AgendaRange | null>(null);
+  const [proFilter, setProFilter] = useState('');
+  useEffect(() => { setViewState(savedView()); }, []);
+  const setView = (v: View) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* sin almacenamiento: no se recuerda */ } };
 
+  const span = view === 'week' ? { from: weekStart(date), to: addDays(weekStart(date), 6) } : view === 'month' ? { from: monthGrid(date)[0], to: monthGrid(date)[41] } : null;
   const load = useCallback(() => {
     if (!activePlaceId) return;
+    if (span) {
+      agendaApi.range(activePlaceId, span.from, span.to).then(setRange).catch((err: Error) => toast.error(err.message));
+      return;
+    }
     agendaApi.day(activePlaceId, date).then(setDay).catch((err: Error) => { toast.error(err.message); setDay((d: any) => d ?? { professionals: [], appointments: [] }); });
-  }, [activePlaceId, date]);
+  }, [activePlaceId, date, span?.from, span?.to]); // eslint-disable-line react-hooks/exhaustive-deps
   const loadSetup = useCallback(() => {
     if (!activePlaceId) return;
     agendaApi.services(activePlaceId).then(setServices).catch(() => setServices([]));
@@ -63,6 +83,15 @@ export default function AgendaPage() {
     setCreating({ professionalId: pro.id, time: fromMin(minute) });
   };
   const done = () => { setCreating(null); setSelected(null); load(); };
+  const step = (n: number) => setDate(view === 'month' ? addMonths(date, n) : addDays(date, view === 'week' ? 7 * n : n));
+  const openDay = (d: string) => { setDate(d); setView('day'); };
+  const openSummary = (a: { id: string }) => {
+    if (!activePlaceId) return;
+    agendaApi.appointment(activePlaceId, a.id).then(setSelected).catch((err: Error) => toast.error(err.message));
+  };
+  const schedule = (c: RecallClient) => setCreating({ serviceId: c.serviceId, customerName: c.customerName, customerPhone: c.customerPhone });
+  const shownRange = range && proFilter ? { ...range, appointments: range.appointments.filter((a) => a.professionalId === proFilter) } : range;
+  const title = view === 'week' ? `${shortDate(weekStart(date))} – ${shortDate(addDays(weekStart(date), 6))}` : view === 'month' ? monthLabel(date) : longDate(date);
 
   return (
     <div className="space-y-6 pb-20">
@@ -78,18 +107,36 @@ export default function AgendaPage() {
         }
       />
 
+      {activePlaceId && pros.length > 0 && <BillingAlert placeId={activePlaceId} />}
       {activePlaceId && pros.length > 0 && <RemindersCard placeId={activePlaceId} />}
+      {activePlaceId && pros.length > 0 && <RecallCard placeId={activePlaceId} />}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" aria-label="Día anterior" onClick={() => setDate(addDays(date, -1))}><ChevronLeft size={18} aria-hidden /></Button>
-        <Button variant={date === todayLima() ? 'primary' : 'secondary'} size="sm" onClick={() => setDate(todayLima())}>Hoy</Button>
-        <Button variant="secondary" size="sm" aria-label="Día siguiente" onClick={() => setDate(addDays(date, 1))}><ChevronRight size={18} aria-hidden /></Button>
-        <input type="date" aria-label="Ir a la fecha" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="min-h-9 rounded-control border border-border bg-surface px-2 text-sm" />
-        <h2 className="text-lg font-semibold capitalize text-text">{longDate(date)}</h2>
-        {day && <span className="text-sm text-text-muted">· {day.appointments.filter((a: any) => a.status !== 'CANCELADA').length} citas</span>}
-      </div>
+      <Tabs aria-label="Vista de la agenda" tabs={VIEWS} value={view} onChange={(k) => setView(k as View)} />
 
-      {!day ? (
+      {view !== 'recall' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" aria-label="Anterior" onClick={() => step(-1)}><ChevronLeft size={18} aria-hidden /></Button>
+          <Button variant={date === todayLima() ? 'primary' : 'secondary'} size="sm" onClick={() => setDate(todayLima())}>Hoy</Button>
+          <Button variant="secondary" size="sm" aria-label="Siguiente" onClick={() => step(1)}><ChevronRight size={18} aria-hidden /></Button>
+          <input type="date" aria-label="Ir a la fecha" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="min-h-9 rounded-control border border-border bg-surface px-2 text-sm" />
+          <h2 className="text-lg font-semibold capitalize text-text">{title}</h2>
+          {view === 'day' && day && <span className="text-sm text-text-muted">· {day.appointments.filter((a: any) => a.status !== 'CANCELADA').length} citas</span>}
+          {view === 'week' && pros.length > 1 && (
+            <select aria-label="Filtrar por profesional" value={proFilter} onChange={(e) => setProFilter(e.target.value)} className="min-h-9 rounded-control border border-border bg-surface px-2 text-sm text-text sm:ml-auto">
+              <option value="">Todo el equipo</option>
+              {pros.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
+      {view === 'recall' && activePlaceId ? (
+        <UpcomingRecalls placeId={activePlaceId} onSchedule={schedule} />
+      ) : view !== 'day' ? (
+        !shownRange || shownRange.from !== span?.from ? <Skeleton className="h-96 rounded-card" />
+          : view === 'week' ? <WeekView start={weekStart(date)} range={shownRange} onOpen={openSummary} onPickDay={openDay} />
+          : <MonthView date={date} range={shownRange} onPickDay={openDay} />
+      ) : !day ? (
         <Skeleton className="h-96 rounded-card" />
       ) : !pros.length ? (
         <Card><EmptyState icon={Users} title="Agrega a tu equipo de atención" description="Registra a cada profesional con su silla, sus servicios y su horario. Luego tus clientes pueden reservar con quien prefieran." action={<Button onClick={() => setManaging(true)}>Agregar profesional</Button>} /></Card>
@@ -153,7 +200,7 @@ export default function AgendaPage() {
       )}
 
       {creating && activePlaceId && (
-        <NewAppointmentSheet placeId={activePlaceId} services={services} professionals={pros.filter((p) => p.active)} initial={{ date, ...creating }} assetKind={assetKind} onClose={() => setCreating(null)} onDone={done} />
+        <NewAppointmentSheet placeId={activePlaceId} services={services} professionals={pros.filter((p) => p.active)} initial={{ date: date < todayLima() ? todayLima() : date, ...creating }} assetKind={assetKind} onClose={() => setCreating(null)} onDone={done} />
       )}
       {selected && activePlaceId && (
         <AppointmentSheet placeId={activePlaceId} appt={selected} professionals={pros.filter((p) => p.active)} onClose={() => setSelected(null)} onDone={done} />

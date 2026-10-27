@@ -13,6 +13,22 @@ const dow = (date: string) => new Date(`${date}T12:00:00-05:00`).getUTCDay();
 export const longDate = (date: string) => `${DAYS[dow(date)]} ${Number(date.slice(8, 10))} de ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
 /** "sáb 24" */
 export const shortDate = (date: string) => `${DAYS[dow(date)].slice(0, 3)} ${Number(date.slice(8, 10))}`;
+/** Lunes de la semana de esa fecha. */
+export const weekStart = (date: string) => addDays(date, -((dow(date) + 6) % 7));
+/** Cuadrícula del mes: 6 semanas (42 días) desde el lunes en o antes del día 1. */
+export const monthGrid = (date: string) => {
+  const first = weekStart(`${date.slice(0, 7)}-01`);
+  return Array.from({ length: 42 }, (_, i) => addDays(first, i));
+};
+/** Mismo día del mes anterior/siguiente (o el último si no existe). */
+export const addMonths = (date: string, n: number) => {
+  const [y, m] = date.split('-').map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${target.toISOString().slice(0, 8)}${String(Math.min(Number(date.slice(8, 10)), last)).padStart(2, '0')}`;
+};
+/** "octubre 2026" */
+export const monthLabel = (date: string) => `${MONTHS[Number(date.slice(5, 7)) - 1]} ${date.slice(0, 4)}`;
 /** "16:30" → "4:30 pm" */
 export const time12 = (t: string) => {
   const [h, m] = t.split(':').map(Number);

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { businessApi } from '../lib/api-client';
 import { CheckCircle2, Clock, PartyPopper, PauseCircle } from 'lucide-react';
 import FacebookWhatsAppConnect from './FacebookWhatsAppConnect';
+import { PaymentMethodSteps } from './whatsapp/BillingAlert';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button, Card, ChecklistCard, Skeleton, buttonStyles, type ChecklistStep } from './ui';
 
@@ -137,6 +138,11 @@ export default function WhatsAppSetupWizard({ placeId, onChanged }: { placeId: s
               Tu mensaje llegó pero el bot aún no responde. Revisa el paso 4: el bot necesita su nombre y tu {catalog.toLowerCase()} o base de conocimiento.
             </p>
           )}
+          <div className="space-y-2 border-t border-border pt-3">
+            <p className="font-medium text-text">Último paso en Facebook: agrega tu método de pago</p>
+            <p>Responder a tus clientes es gratis, pero los recordatorios y avisos que envía Wuarikes los cobra Meta a tu cuenta. Sin tarjeta, Meta no los entrega.</p>
+            <PaymentMethodSteps />
+          </div>
         </StepCard>
       )}
 

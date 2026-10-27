@@ -6,6 +6,7 @@ import { businessApi, teamApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import { MessageSquare, RefreshCw } from 'lucide-react';
 import { Button, EmptyState, InboxLayout, PageHeader } from '../../../components/ui';
+import { BillingAlert } from '../../../components/whatsapp/BillingAlert';
 import { ConversationList, type ConversationFilter } from '../../../components/chat/ConversationList';
 import { ChatThread } from '../../../components/chat/ChatThread';
 
@@ -376,6 +377,7 @@ export default function ChatPage() {
           </Button>
         }
       />
+      {activePlaceId && <div className="mb-4"><BillingAlert placeId={activePlaceId} /></div>}
       <InboxLayout
         list={list}
         detail={detail}

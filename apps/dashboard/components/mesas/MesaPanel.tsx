@@ -2,11 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, ChefHat, CheckCircle2, CreditCard, DoorClosed, FileText, Minus, Plus, Search, Smartphone, Trash2, UserRound } from 'lucide-react';
+import { Banknote, ChefHat, CheckCircle2, CreditCard, DoorClosed, FileText, Minus, Plus, Printer, Search, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { ordersApi, publicApi, type ReceiptRequest } from '../../lib/api-client';
 import { STATUS_LABEL, soles, type OrderStatus } from '../../lib/orders-format';
 import { Badge, Button, Input, Select } from '../ui';
 import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../caja/ReceiptFields';
+import { precuentaHtml, printHtml } from '../../lib/print';
+import { useRestaurant } from '../../context/RestaurantContext';
 
 type Line = { key: string; dishId?: string; name: string; unitPrice: number; quantity: number };
 const toCents = (v: unknown) => Math.round((parseFloat(String(v ?? '0').replace(',', '.')) || 0) * 100);
@@ -28,6 +30,20 @@ export function MesaPanel({ placeId, row, onChanged }: { placeId: string; row: a
   const [custom, setCustom] = useState({ name: '', price: '', quantity: 1 });
   const [sending, setSending] = useState(false);
   const [precuenta, setPrecuenta] = useState<ReceiptRequest | null>(null);
+  const { activePlace } = useRestaurant();
+  // Precuenta impresa: lo consumido (sin cancelados), agrupado por plato y precio.
+  const printPrecuenta = () => {
+    const grouped = new Map<string, { quantity: number; description: string; lineTotal: number }>();
+    for (const o of (detail?.orders ?? []).filter((x: any) => x.status !== 'CANCELADO')) {
+      for (const i of o.items) {
+        const k = `${i.name}|${i.unitPrice ?? i.lineTotal / i.quantity}`;
+        const g = grouped.get(k) ?? { quantity: 0, description: i.name, lineTotal: 0 };
+        grouped.set(k, { ...g, quantity: g.quantity + i.quantity, lineTotal: g.lineTotal + i.lineTotal });
+      }
+    }
+    const lines = Array.from(grouped.values());
+    printHtml(precuentaHtml(activePlace ?? null, row.table.name, lines, lines.reduce((s, l) => s + l.lineTotal, 0)), `Precuenta ${row.table.name}`);
+  };
 
   const loadDetail = useCallback(() => {
     ordersApi.tableDetail(placeId, tableId).then(setDetail).catch((err: Error) => toast.error(err.message));
@@ -237,6 +253,7 @@ export function MesaPanel({ placeId, row, onChanged }: { placeId: string; row: a
           ) : (
             <div className="flex flex-wrap gap-2">
               <Button icon={FileText} onClick={() => setPrecuenta(tab.precuenta ?? EMPTY_RECEIPT)}>{tab.precuenta ? 'Editar precuenta' : 'Pedir precuenta'}</Button>
+              <Button variant="secondary" icon={Printer} onClick={printPrecuenta}>Imprimir precuenta</Button>
               <Button variant="secondary" icon={Banknote} onClick={() => act(() => ordersApi.manualPayment(placeId, { tabId: tab.id, method: 'EFECTIVO' }), 'Pago registrado')}>Pagado en efectivo</Button>
               <Button variant="secondary" icon={CreditCard} onClick={() => act(() => ordersApi.manualPayment(placeId, { tabId: tab.id, method: 'POS' }), 'Pago registrado')}>Pagado con POS</Button>
               <Button variant="secondary" icon={DoorClosed} onClick={() => act(() => ordersApi.closeTab(placeId, tab.id), 'Mesa liberada')}>Liberar mesa</Button>

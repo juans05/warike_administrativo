@@ -9,6 +9,7 @@ import { Badge, Button, Card, PageHeader, Select, Skeleton, Textarea } from '../
 import { plural } from '../../../lib/modules';
 import { redirect } from 'next/navigation';
 import { META_ADS_ENABLED } from '../../../lib/features';
+import { AdsSpendCard } from '../../../components/meta-ads/AdsSpendCard';
 
 export default function Page() {
   if (!META_ADS_ENABLED) redirect('/inicio');
@@ -214,6 +215,8 @@ function MetaAdsPage() {
               Próxima: mañana 2:00 AM
             </p>
           </Card>
+
+          <div className="lg:col-span-3"><AdsSpendCard placeId={activePlaceId} /></div>
         </div>
       ) : (
         /* VISTA: CONFIGURAR VINCULACIÓN */

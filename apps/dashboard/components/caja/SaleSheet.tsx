@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { getPrintSettings, printReceipt } from '../../lib/print';
 import { Minus, Plus, Search, Trash2, Wallet } from 'lucide-react';
 import { ordersApi, publicApi, type CashMethod, type ReceiptRequest } from '../../lib/api-client';
 import { soles } from '../../lib/orders-format';
@@ -52,6 +53,7 @@ export function SaleSheet({ placeId, appointment, series, onClose, onDone }: { p
         items: lines.map((l) => (l.dishId ? { dishId: l.dishId, quantity: l.quantity } : { name: l.name, unitPrice: l.unitPrice, quantity: l.quantity })),
       });
       toast.success(`Cobrado: ${r.code} · ${soles(r.total)}`);
+      if (getPrintSettings().autoTicket) printReceipt(placeId, r.id);
       onDone();
     } catch (err: any) { toast.error(err.message); } finally { setSaving(false); }
   };

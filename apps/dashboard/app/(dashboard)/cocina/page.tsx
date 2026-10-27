@@ -2,13 +2,17 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, ChefHat, Clock, StickyNote, Volume2 } from 'lucide-react';
+import { AlertTriangle, ChefHat, Clock, Printer, StickyNote, Volume2 } from 'lucide-react';
 import { ordersApi } from '../../../lib/api-client';
 import { staffStreamUrl, useOrderStream } from '../../../lib/use-order-stream';
 import { minutesSince, OrderStatus } from '../../../lib/orders-format';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { STATUS_META } from '../../../components/orders/OrderStatus';
 import { Badge, Button, Card, EmptyState, PageHeader, Skeleton } from '../../../components/ui';
+import { getPrintSettings, kitchenTicketHtml, printHtml } from '../../../lib/print';
+import { PrintSettingsButton } from '../../../components/print/PrintSettingsButton';
+
+const printOrder = (o: any) => printHtml(kitchenTicketHtml(o), `Comanda #${o.number}`);
 
 const COLUMNS = [
   { status: 'NUEVO', title: 'Nuevo', next: 'EN_PREPARACION', action: 'Empezar' },
@@ -44,8 +48,15 @@ export default function KitchenPage() {
   const audio = useRef<AudioContext | null>(null);
   const [soundOn, setSoundOn] = useState(false);
 
+  // Pedidos ya vistos: al abrir la pantalla no se reimprime lo pendiente, solo lo que entra después.
+  const seen = useRef<Set<string> | null>(null);
   const load = useCallback(() => {
-    if (activePlaceId) ordersApi.kds(activePlaceId).then(setOrders).catch((err: Error) => {
+    if (activePlaceId) ordersApi.kds(activePlaceId).then((list: any[]) => {
+      const fresh = seen.current ? list.filter((o) => o.status === 'NUEVO' && !seen.current!.has(o.id)) : [];
+      seen.current = new Set(Array.from(seen.current ?? []).concat(list.map((o) => o.id)));
+      if (fresh.length && getPrintSettings().autoKitchen) fresh.forEach(printOrder);
+      setOrders(list);
+    }).catch((err: Error) => {
       toast.error(err.message);
       setOrders((o) => o ?? []);
     });
@@ -77,9 +88,14 @@ export default function KitchenPage() {
       <PageHeader
         title="Cocina"
         subtitle="Los pedidos entran solos. Toca el botón de cada pedido para avanzarlo."
-        action={soundOn
-          ? <Badge tone="success"><Volume2 size={16} aria-hidden /> Sonido activado</Badge>
-          : <Button icon={Volume2} onClick={enableSound}>Activar sonido</Button>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <PrintSettingsButton />
+            {soundOn
+              ? <Badge tone="success"><Volume2 size={16} aria-hidden /> Sonido activado</Badge>
+              : <Button icon={Volume2} onClick={enableSound}>Activar sonido</Button>}
+          </div>
+        }
       />
 
       {orders === null ? (
@@ -130,6 +146,7 @@ function KitchenTicket({ order: o, col, onAdvance }: { order: any; col: Column; 
     <article className={`space-y-3 rounded-card border-2 bg-surface p-4 text-base shadow-card ${overdue ? 'border-danger' : 'border-transparent'}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="text-3xl font-bold tabular-nums text-text">#{o.number}</p>
+        <Button size="sm" variant="ghost" icon={Printer} onClick={() => printOrder(o)} aria-label={`Imprimir comanda #${o.number}`}>Imprimir</Button>
         <p className={`inline-flex items-center gap-1.5 text-base font-semibold tabular-nums ${overdue ? 'text-danger' : 'text-text-muted'}`}>
           {overdue ? <AlertTriangle size={20} aria-hidden /> : <Clock size={20} aria-hidden />}
           {overdue ? 'Demorado · ' : ''}hace {waited} min
