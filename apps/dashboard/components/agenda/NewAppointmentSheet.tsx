@@ -22,7 +22,9 @@ export function NewAppointmentSheet({ placeId, services, professionals, initial,
   onDone(): void;
 }) {
   const [serviceId, setServiceId] = useState(services.some((s) => s.id === initial.serviceId) ? initial.serviceId! : services[0]?.id ?? '');
-  const [proId, setProId] = useState(initial.professionalId ?? '');
+  // Un solo profesional (barbero independiente): va directo, sin selector.
+  const solo = professionals.length === 1 ? professionals[0].id : null;
+  const [proId, setProId] = useState(initial.professionalId ?? solo ?? '');
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState<string | null>(initial.time ?? null);
   const [slots, setSlots] = useState<string[]>([]);
@@ -73,13 +75,15 @@ export function NewAppointmentSheet({ placeId, services, professionals, initial,
   return (
     <Sheet open onClose={onClose} title="Nueva cita">
       <div className="space-y-5 p-4">
-        <Select label="Servicio" value={serviceId} onChange={(e) => { setServiceId(e.target.value); setProId(''); }}>
+        <Select label="Servicio" value={serviceId} onChange={(e) => { setServiceId(e.target.value); setProId(solo ?? ''); }}>
           {services.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.durationMin} min · {soles(s.price)}</option>)}
         </Select>
-        <Select label="Profesional" value={proId} onChange={(e) => setProId(e.target.value)}>
-          <option value="">Cualquiera disponible</option>
-          {able.map((p) => <option key={p.id} value={p.id}>{p.name}{p.station ? ` · ${p.station}` : ''}</option>)}
-        </Select>
+        {!solo && (
+          <Select label="Profesional" value={proId} onChange={(e) => setProId(e.target.value)}>
+            <option value="">Cualquiera disponible</option>
+            {able.map((p) => <option key={p.id} value={p.id}>{p.name}{p.station ? ` · ${p.station}` : ''}</option>)}
+          </Select>
+        )}
         <Input label="Día" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <div className="space-y-2">
           <p className="text-sm font-medium text-text">Horario</p>
