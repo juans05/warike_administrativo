@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, ClipboardList, MessageCircle, RefreshCw, Sta
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, fetchWithAuth, plazbotApi, type TodaySummary } from '../../../lib/api-client';
 import { accessOf, matchRoute } from '../../../lib/modules';
+import IndependentToday from '../../../components/independent/IndependentToday';
 import {
   Button, Card, ChecklistCard, EmptyState, PageHeader, Skeleton, StatTile, buttonStyles, cn,
   type ChecklistStep,
@@ -93,6 +94,11 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 }
 
 export default function InicioPage() {
+  const { activePlace } = useRestaurant();
+  return activePlace?.independent ? <IndependentToday /> : <BusinessInicio />;
+}
+
+function BusinessInicio() {
   const { activePlaceId, activePlace } = useRestaurant();
   const config = activePlace?.verticalConfig;
   const labels = config?.labels ?? { catalog: 'Carta', catalogItem: 'Plato', customer: 'Cliente' };
