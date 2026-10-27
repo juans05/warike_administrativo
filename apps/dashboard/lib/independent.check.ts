@@ -9,10 +9,10 @@ assert.equal(r.current?.id, '2');
 assert.deepEqual(r.pending.map((x) => x.id), ['3']);
 assert.equal(r.done.length, 1);
 
-// Una cita marcada LISTO (en curso) manda sobre la que coincide con la hora.
-const listo = splitToday([a('4', '10:00', '10:30', 'LISTO'), a('5', '10:00', '10:45')], 10 * 60 + 5);
-assert.equal(listo.current?.id, '4');
-assert.deepEqual(listo.pending.map((x) => x.id), ['5']);
+// LISTO es "listo para recoger" (trabajo terminado): no tapa la cita real de esta hora, queda pendiente de cerrar.
+const listo = splitToday([a('4', '09:00', '09:30', 'LISTO'), a('5', '10:00', '10:45')], 10 * 60 + 5);
+assert.equal(listo.current?.id, '5');
+assert.deepEqual(listo.pending.map((x) => x.id), ['4']);
 
 // Una reservada que ya pasó y nadie atendió sigue pendiente (el barbero decide si vino o no).
 const atrasada = splitToday([a('6', '08:00', '08:30'), a('7', '12:00', '12:30')], 10 * 60);

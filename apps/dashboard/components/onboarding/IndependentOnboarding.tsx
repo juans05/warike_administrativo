@@ -46,6 +46,8 @@ export default function IndependentOnboarding({ onComplete, onBack }: { onComple
   const [nickname, setNickname] = useState('');
   const [nicknameTouched, setNicknameTouched] = useState(false);
   const [check, setCheck] = useState<NicknameCheck | null>(null);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [recheck, setRecheck] = useState(0);
   const [zone, setZone] = useState('');
   const [modes, setModes] = useState<Mode[]>([]);
   const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
@@ -56,15 +58,16 @@ export default function IndependentOnboarding({ onComplete, onBack }: { onComple
   // Comprueba el nickname 400 ms después de dejar de escribir.
   useEffect(() => {
     setCheck(null);
+    setCheckFailed(false);
     if (shownNickname.length < 3) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       businessApi.checkNickname(shownNickname)
         .then((res) => { if (!cancelled) setCheck(res); })
-        .catch(() => { if (!cancelled) setCheck(null); });
+        .catch(() => { if (!cancelled) setCheckFailed(true); });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [shownNickname]);
+  }, [shownNickname, recheck]);
 
   const step1Ok = displayName.trim().length >= 2 && !!check?.valid && !!check?.available && check.nickname === shownNickname.replace(/^@/, '').toLowerCase();
   const step3Ok = services.length > 0 && services.every(serviceValid);
@@ -89,7 +92,7 @@ export default function IndependentOnboarding({ onComplete, onBack }: { onComple
       const message = err?.message || 'No se pudo crear tu perfil';
       toast.error(message);
       // Alguien tomó el nickname mientras completaba los pasos.
-      if (/nickname/i.test(message)) { setStep(1); setCheck(null); }
+      if (/nickname/i.test(message)) { setStep(1); setRecheck((n) => n + 1); }
       setSaving(false);
     }
   };
@@ -122,7 +125,13 @@ export default function IndependentOnboarding({ onComplete, onBack }: { onComple
               autoCorrect="off"
               spellCheck={false}
             />
-            <NicknameStatus check={check} value={shownNickname} onPick={(v) => { setNicknameTouched(true); setNickname(v); }} />
+            {checkFailed ? (
+              <p className="text-xs text-danger" aria-live="polite">
+                No pudimos comprobar el nickname. <button type="button" className="min-h-11 underline" onClick={() => setRecheck((n) => n + 1)}>Reintentar</button>
+              </p>
+            ) : (
+              <NicknameStatus check={check} value={shownNickname} onPick={(v) => { setNicknameTouched(true); setNickname(v); }} />
+            )}
             {shownNickname && <p className="text-xs text-text-muted">Tu link será wuarikes.pe/b/{shownNickname}</p>}
           </div>
           <Input label="¿En qué zona atiendes? (opcional)" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="San Juan de Miraflores" />

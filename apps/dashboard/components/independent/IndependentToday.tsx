@@ -34,7 +34,8 @@ export default function IndependentToday() {
     if (!activePlaceId) return;
     agendaApi.day(activePlaceId, todayLima())
       .then((res) => { setAppointments(res?.appointments ?? []); setError(null); setNowMin(nowLimaMin()); })
-      .catch((err) => { setError(isPlanError(err?.message ?? '') ? 'plan' : 'other'); setAppointments([]); });
+      // Un refresco fallido conserva la lista que ya se veía.
+      .catch((err) => { setError(isPlanError(err?.message ?? '') ? 'plan' : 'other'); setAppointments((prev) => prev ?? []); });
   }, [activePlaceId]);
 
   useEffect(() => {
