@@ -12,6 +12,9 @@ interface Place {
   businessType?: string;
   vertical?: string;
   verticalConfig?: VerticalConfig;
+  /** Barbero independiente: local de una sola persona (bloque 1 del diseño 2026-10-27). */
+  independent?: boolean;
+  nickname?: string | null;
 }
 
 interface RestaurantContextValue {

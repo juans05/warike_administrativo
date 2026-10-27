@@ -34,6 +34,7 @@ import { businessApi, ordersApi } from '../../lib/api-client';
 import { NAV, accessFor, firstAllowedHref, matchRoute, navLabel, type VerticalConfig } from '../../lib/modules';
 import { PLATFORM_NAV, can, clearPlatformPermissions, platformRoute, usePlatformPermissions } from '../../lib/platform';
 import { Badge, EmptyState, Sheet, buttonStyles, cn } from '../../components/ui';
+import IndependentTabBar from '../../components/independent/IndependentTabBar';
 
 interface DashboardUser {
   id: string;
@@ -135,6 +136,8 @@ type NavProps = {
   vertical?: string;
   tier: string | null | undefined;
   pendingChats: number | null;
+  /** Barbero independiente: sin Equipo (es una sola persona). */
+  independent: boolean;
   handleLogout: () => void;
 };
 
@@ -199,8 +202,9 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
 
+  const independent = isBusiness && !noPlaces && activePlace?.independent === true;
   const navProps: NavProps = {
-    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, placeModules, config, vertical: activePlace?.vertical, tier, pendingChats, handleLogout,
+    user, pathname, showBusiness: isBusiness && !noPlaces, platformNav, soloRoute, placeModules, config, vertical: activePlace?.vertical, tier, pendingChats, independent, handleLogout,
   };
 
   return (
@@ -213,30 +217,42 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 lg:hidden">
           <Logo />
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Abrir menú"
-            aria-expanded={menuOpen}
-            className={buttonStyles('ghost', 'md', 'w-11 px-0')}
-          >
-            <Menu size={20} aria-hidden />
-          </button>
+          {/* El independiente abre el menú con "Más" de la barra inferior. */}
+          {!independent && (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Abrir menú"
+              aria-expanded={menuOpen}
+              className={buttonStyles('ghost', 'md', 'w-11 px-0')}
+            >
+              <Menu size={20} aria-hidden />
+            </button>
+          )}
         </header>
         <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} side="left" title="Menú">
           <SidebarContent {...navProps} hideLogo onNavigate={() => setMenuOpen(false)} />
         </Sheet>
 
-        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main className={cn('mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 md:px-8 md:py-8', independent && 'pb-24 lg:pb-8')}>
           {isBusiness && activePlace?.status === 'pending' && (
             <div role="status" className="mb-6 flex items-start gap-3 rounded-card border border-secondary bg-secondary/20 px-4 py-3">
               <Clock size={20} aria-hidden className="mt-0.5 shrink-0 text-text" />
-              <div>
-                <p className="text-sm font-semibold text-text">Tu local está en revisión</p>
-                <p className="text-sm text-text">
-                  Ya puedes configurar tu panel, pero tu local aparecerá en el mapa y en las búsquedas de Wuarikes en cuanto nuestro equipo lo apruebe.
-                </p>
-              </div>
+              {independent ? (
+                <div>
+                  <p className="text-sm font-semibold text-text">Tu perfil está en revisión</p>
+                  <p className="text-sm text-text">
+                    Ya puedes usar tu panel. Tu perfil aparecerá en las búsquedas de Wuarikes cuando nuestro equipo lo apruebe.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold text-text">Tu local está en revisión</p>
+                  <p className="text-sm text-text">
+                    Ya puedes configurar tu panel, pero tu local aparecerá en el mapa y en las búsquedas de Wuarikes en cuanto nuestro equipo lo apruebe.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           {noPlaces ? (
@@ -251,6 +267,7 @@ function InnerLayout({ children, user, handleLogout }: { children: React.ReactNo
           ) : children}
         </main>
       </div>
+      {independent && <IndependentTabBar pathname={pathname} onMore={() => setMenuOpen(true)} />}
     </div>
   );
 }
@@ -264,7 +281,7 @@ function Logo() {
 }
 
 function SidebarContent({
-  user, pathname, showBusiness, platformNav, soloRoute, placeModules, config, vertical, tier, pendingChats, handleLogout, hideLogo, onNavigate,
+  user, pathname, showBusiness, platformNav, soloRoute, placeModules, config, vertical, tier, pendingChats, independent, handleLogout, hideLogo, onNavigate,
 }: NavProps & { hideLogo?: boolean; onNavigate?: () => void }) {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -288,7 +305,7 @@ function SidebarContent({
               </ul>
             )}
             {NAV.map((group) => {
-              const items = group.items.filter((item) => accessFor(item, config, tier, placeModules) !== 'hidden');
+              const items = group.items.filter((item) => accessFor(item, config, tier, placeModules) !== 'hidden' && !(independent && item.module === 'equipo'));
               if (items.length === 0) return null;
               return (
                 <NavSection key={group.group} title={group.group} subtitle={group.subtitle}>
