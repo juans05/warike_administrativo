@@ -2,15 +2,47 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { publicApi } from '../../lib/api-client';
+import { businessApi, publicApi } from '../../lib/api-client';
 import { toast } from 'sonner';
 import { copyText } from '../../lib/clipboard';
 
 type Step = 'welcome' | 'rating' | 'detail' | 'result';
 
-// Respuestas rápidas: tocar es más fácil que escribir en el celular.
-const CHIPS_POSITIVE = ['Rico sabor', 'Buena atención', 'Rápido', 'Buen precio', 'Ambiente agradable', 'Porciones generosas'];
-const CHIPS_NEGATIVE = ['Demoró mucho', 'Atención', 'Sabor', 'Precio', 'Limpieza', 'Ambiente'];
+// Respuestas rápidas por rubro (vertical): tocar es más fácil que escribir en el celular.
+const CHIPS: Record<string, { positive: string[]; negative: string[] }> = {
+  gastronomia: {
+    positive: ['Rico sabor', 'Buena atención', 'Rápido', 'Buen precio', 'Ambiente agradable', 'Porciones generosas'],
+    negative: ['Demoró mucho', 'Atención', 'Sabor', 'Precio', 'Limpieza', 'Ambiente'],
+  },
+  comercio: {
+    positive: ['Buena atención', 'Buenos precios', 'Variedad', 'Rápido', 'Orden y limpieza', 'Encontré lo que buscaba'],
+    negative: ['Atención', 'Precio', 'Poca variedad', 'Demoró mucho', 'Limpieza', 'Sin stock'],
+  },
+  belleza: {
+    positive: ['Gran resultado', 'Buena atención', 'Puntual', 'Buen precio', 'Ambiente agradable', 'Limpieza'],
+    negative: ['Resultado', 'Atención', 'Demoró mucho', 'Precio', 'Limpieza', 'Ambiente'],
+  },
+  salud: {
+    positive: ['Buena atención', 'Profesionalismo', 'Puntual', 'Me explicaron todo', 'Buen precio', 'Limpieza'],
+    negative: ['Demoró mucho', 'Atención', 'Trato', 'Precio', 'Limpieza', 'Explicación'],
+  },
+  mascotas: {
+    positive: ['Buen trato a mi mascota', 'Buena atención', 'Puntual', 'Buen precio', 'Limpieza', 'Buen resultado'],
+    negative: ['Trato a la mascota', 'Atención', 'Demoró mucho', 'Precio', 'Limpieza', 'Resultado'],
+  },
+  automotriz: {
+    positive: ['Buen trabajo', 'Buena atención', 'Rápido', 'Buen precio', 'Honestidad', 'Entrega a tiempo'],
+    negative: ['Calidad del trabajo', 'Atención', 'Demoró mucho', 'Precio', 'Explicación', 'Limpieza'],
+  },
+  servicios: {
+    positive: ['Buen trabajo', 'Buena atención', 'Rápido', 'Buen precio', 'Profesionalismo', 'Puntual'],
+    negative: ['Calidad del trabajo', 'Atención', 'Demoró mucho', 'Precio', 'Puntualidad', 'Comunicación'],
+  },
+  entretenimiento: {
+    positive: ['Muy divertido', 'Buena atención', 'Buenas instalaciones', 'Buen precio', 'Limpieza', 'Ambiente agradable'],
+    negative: ['Instalaciones', 'Atención', 'Demoró mucho', 'Precio', 'Limpieza', 'Ambiente'],
+  },
+};
 
 const RATING_LABELS: Record<number, string> = {
   1: 'Regular 😕',
@@ -32,6 +64,7 @@ export default function ScanExperience({
 }) {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
+  const [vertical, setVertical] = useState('gastronomia');
   const [loyaltyProgram, setLoyaltyProgram] = useState<any>(null);
   const [scanPromo, setScanPromo] = useState<{ enabled: boolean; text: string }>({ enabled: false, text: '' });
   const [step, setStep] = useState<Step>('welcome');
@@ -66,7 +99,18 @@ export default function ScanExperience({
     }
 
     publicApi.getPlace(placeId)
-      .then(setProfile)
+      .then((place) => {
+        setProfile(place);
+        // El rubro sale del backend (fuente única de tipos de negocio); sin él quedan los chips de gastronomía.
+        if (place?.businessType) {
+          businessApi.getBusinessTypes()
+            .then(({ verticals }) => {
+              const key = verticals.find((v) => v.types.some((t) => t.key === place.businessType))?.key;
+              if (key && CHIPS[key]) setVertical(key);
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => setProfile({ id: placeId, name: 'El Huarique', coverImageUrl: '/images/interior.png', category: { name: 'Restaurante' } }));
 
     publicApi.getLoyaltyProgram(placeId).then(setLoyaltyProgram).catch(() => setLoyaltyProgram(null));
@@ -238,7 +282,7 @@ export default function ScanExperience({
           )}
 
           <div className="flex flex-wrap justify-center gap-2">
-            {(rating >= 4 ? CHIPS_POSITIVE : CHIPS_NEGATIVE).map((chip) => (
+            {(rating >= 4 ? CHIPS[vertical].positive : CHIPS[vertical].negative).map((chip) => (
               <button
                 key={chip}
                 type="button"

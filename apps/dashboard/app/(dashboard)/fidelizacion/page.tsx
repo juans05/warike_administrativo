@@ -212,6 +212,12 @@ export default function FidelizacionPage() {
           <Card padding="lg" className="space-y-5">
             <CardTitle title="Programa" />
             <Switch label="Programa activo" checked={form.isActive} onChange={(isActive) => set({ isActive })} />
+            {!program && (
+              <p className="flex items-start gap-2 rounded-card bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                Aún no guardaste el programa: tus {customers} no lo verán al dejar su reseña hasta que toques Guardar.
+              </p>
+            )}
 
             <div role="radiogroup" aria-label="Tipo de programa" className="grid grid-cols-2 gap-3">
               {([
