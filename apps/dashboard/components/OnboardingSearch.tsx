@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { businessApi, type BusinessTypesResponse } from '../lib/api-client';
 import { Badge, Button, EmptyState, Skeleton, cn } from './ui';
+import IndependentOnboarding from './onboarding/IndependentOnboarding';
 
 interface OnboardingResult {
   id?: string;
@@ -42,6 +43,7 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
   const [typesError, setTypesError] = useState(false);
   const [vertical, setVertical] = useState<Vertical | null>(null);
   const [businessType, setBusinessType] = useState<{ key: string; label: string } | null>(null);
+  const [independent, setIndependent] = useState(false);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ wuarike: OnboardingResult[], google: OnboardingResult[] }>({ wuarike: [], google: [] });
@@ -128,6 +130,10 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
     }
   };
 
+  if (independent) {
+    return <IndependentOnboarding onComplete={onComplete} onBack={() => setIndependent(false)} />;
+  }
+
   // Paso 1: rubro
   if (!vertical) {
     if (typesError || verticals?.length === 0) {
@@ -142,6 +148,15 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
     }
     return (
       <section className="space-y-4 text-left">
+        <button type="button" onClick={() => setIndependent(true)} className={cn(tileClass, 'w-full border-primary')}>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Scissors size={20} aria-hidden />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold text-text">Soy barbero independiente</span>
+            <span className="block text-xs text-text-muted">Trabajo por mi cuenta, sin local o en una silla</span>
+          </span>
+        </button>
         <h2 className="text-base font-semibold text-text">¿Qué tipo de negocio tienes?</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {verticals === null

@@ -28,6 +28,16 @@ export interface ProfileUpdate {
   [key: string]: unknown;
 }
 
+/** Registro del barbero independiente (`POST /business/onboarding/independent`). */
+export interface CreateIndependentInput {
+  displayName: string;
+  nickname: string;
+  zone?: string;
+  serviceModes: ('local' | 'domicilio' | 'silla')[];
+  services: { name: string; price: number; durationMin: number }[];
+}
+export interface NicknameCheck { nickname: string; valid: boolean; available: boolean; suggestions: string[] }
+
 /** `GET /places/business-types`: rubros (vertical) con sus tipos de negocio. */
 export interface BusinessTypesResponse {
   verticals: { key: string; label: string; catalogLabel: string; types: { key: string; label: string }[] }[];
@@ -310,6 +320,10 @@ export const businessApi = {
     method: 'POST',
     body: JSON.stringify({ googlePlaceId, businessType }),
   }),
+  createIndependent: (body: CreateIndependentInput): Promise<{ placeId: string; professionalId: string; nickname: string }> =>
+    fetchWithAuth('/business/onboarding/independent', { method: 'POST', body: JSON.stringify(body) }),
+  checkNickname: (value: string): Promise<NicknameCheck> =>
+    fetchWithAuth(`/business/onboarding/nickname?value=${encodeURIComponent(value)}`),
   createPlace: (data: { name: string; address?: string; businessType: string }) => fetchWithAuth('/business/onboarding/create', {
     method: 'POST',
     body: JSON.stringify(data),
