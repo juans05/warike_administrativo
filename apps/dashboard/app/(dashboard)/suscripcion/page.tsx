@@ -61,18 +61,13 @@ export default function SuscripcionPage() {
   const [canceling, setCanceling] = useState(false);
   const [culqiReady, setCulqiReady] = useState(false);
 
-  const businessType = activePlace?.businessType;
-  const placeReady = !!activePlace;
-
   const load = useCallback(async () => {
     if (!activePlaceId) { setLoading(false); return; }
-    // Los planes dependen del rubro: se espera a tener la sede para no mostrar los de otro rubro.
-    if (!placeReady) return;
     setLoading(true);
     try {
       const [subData, plansData] = await Promise.all([
         placeSubscriptionApi.get(activePlaceId).catch(() => null),
-        subscriptionApi.getPlans(businessType),
+        subscriptionApi.getPlans(activePlaceId),
       ]);
       setSubscription(subData);
       setPlans(plansData);
@@ -85,7 +80,7 @@ export default function SuscripcionPage() {
     } finally {
       setLoading(false);
     }
-  }, [activePlaceId, placeReady, businessType]);
+  }, [activePlaceId]);
 
   useEffect(() => { load(); }, [load]);
 

@@ -759,9 +759,9 @@ export const publicApi = {
 };
 
 export const subscriptionApi = {
-  /** Los planes dependen del rubro: una barbería ve el suyo, los demás los generales. */
-  getPlans: (businessType?: string) =>
-    fetchWithAuth(`/subscriptions/plans${businessType ? `?businessType=${encodeURIComponent(businessType)}` : ''}`),
+  /** Los planes dependen del local: el barbero independiente ve el suyo, los demás los generales. */
+  getPlans: (placeId?: string) =>
+    fetchWithAuth(`/subscriptions/plans${placeId ? `?placeId=${encodeURIComponent(placeId)}` : ''}`),
   adminGetAll: (page = 1) => fetchWithAuth(`/subscriptions/admin/all?page=${page}`),
   adminGetStats: () => fetchWithAuth('/subscriptions/admin/stats'),
 };

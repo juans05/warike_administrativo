@@ -48,12 +48,16 @@ export interface VerticalConfig {
 // Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.
 export type SubscriptionTier = 'reputacion' | 'fidelizacion' | 'ia_total';
 const TIER_ORDER: SubscriptionTier[] = ['reputacion', 'fidelizacion', 'ia_total'];
-// Planes por rubro (backend TIER_EQUIVALENT): abren lo mismo que el tier indicado.
-const TIER_EQUIVALENT: Record<string, SubscriptionTier> = { barbero: 'ia_total' };
+// Planes fuera de la escalera (backend PLAN_SCOPE): abren su tier base y solo estos módulos, no el tier entero.
+const PLAN_SCOPE: Record<string, { base: SubscriptionTier; modules: string[] }> = {
+  barbero: { base: 'reputacion', modules: ['whatsapp', 'chat', 'clientes'] },
+};
 
-export function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier): boolean {
+export function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier, module?: string): boolean {
   if (!ownedTier) return false;
-  const ownedIndex = TIER_ORDER.indexOf((TIER_EQUIVALENT[ownedTier] ?? ownedTier) as SubscriptionTier);
+  const scope = PLAN_SCOPE[ownedTier];
+  if (scope && module && scope.modules.includes(module)) return true;
+  const ownedIndex = TIER_ORDER.indexOf((scope?.base ?? ownedTier) as SubscriptionTier);
   const requiredIndex = TIER_ORDER.indexOf(requiredTier);
   return ownedIndex !== -1 && ownedIndex >= requiredIndex;
 }
@@ -176,6 +180,6 @@ export function accessOf(entry: NavLeaf, config: VerticalConfig | undefined, tie
   // Sin suscripción (null) no se muestran las secciones de pago; con un plan, las de planes mayores salen con candado.
   // undefined = cargando o error al consultar el plan: no se oculta nada (el backend igual valida el plan).
   if (entry.tier && tier === null) return 'hidden';
-  if (entry.tier && tier !== undefined && !hasTierAccess(tier, entry.tier)) return 'locked';
+  if (entry.tier && tier !== undefined && !hasTierAccess(tier, entry.tier, entry.module)) return 'locked';
   return 'open';
 }
