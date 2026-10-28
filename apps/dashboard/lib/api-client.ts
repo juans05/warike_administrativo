@@ -535,7 +535,7 @@ export const businessApi = {
       method: 'PATCH',
       body: JSON.stringify({ placeId, metaEnabled }),
     }) as Promise<{ metaEnabled: boolean }>,
-  completeWhatsappConnect: (data: { placeId: string; code: string; wabaId: string; phoneNumberId: string }) =>
+  completeWhatsappConnect: (data: { placeId: string; code: string; wabaId: string; phoneNumberId?: string; coexistence?: boolean }) =>
     fetchWithAuth('/business/whatsapp/connect/complete', {
       method: 'POST',
       body: JSON.stringify(data),

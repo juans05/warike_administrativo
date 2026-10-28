@@ -20,11 +20,18 @@ interface Status {
   hasMenuOrKnowledge: boolean;
 }
 
-const REQUIREMENTS = [
+// Coexistencia (Meta): el número sigue en la app de WhatsApp Business y el bot responde por la API a la vez.
+const REQUIREMENTS_APP = [
+  'Actualiza la app de WhatsApp Business a la versión 2.24.17 o más nueva.',
+  'Ten el celular a mano: Meta te pedirá confirmar la conexión desde la app.',
+  'Sigues usando tu WhatsApp como siempre. Cuando respondas tú desde el celular, el bot deja de contestarle a ese cliente.',
+];
+
+const REQUIREMENTS_NEW = [
   'Un chip móvil (el prepago sirve) que NO tenga WhatsApp ni WhatsApp Business instalado. Si lo tuvo, elimina esa cuenta antes.',
   'Que pueda recibir un SMS o una llamada: Meta manda un código para verificarlo.',
-  'Nada de números virtuales o de internet, ni el número que hoy atiende a tus clientes.',
-  'Al conectarlo, ese número se atiende solo por la API: ya no podrás usarlo en la app de WhatsApp del celular.',
+  'Nada de números virtuales o de internet.',
+  'Ese número se atiende solo por Wuarikes: no podrás usarlo en la app de WhatsApp del celular.',
 ];
 
 // "Conecta tu WhatsApp en 4 pasos": cada paso se marca solo cuando el sistema detecta que de verdad se cumplió.
@@ -97,17 +104,22 @@ export default function WhatsAppSetupWizard({ placeId, onChanged }: { placeId: s
 
       {current === 1 && (
         <StepCard n={1} title="Prepara tu número">
+          <p className="font-medium text-text">Si ya atiendes con WhatsApp Business en tu celular</p>
           <ul className="list-disc space-y-1.5 pl-5">
-            {REQUIREMENTS.map((r) => <li key={r}>{r}</li>)}
+            {REQUIREMENTS_APP.map((r) => <li key={r}>{r}</li>)}
           </ul>
-          <p className="text-xs">Si Meta responde &quot;este número no cumple los requisitos para registrarse o migrar&quot;, ese número ya está en WhatsApp: prueba con otro.</p>
+          <p className="pt-2 font-medium text-text">Si vas a usar un número nuevo</p>
+          <ul className="list-disc space-y-1.5 pl-5">
+            {REQUIREMENTS_NEW.map((r) => <li key={r}>{r}</li>)}
+          </ul>
+          <p className="text-xs">Si con un número nuevo Meta responde &quot;este número no cumple los requisitos para registrarse o migrar&quot;, ese número ya está en WhatsApp: usa la opción de WhatsApp Business del celular o prueba con otro.</p>
           <label className="flex min-h-11 cursor-pointer items-start gap-3 pt-1">
             <input
               type="checkbox" checked={done1} disabled={toggling}
               onChange={(e) => toggleChannel(e.target.checked)}
               className="mt-0.5 h-5 w-5 accent-primary"
             />
-            <span className="font-medium text-text">Tengo un número libre y quiero conectarlo con Facebook</span>
+            <span className="font-medium text-text">Quiero conectar mi WhatsApp con Facebook</span>
           </label>
         </StepCard>
       )}
