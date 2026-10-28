@@ -778,10 +778,15 @@ export const hardwareApi = {
 export const placeSubscriptionApi = {
   get: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription`),
   getPayments: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription/payments`),
-  subscribe: (placeId: string, token: string, tier: string) =>
+  subscribe: (
+    placeId: string,
+    token: string,
+    tier: string,
+    billing: { firstName: string; lastName: string; phone: string; address: string; city: string },
+  ) =>
     fetchWithAuth(`/business/places/${placeId}/subscription/subscribe`, {
       method: 'POST',
-      body: JSON.stringify({ token, tier }),
+      body: JSON.stringify({ token, tier, ...billing, acceptedTerms: true }),
     }),
   cancel: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/subscription`, { method: 'DELETE' }),
 };
