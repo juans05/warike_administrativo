@@ -229,7 +229,8 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('activePlaceId');
-      window.location.href = '/login?expired=1';
+      // Tras volver a entrar regresa a la misma página (p. ej. /suscripcion abierta desde la app).
+      window.location.href = `/login?expired=1&next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
       throw new Error('Sesión expirada');
     }
     const text = await response.text().catch(() => '');
