@@ -50,7 +50,7 @@ export type SubscriptionTier = 'reputacion' | 'fidelizacion' | 'ia_total';
 const TIER_ORDER: SubscriptionTier[] = ['reputacion', 'fidelizacion', 'ia_total'];
 // Planes fuera de la escalera (backend PLAN_SCOPE): abren su tier base y solo estos módulos, no el tier entero.
 const PLAN_SCOPE: Record<string, { base: SubscriptionTier; modules: string[] }> = {
-  barbero: { base: 'reputacion', modules: ['whatsapp', 'chat', 'clientes'] },
+  barbero: { base: 'reputacion', modules: ['whatsapp', 'chat', 'clientes', 'broadcasts', 'reportes', 'ia'] },
 };
 
 export function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier, module?: string): boolean {
