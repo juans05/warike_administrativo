@@ -48,10 +48,12 @@ export interface VerticalConfig {
 // Mirrors backend TIER_ORDER (subscriptions.service.ts) — keep in sync.
 export type SubscriptionTier = 'reputacion' | 'fidelizacion' | 'ia_total';
 const TIER_ORDER: SubscriptionTier[] = ['reputacion', 'fidelizacion', 'ia_total'];
+// Planes por rubro (backend TIER_EQUIVALENT): abren lo mismo que el tier indicado.
+const TIER_EQUIVALENT: Record<string, SubscriptionTier> = { barbero: 'ia_total' };
 
 export function hasTierAccess(ownedTier: string | null, requiredTier: SubscriptionTier): boolean {
   if (!ownedTier) return false;
-  const ownedIndex = TIER_ORDER.indexOf(ownedTier as SubscriptionTier);
+  const ownedIndex = TIER_ORDER.indexOf((TIER_EQUIVALENT[ownedTier] ?? ownedTier) as SubscriptionTier);
   const requiredIndex = TIER_ORDER.indexOf(requiredTier);
   return ownedIndex !== -1 && ownedIndex >= requiredIndex;
 }

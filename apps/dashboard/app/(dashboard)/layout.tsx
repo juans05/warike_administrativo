@@ -88,7 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     if (!token) {
-      router.push('/login');
+      // Vuelve aquí después de entrar (p. ej. "Activar mi plan" desde la app abre /suscripcion).
+      router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
     } else {
       try {
         if (storedUser) setUser(JSON.parse(storedUser));

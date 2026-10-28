@@ -61,13 +61,18 @@ export default function SuscripcionPage() {
   const [canceling, setCanceling] = useState(false);
   const [culqiReady, setCulqiReady] = useState(false);
 
+  const businessType = activePlace?.businessType;
+  const placeReady = !!activePlace;
+
   const load = useCallback(async () => {
     if (!activePlaceId) { setLoading(false); return; }
+    // Los planes dependen del rubro: se espera a tener la sede para no mostrar los de otro rubro.
+    if (!placeReady) return;
     setLoading(true);
     try {
       const [subData, plansData] = await Promise.all([
         placeSubscriptionApi.get(activePlaceId).catch(() => null),
-        subscriptionApi.getPlans(),
+        subscriptionApi.getPlans(businessType),
       ]);
       setSubscription(subData);
       setPlans(plansData);
@@ -80,7 +85,7 @@ export default function SuscripcionPage() {
     } finally {
       setLoading(false);
     }
-  }, [activePlaceId]);
+  }, [activePlaceId, placeReady, businessType]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -297,8 +302,48 @@ export default function SuscripcionPage() {
           </Card>
         )}
 
-        {/* Planes: se eligen sin suscripción, pausada o cancelada; con una activa se muestran para comparar */}
-        {plans.length > 0 ? (
+        {/* Rubro con un solo plan (barbería): se muestra como oferta, con la compra en la misma tarjeta */}
+        {plans.length === 1 && canChoose ? (
+          <section aria-labelledby="plan-title" className="overflow-hidden rounded-card border border-primary/30 bg-surface shadow-card">
+            <div className="bg-gradient-to-br from-primary to-primary-hover px-6 py-8 text-white sm:px-10">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-medium"><Sparkles size={16} aria-hidden /> Hecho para tu negocio</span>
+              <h2 id="plan-title" className="mt-4 text-2xl font-semibold sm:text-3xl">{plans[0].name}</h2>
+              <p className="mt-2 max-w-xl text-white/85">Tu agenda llena sin contestar el celular: los clientes reservan solos por WhatsApp y tú solo cortas.</p>
+              <p className="mt-6 flex items-baseline gap-1.5">
+                <span className="text-5xl font-semibold tabular-nums">S/ {Number(plans[0].price).toFixed(0)}</span>
+                <span className="text-white/85">/mes</span>
+              </p>
+            </div>
+
+            <div className="space-y-6 px-6 py-8 sm:px-10">
+              <ul className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+                {plans[0].features.map((f, i) => (
+                  <li key={i} className="flex items-start gap-3 text-text">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                      <Check size={16} aria-hidden />
+                    </span>
+                    <span className="pt-0.5">{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {!plans[0].configured && (
+                <Badge tone="warning"><AlertTriangle size={16} aria-hidden /> Cobro no configurado todavía</Badge>
+              )}
+
+              <div className="space-y-3 border-t border-border pt-6">
+                <Button className="h-12 w-full text-base" onClick={handleSubscribe} loading={paying} disabled={!culqiReady}>
+                  {paying ? 'Procesando...' : culqiReady ? `${isCanceled ? 'Reactivar' : 'Activar'} mi plan — S/ ${Number(plans[0].price).toFixed(0)}/mes` : 'Cargando...'}
+                </Button>
+                <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-text-muted">
+                  <span className="inline-flex items-center gap-1.5"><Lock size={16} aria-hidden /> Pago seguro con tarjeta</span>
+                  <span className="inline-flex items-center gap-1.5"><CheckCircle2 size={16} aria-hidden /> Sin contrato</span>
+                  <span className="inline-flex items-center gap-1.5"><PauseCircle size={16} aria-hidden /> Cancela cuando quieras</span>
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : plans.length > 0 ? (
           <section aria-labelledby="planes-title" className="space-y-4">
             <div>
               <h2 id="planes-title" className="text-xl font-semibold text-text">{canChoose ? 'Elige tu plan' : 'Planes'}</h2>
