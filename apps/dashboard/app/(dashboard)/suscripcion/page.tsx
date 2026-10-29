@@ -103,7 +103,7 @@ export default function SuscripcionPage() {
       ]);
       setSubscription(subData);
       setPlans(plansData);
-      // Preselect the plan chosen on the landing (?plan=), else the middle tier (Fidelización+).
+      // Preselect the plan chosen on the landing (?plan=), else the middle tier (Caserito).
       const requestedTier = new URLSearchParams(window.location.search).get('plan');
       const requestedPlan = plansData.find((p: PlanInfo) => p.tier === requestedTier);
       // A canceled subscription is reactivated on its own plan unless the user picks another.
@@ -362,7 +362,7 @@ export default function SuscripcionPage() {
               <h2 id="plan-title" className="mt-4 text-2xl font-semibold sm:text-3xl">{plans[0].name}</h2>
               <p className="mt-2 max-w-xl text-white/85">Tu agenda llena sin contestar el celular: los clientes reservan solos por WhatsApp y tú solo cortas.</p>
               <p className="mt-6 flex items-baseline gap-1.5">
-                <span className="text-5xl font-semibold tabular-nums">S/ {Number(plans[0].price).toFixed(0)}</span>
+                <span className="text-5xl font-semibold tabular-nums">S/ {Number(plans[0].price).toFixed(2)}</span>
                 <span className="text-white/85">/mes</span>
               </p>
             </div>
@@ -386,7 +386,7 @@ export default function SuscripcionPage() {
               <div className="space-y-4 border-t border-border pt-6">
                 {billingForm}
                 <Button className="h-12 w-full text-base" onClick={handleSubscribe} loading={paying} disabled={!culqiReady || !acceptedTerms}>
-                  {paying ? 'Procesando...' : culqiReady ? `${isCanceled ? 'Reactivar' : 'Activar'} mi plan — S/ ${Number(plans[0].price).toFixed(0)}/mes` : 'Cargando...'}
+                  {paying ? 'Procesando...' : culqiReady ? `${isCanceled ? 'Reactivar' : 'Activar'} mi plan — S/ ${Number(plans[0].price).toFixed(2)}/mes` : 'Cargando...'}
                 </Button>
                 <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-text-muted">
                   <span className="inline-flex items-center gap-1.5"><Lock size={16} aria-hidden /> Pago seguro con tarjeta</span>

@@ -43,9 +43,9 @@ interface PlanInfo {
 // Shown immediately and kept if the live API is slow/unavailable, so the
 // pricing section is never empty — values mirror the backend defaults.
 const FALLBACK_PLANS: PlanInfo[] = [
-  { tier: 'reputacion', name: 'Wuarike Reputación', price: 79.99, currency: 'PEN', features: ['Solicitud de reseñas en Google por NFC y QR', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva'] },
-  { tier: 'fidelizacion', name: 'Wuarike Fidelización+', price: 199, currency: 'PEN', features: ['Todo lo de Wuarike Reputación', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM'] },
-  { tier: 'ia_total', name: 'Wuarike IA Total', price: 499, currency: 'PEN', features: ['Todo lo de Wuarike Fidelización+', 'PlazBot: bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)'] },
+  { tier: 'reputacion', name: 'Rankeado', price: 254.9, currency: 'PEN', features: ['Solicitud de reseñas en Google por NFC y QR', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva', 'Agenda de citas'] },
+  { tier: 'fidelizacion', name: 'Caserito', price: 439.9, currency: 'PEN', features: ['Todo lo de Rankeado', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM', 'Pedidos en mesa'] },
+  { tier: 'ia_total', name: 'Taypá', price: 749.9, currency: 'PEN', features: ['Todo lo de Caserito', 'Bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)', 'Reportes'] },
 ];
 
 // --- Scroll reveal (transform/opacity only, respects reduced-motion) ---
@@ -324,7 +324,7 @@ function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boole
       </div>
       <p className={`text-sm font-medium mb-3 ${highlighted ? 'text-[var(--primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>{plan.name}</p>
       <div className="flex items-end gap-1 mb-7">
-        <span className="text-4xl font-semibold text-[var(--text)] tracking-tight">S/. {plan.price}</span>
+        <span className="text-4xl font-semibold text-[var(--text)] tracking-tight">S/. {Number(plan.price).toFixed(2)}</span>
         <span className="text-sm text-[var(--text-muted)] mb-1">/mes</span>
       </div>
       <ul className="space-y-3 mb-8 flex-1">
@@ -368,7 +368,7 @@ function PricingSection() {
           <p className="text-lg text-[var(--text-muted)]">Mensual, sin permanencia forzada. Cancela cuando quieras.</p>
         </Reveal>
         <Reveal delay={80} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {plans.map((plan, i) => <PricingCard key={plan.tier} plan={plan} highlighted={i === 1} />)}
+          {plans.map((plan) => <PricingCard key={plan.tier} plan={plan} highlighted={plan.tier === 'ia_total'} />)}
         </Reveal>
       </div>
     </section>

@@ -71,9 +71,9 @@ export default async function RootLayout({
         "operatingSystem": "Web, iOS, Android",
         "description": "Software como servicio (SaaS) por suscripción mensual para restaurantes: gestión de reputación en Google Maps, fidelización de clientes y asistente de WhatsApp con IA. Incluye venta complementaria de hardware NFC.",
         "offers": [
-          { "@type": "Offer", "name": "Wuarike Reputación", "price": "79.99", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "79.99", "priceCurrency": "PEN", "unitText": "mes" } },
-          { "@type": "Offer", "name": "Wuarike Fidelización+", "price": "199", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "199", "priceCurrency": "PEN", "unitText": "mes" } },
-          { "@type": "Offer", "name": "Wuarike IA Total", "price": "499", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "499", "priceCurrency": "PEN", "unitText": "mes" } }
+          { "@type": "Offer", "name": "Rankeado", "price": "254.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "254.90", "priceCurrency": "PEN", "unitText": "mes" } },
+          { "@type": "Offer", "name": "Caserito", "price": "439.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "439.90", "priceCurrency": "PEN", "unitText": "mes" } },
+          { "@type": "Offer", "name": "Taypá", "price": "749.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "749.90", "priceCurrency": "PEN", "unitText": "mes" } }
         ]
       },
       {

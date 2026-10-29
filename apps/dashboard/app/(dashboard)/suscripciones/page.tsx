@@ -117,7 +117,7 @@ export default function SuscripcionesPage() {
                   <Td className="whitespace-nowrap">
                     {sub.status === 'active' && sub.currentPeriodEnd ? fmt(sub.currentPeriodEnd) : <span className="text-text-muted">—</span>}
                   </Td>
-                  <Td right className="whitespace-nowrap font-semibold">S/ {(sub.amount / 100).toFixed(0)}</Td>
+                  <Td right className="whitespace-nowrap font-semibold">S/ {(sub.amount / 100).toFixed(2)}</Td>
                 </Tr>
               ))}
             </Table>

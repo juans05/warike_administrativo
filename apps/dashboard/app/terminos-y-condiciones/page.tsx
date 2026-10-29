@@ -57,8 +57,8 @@ export default function TerminosPage() {
 
         <Section title="2. Objeto y naturaleza del Servicio">
           <p>
-            Wuarike es un producto propio, ofrecido por suscripción mensual (planes Reputación, Fidelización+ e IA
-            Total), que permite al Cliente gestionar su reputación en línea, su carta digital, su programa de
+            Wuarike es un producto propio, ofrecido por suscripción mensual (planes Wawa, Al Toque, Rankeado, Caserito
+            y Taypá), que permite al Cliente gestionar su reputación en línea, su carta digital, su programa de
             fidelización, su comunicación con comensales y las demás funciones de su plan (&quot;el Servicio&quot;).
             De forma complementaria vendemos Dispositivos para usar con el Servicio. Wuarike no desarrolla software a
             medida por encargo.

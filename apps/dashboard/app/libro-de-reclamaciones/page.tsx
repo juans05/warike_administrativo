@@ -214,7 +214,7 @@ export default function LibroDeReclamacionesPage() {
             <label className={labelClass}>Bien o servicio contratado</label>
             <input
               required
-              placeholder="Ej: Plan Wuarike Fidelización+ (suscripción mensual)"
+              placeholder="Ej: Plan Caserito (suscripción mensual)"
               value={form.contractedGood}
               onChange={(e) => update('contractedGood', e.target.value)}
               className={inputClass}

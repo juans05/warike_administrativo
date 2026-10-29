@@ -34,7 +34,7 @@ export default function PoliticaCambiosPage() {
           </p>
         </header>
 
-        <Section title="1. Suscripciones (Reputación, Fidelización+, IA Total)">
+        <Section title="1. Suscripciones (Wawa, Al Toque, Rankeado, Caserito, Taypá)">
           <p>
             Puedes cancelar tu suscripción mensual en cualquier momento, sin permanencia mínima ni penalidad, desde
             tu panel de administración o escribiéndonos a{' '}
