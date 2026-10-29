@@ -1276,6 +1276,8 @@ export const ordersApi = {
   tables: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables`),
   createTable: (placeId: string, body: { name: string; capacity?: number }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/tables`, { method: 'POST', body: JSON.stringify(body) }),
+  createTables: (placeId: string, body: { prefix?: string; from: number; to: number; capacity?: number }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/tables/bulk`, { method: 'POST', body: JSON.stringify(body) }),
   updateTable: (placeId: string, tableId: string, body: Record<string, unknown>) =>
     fetchWithAuth(`/business/places/${placeId}/orders/tables/${tableId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   regenerateQr: (placeId: string, tableId: string) =>
