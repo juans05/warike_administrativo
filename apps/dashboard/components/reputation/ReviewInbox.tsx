@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Info, MessageSquare, Search } from 'lucide-react';
 import { Badge, Button, Card, DataList, EmptyState, InboxLayout, Input, Select } from '../ui';
 import { GBP_API_ENABLED, STARS, reviewDate, type GoogleReview } from './googleReviews';
 import { InboxRow } from './InboxRow';
-import { ReviewDetail } from './ReviewDetail';
+import { ReviewDetail, type AutoReply } from './ReviewDetail';
+import { reputacionApi } from '../../lib/api-client';
 import { ReviewerAvatar } from './ReviewerAvatar';
 import { useCustomerLabels } from '../../hooks/useCustomerLabels';
 
@@ -28,6 +29,21 @@ export function ReviewInbox({ reviews, rating, total, placeId, isBusy, onConnect
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [autoReplies, setAutoReplies] = useState<Map<string, AutoReply>>(new Map());
+
+  // Estado de las respuestas automáticas (programadas, publicadas, sin cupo, con error) por reseña.
+  const loadAutoReplies = useCallback(() => {
+    if (!GBP_API_ENABLED) return;
+    reputacionApi.replies(placeId)
+      .then((rows: AutoReply[]) => {
+        // La lista viene de la más nueva a la más antigua: se queda la fila más reciente por reseña.
+        const byName = new Map<string, AutoReply>();
+        for (const r of rows ?? []) if (r.reviewName && !byName.has(r.reviewName)) byName.set(r.reviewName, r);
+        setAutoReplies(byName);
+      })
+      .catch(() => setAutoReplies(new Map()));
+  }, [placeId]);
+  useEffect(loadAutoReplies, [loadAutoReplies]);
 
   // Con la API de Business Profile cada reseña trae `name` y se puede responder desde aquí.
   const canReply = reviews.some((r) => r.name);
@@ -103,7 +119,9 @@ export function ReviewInbox({ reviews, rating, total, placeId, isBusy, onConnect
       placeId={placeId}
       draft={drafts[selected.key]}
       onDraft={(value) => setDrafts((prev) => ({ ...prev, [selected.key]: value }))}
-      onReplied={onReplied}
+      onReplied={(name, comment) => { onReplied(name, comment); loadAutoReplies(); }}
+      autoReply={selected.name ? autoReplies.get(selected.name) : undefined}
+      onAutoChanged={loadAutoReplies}
     />
   );
 

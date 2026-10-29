@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Copy, Pencil, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { businessApi } from '../../lib/api-client';
+import { businessApi, reputacionApi } from '../../lib/api-client';
 import { copyText } from '../../lib/clipboard';
 import { Badge, Button, Textarea } from '../ui';
 import { GOOGLE_REVIEWS_URL, STARS, reviewDate, type GoogleReview } from './googleReviews';
@@ -17,22 +17,28 @@ function Sentiment({ stars }: { stars: number }) {
   return <Badge tone="danger">Negativa</Badge>;
 }
 
+/** Respuesta automática de Wuarikes para una reseña (tabla review_replies). */
+export type AutoReply = { id: string; reviewName: string; status: string; scheduledAt?: string; error?: string };
+
 /**
  * Detalle de una reseña de Google: comentario, respuesta publicada y editor de respuesta.
  * El borrador vive en la bandeja (`draft`) para no perderlo al cambiar de reseña.
  */
-export function ReviewDetail({ review, placeId, draft, onDraft, onReplied }: {
+export function ReviewDetail({ review, placeId, draft, onDraft, onReplied, autoReply, onAutoChanged }: {
   review: GoogleReview;
   placeId: string;
   /** `undefined`: sin edición en curso (solo si ya hay una respuesta publicada). */
   draft: string | undefined;
   onDraft(value: string | undefined): void;
   onReplied(reviewName: string, comment: string): void;
+  autoReply?: AutoReply;
+  onAutoChanged?(): void;
 }) {
   const stars = STARS[review.starRating] ?? 1;
   const { customer } = useCustomerLabels();
   const name = review.reviewer?.displayName || 'Usuario de Google';
-  const [busy, setBusy] = useState<'suggest' | 'publish' | null>(null);
+  const [busy, setBusy] = useState<'suggest' | 'publish' | 'cancel' | null>(null);
+  const [aiLeft, setAiLeft] = useState<number | null>(null);
   const editing = draft !== undefined || !review.reviewReply;
   const text = draft ?? '';
 
@@ -43,10 +49,25 @@ export function ReviewDetail({ review, placeId, draft, onDraft, onReplied }: {
         comment: review.comment,
         stars,
         reviewerName: review.reviewer?.isAnonymous ? undefined : review.reviewer?.displayName,
+        reviewName: review.name,
       });
       onDraft(res.reply);
+      if (res.quota) setAiLeft(res.quota.remaining);
     } catch (e: any) {
       toast.error(e?.message || 'No se pudo generar la sugerencia');
+    }
+    setBusy(null);
+  };
+
+  const cancelAuto = async () => {
+    if (!autoReply) return;
+    setBusy('cancel');
+    try {
+      await reputacionApi.cancelReply(placeId, autoReply.id);
+      toast.success('Respuesta automática cancelada');
+      onAutoChanged?.();
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo cancelar');
     }
     setBusy(null);
   };
@@ -94,6 +115,20 @@ export function ReviewDetail({ review, placeId, draft, onDraft, onReplied }: {
         {review.comment || `El ${customer} no dejó ningún comentario.`}
       </p>
 
+      {autoReply?.status === 'publicada' && <Badge tone="success">Respondida automáticamente</Badge>}
+      {autoReply?.status === 'programada' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-primary-soft px-4 py-3">
+          <p className="text-sm text-text">
+            Se responderá automáticamente a las {autoReply.scheduledAt ? new Date(autoReply.scheduledAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : '—'}.
+          </p>
+          <Button variant="secondary" size="sm" loading={busy === 'cancel'} disabled={busy !== null} onClick={cancelAuto}>
+            {busy === 'cancel' ? 'Cancelando...' : 'Cancelar'}
+          </Button>
+        </div>
+      )}
+      {autoReply?.status === 'sin_cupo' && <p className="text-sm text-amber-800">Se acabó tu cupo de IA del mes: respóndela tú.</p>}
+      {autoReply?.status === 'error' && <p role="alert" className="text-sm text-danger">No se pudo publicar la respuesta automática: {autoReply.error}</p>}
+
       {review.reviewReply && !editing && (
         <div className="space-y-3">
           <div className="space-y-1 border-l-4 border-primary pl-4">
@@ -136,6 +171,7 @@ export function ReviewDetail({ review, placeId, draft, onDraft, onReplied }: {
               </Button>
             )}
           </div>
+          {aiLeft !== null && <p className="text-xs text-text-muted">Te quedan {aiLeft} respuestas con IA este mes.</p>}
         </div>
       )}
     </div>

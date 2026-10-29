@@ -5,6 +5,7 @@ import { PartyPopper, ShieldAlert, Smartphone } from 'lucide-react';
 import { Badge, Card, EmptyState, Skeleton, StatTile, buttonStyles } from '../ui';
 import ReviewGoal from '../ReviewGoal';
 import TeamRanking from '../TeamRanking';
+import SeoScore from '../SeoScore';
 import { Stars } from './Stars';
 import type { ReputationStats } from './useReputationStats';
 import { useCustomerLabels } from '../../hooks/useCustomerLabels';
@@ -123,7 +124,8 @@ export function ReputationSummary({ placeId, stats, recentComplaints, isLoading,
         </Card>
       </div>
 
-      <ReviewGoal rating={stats.ratingAverage} total={googleReviewCount} />
+      <SeoScore placeId={placeId} />
+      <ReviewGoal placeId={placeId} rating={stats.ratingAverage} total={googleReviewCount} />
       <TeamRanking placeId={placeId} />
     </div>
   );

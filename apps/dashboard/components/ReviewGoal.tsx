@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Target } from 'lucide-react';
+import { toast } from 'sonner';
+import { businessApi } from '../lib/api-client';
 import { Card, cn } from './ui';
 
 const WEEKLY_PACE = 10;
@@ -13,9 +15,18 @@ export function reviewsNeeded(rating: number, total: number, target: number): nu
 }
 
 // Convierte un decimal abstracto en una tarea: cuántas reseñas de 5 estrellas faltan y a qué ritmo.
-export default function ReviewGoal({ rating, total }: { rating: number; total: number }) {
+export default function ReviewGoal({ placeId, rating, total }: { placeId: string; rating: number; total: number }) {
   const defaultTarget = rating < 4.5 ? 4.5 : rating < 4.8 ? 4.8 : 4.9;
   const [target, setTarget] = useState<number | null>(null);
+  // La meta elegida se guarda en la configuración de reseñas de la sede.
+  useEffect(() => {
+    setTarget(null);
+    businessApi.getReviewAuto(placeId).then((s) => { if (s?.goalRating > rating) setTarget(s.goalRating); }).catch(() => {});
+  }, [placeId, rating]);
+  const choose = (t: number) => {
+    setTarget(t);
+    businessApi.setReviewAuto(placeId, { goalRating: t }).catch(() => toast.error('No se pudo guardar tu meta'));
+  };
   const goal = target ?? defaultTarget;
 
   if (!rating || !total) return null;
@@ -42,7 +53,7 @@ export default function ReviewGoal({ rating, total }: { rating: number; total: n
               type="button"
               role="radio"
               aria-checked={t === goal}
-              onClick={() => setTarget(t)}
+              onClick={() => choose(t)}
               className={cn(
                 'min-h-11 rounded-control border px-4 text-sm font-medium transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',

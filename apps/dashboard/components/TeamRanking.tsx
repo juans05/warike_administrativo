@@ -3,37 +3,73 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { toast } from 'sonner';
-import { businessApi } from '../lib/api-client';
-import { Card, Select, controlStyles } from './ui';
+import { businessApi, teamApi } from '../lib/api-client';
+import { Badge, Button, Card, Input, Select, controlStyles } from './ui';
 
-type Row = { id: string; name: string; scans: number; opinions: number; positive: number };
+type Row = {
+  id: string;
+  name: string;
+  scans: number;
+  opinions: number;
+  positive: number;
+  teamMemberId: string | null;
+  memberName: string | null;
+  weeklyGoal: number | null;
+  weekOpinions: number;
+  weekScans: number;
+};
 
-// Un dispositivo por mesero o zona: el ranking cuenta las opiniones que consigue cada uno.
+// Un dispositivo por mesero o zona: el ranking y la meta semanal cuentan opiniones (cualquier calificación),
+// nunca reseñas de Google ni estrellas (Google prohíbe fijar al personal cuotas de reseñas).
 export default function TeamRanking({ placeId }: { placeId: string }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [days, setDays] = useState(30);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [members, setMembers] = useState<{ id: string; fullName: string }[]>([]);
+  const [configuring, setConfiguring] = useState<string | null>(null);
 
   const load = useCallback(() => {
     businessApi.getDeviceRanking(placeId, days).then(setRows).catch(() => setRows([]));
   }, [placeId, days]);
   useEffect(load, [load]);
 
+  // Solo supervisor+ puede listar el equipo; si falla, no se muestra el selector.
+  useEffect(() => {
+    teamApi.list(placeId).then((r) => setMembers(r?.data ?? [])).catch(() => setMembers([]));
+  }, [placeId]);
+
   if (!rows || rows.length === 0) return null;
 
   const top = Math.max(1, ...rows.map((r) => r.opinions));
+  const leader = rows
+    .filter((r) => r.weekOpinions > 0)
+    .sort((a, b) => b.weekOpinions - a.weekOpinions || b.weekScans - a.weekScans || a.name.localeCompare(b.name))[0];
 
-  const rename = async (row: Row) => {
+  const save = async (row: Row, data: { name?: string; teamMemberId?: string | null; weeklyGoal?: number | null }, errorText: string) => {
+    try {
+      await businessApi.updateDevice(placeId, row.id, data);
+      load();
+    } catch (err: any) {
+      toast.error(err?.message || errorText);
+    }
+  };
+
+  const rename = (row: Row) => {
     const name = draft.trim();
     setEditing(null);
     if (!name || name === row.name) return;
-    try {
-      await businessApi.updateDevice(placeId, row.id, { name });
-      load();
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo cambiar el nombre');
+    save(row, { name }, 'No se pudo cambiar el nombre');
+  };
+
+  const saveGoal = (row: Row, value: string) => {
+    const n = value.trim() === '' ? null : Math.round(Number(value));
+    if (n !== null && (!Number.isFinite(n) || n < 1 || n > 500)) {
+      toast.error('La meta debe estar entre 1 y 500');
+      return;
     }
+    if (n === row.weeklyGoal) return;
+    save(row, { weeklyGoal: n }, 'No se pudo guardar');
   };
 
   return (
@@ -45,7 +81,9 @@ export default function TeamRanking({ placeId }: { placeId: string }) {
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-text">Ranking del equipo</h3>
-            <p className="text-sm text-text-muted">Ponle a cada dispositivo el nombre de quien lo usa (toca el nombre) y verás quién consigue más opiniones.</p>
+            <p className="text-sm text-text-muted">
+              Asigna cada dispositivo a quien lo usa y ponle una meta semanal. La meta cuenta opiniones, sin importar las estrellas: invita a todos a opinar.
+            </p>
           </div>
         </div>
         <div className="w-32">
@@ -79,11 +117,12 @@ export default function TeamRanking({ placeId }: { placeId: string }) {
                     type="button"
                     onClick={() => { setEditing(row.id); setDraft(row.name); }}
                     className="min-h-11 truncate rounded-control text-left text-sm font-medium text-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    title="Cambiar nombre"
+                    title="Cambiar nombre del dispositivo"
                   >
-                    {row.name}
+                    {row.memberName ?? row.name}
                   </button>
                 )}
+                {leader?.id === row.id && <Badge tone="success">Líder de la semana</Badge>}
               </div>
               <p className="shrink-0 text-sm tabular-nums text-text-muted">
                 <b className="text-text">{row.opinions}</b> opiniones · {row.positive} de 4-5 estrellas · {row.scans} escaneos
@@ -92,6 +131,51 @@ export default function TeamRanking({ placeId }: { placeId: string }) {
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-border">
               <div className="h-full rounded-full bg-primary" style={{ width: `${(row.opinions / top) * 100}%` }} />
             </div>
+
+            {row.weeklyGoal ? (
+              <>
+                <p className="mt-3 text-sm tabular-nums text-text-muted">{row.weekOpinions} / {row.weeklyGoal} opiniones esta semana</p>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-border">
+                  <div className="h-full rounded-full bg-success" style={{ width: `${Math.min(100, (row.weekOpinions / row.weeklyGoal) * 100)}%` }} />
+                </div>
+              </>
+            ) : null}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              aria-expanded={configuring === row.id}
+              onClick={() => setConfiguring(configuring === row.id ? null : row.id)}
+            >
+              {configuring === row.id ? 'Cerrar' : 'Asignar y meta'}
+            </Button>
+            {configuring === row.id && (
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                {members.length > 0 && (
+                  <Select
+                    label="Miembro del equipo"
+                    value={row.teamMemberId ?? ''}
+                    onChange={(e) => save(row, { teamMemberId: e.target.value || null }, 'No se pudo guardar')}
+                  >
+                    <option value="">Sin asignar</option>
+                    {members.map((m) => (
+                      <option key={m.id} value={m.id}>{m.fullName}</option>
+                    ))}
+                  </Select>
+                )}
+                <Input
+                  label="Meta semanal de opiniones"
+                  type="number"
+                  min={1}
+                  max={500}
+                  placeholder="Sin meta"
+                  defaultValue={row.weeklyGoal ?? ''}
+                  onBlur={(e) => saveGoal(row, e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveGoal(row, (e.target as HTMLInputElement).value); }}
+                />
+              </div>
+            )}
           </li>
         ))}
       </ol>

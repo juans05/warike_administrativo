@@ -3,6 +3,21 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 
 // ── Payload types ────────────────────────────────────────────────────────────
 
+// Configuración de reseñas por sede (metadata.reviewAuto en el backend).
+export type ReviewAutoSettings = {
+  alerts: boolean;
+  googleConnected?: boolean;
+  lowRatingMax?: number;
+  keywords?: string[];
+  alertEmail?: string;
+  autoReply?: { enabled: boolean; stars: number[]; delayMin: number; delayMax: number };
+  tone?: 'cercano' | 'formal' | 'divertido';
+  toneNotes?: string;
+  language?: 'cliente' | 'es';
+  contactEmail?: string;
+  goalRating?: number;
+};
+
 export interface ProfileUpdate {
   name?: string;
   description?: string;
@@ -344,9 +359,9 @@ export const businessApi = {
       body: JSON.stringify(data),
     }),
 
-  // Alertas de reseñas bajas y respuesta automática a las de 4 y 5 estrellas
+  // Alertas, palabras clave, respuesta automática, estilo y meta de estrellas
   getReviewAuto: (id: string) => fetchWithAuth(`/business/places/${id}/review-auto`),
-  setReviewAuto: (id: string, settings: { alerts: boolean }) =>
+  setReviewAuto: (id: string, settings: Partial<ReviewAutoSettings>) =>
     fetchWithAuth(`/business/places/${id}/review-auto`, { method: 'PATCH', body: JSON.stringify(settings) }),
 
   // Opiniones y escaneos por dispositivo (ranking del equipo)
@@ -468,7 +483,7 @@ export const businessApi = {
       method: 'PUT',
       body: JSON.stringify({ reviewName, comment }),
     }),
-  suggestGoogleReply: (id: string, review: { comment?: string; stars: number; reviewerName?: string }) =>
+  suggestGoogleReply: (id: string, review: { comment?: string; stars: number; reviewerName?: string; reviewName?: string }) =>
     fetchWithAuth(`/business/places/${id}/google-reviews/suggest-reply`, {
       method: 'POST',
       body: JSON.stringify(review),
@@ -1286,4 +1301,16 @@ export const publicOrdersApi = {
   payWithToken: (paymentId: string, token: string) =>
     fetchPublic(`/public/payments/${paymentId}/token`, { method: 'POST', body: JSON.stringify({ token }) }),
   paymentStatus: (paymentId: string) => fetchPublic(`/public/payments/${paymentId}`),
+};
+
+// Reputación: cupo de IA, respuestas automáticas y análisis SEO (por sede, con roles del equipo).
+export const reputacionApi = {
+  quota: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/reputacion/cuota`),
+  replies: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/reputacion/respuestas`),
+  cancelReply: (placeId: string, replyId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/reputacion/respuestas/${replyId}/cancelar`, { method: 'POST' }),
+  replyOld: (placeId: string, body: { stars: number[]; max: number }) =>
+    fetchWithAuth(`/business/places/${placeId}/reputacion/responder-antiguas`, { method: 'POST', body: JSON.stringify(body) }),
+  seo: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/reputacion/seo`),
+  recalcSeo: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/reputacion/seo/recalcular`, { method: 'POST' }),
 };
