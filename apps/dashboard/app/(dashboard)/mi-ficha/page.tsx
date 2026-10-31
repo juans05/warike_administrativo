@@ -61,7 +61,6 @@ export default function MiFichaPage() {
   // Tipo de negocio: el guardado (savedType) y el elegido en el formulario.
   const [verticals, setVerticals] = useState<BusinessTypesResponse['verticals']>([]);
   const [savedType, setSavedType] = useState('');
-  const [savedCategoryId, setSavedCategoryId] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [isDirty, setIsDirty] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -101,12 +100,12 @@ export default function MiFichaPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Categorías solo del rubro del local (sin vertical conocido, el backend devuelve gastronomía).
-  const placeVertical = activePlace?.vertical;
+  // Especialidades del rubro elegido en el formulario (sin vertical conocido, el backend devuelve gastronomía).
+  const rubroKey = verticalOf(businessType)?.key ?? activePlace?.vertical;
   useEffect(() => {
     const token = localStorage.getItem('token');
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const query = placeVertical ? `?vertical=${encodeURIComponent(placeVertical)}` : '';
+    const query = rubroKey ? `?vertical=${encodeURIComponent(rubroKey)}` : '';
     fetch(`${API_BASE}/api/places/categories${query}`, { headers })
       .then(res => res.json())
       .then(data => {
@@ -116,7 +115,7 @@ export default function MiFichaPage() {
         setFormData(prev => !prev.categoriaId || cats.some(c => c.id === prev.categoriaId) ? prev : { ...prev, categoriaId: '' });
       })
       .catch(err => console.error(err));
-  }, [placeVertical]);
+  }, [rubroKey]);
 
   // Location logic - Cascada de ubicación
   useEffect(() => {
@@ -208,7 +207,6 @@ export default function MiFichaPage() {
         const type = profile.businessType || activePlace?.businessType || '';
         setSavedType(type);
         setBusinessType(type);
-        setSavedCategoryId(profile.categoryId || '');
 
         isLoadingProfile.current = true;
 
@@ -321,11 +319,9 @@ export default function MiFichaPage() {
         name: formData.nombre,
         address: formData.direccion,
         ...(typeChanged && { businessType }),
-        // Rubro change: no categoryId (the backend clears one from another rubro; re-sending it is a 400).
-        // Type change within the rubro: categoryId only if the owner changed it (the backend accepts it).
-        categoryId: verticalChanged || (typeChanged && formData.categoriaId === savedCategoryId)
-          ? undefined
-          : (formData.categoriaId || undefined),
+        // La lista solo trae especialidades del rubro elegido (una de otro rubro se descarta al cambiarlo),
+        // así que el backend la valida contra el nuevo tipo. Sin especialidad, limpia la del rubro anterior.
+        categoryId: formData.categoriaId || undefined,
         districtId: country === 'PE' ? (formData.ubigeoId || undefined) : null,
         amenityIds: formData.amenityIds,
         openHoursText: JSON.stringify(formData.horarios),
@@ -336,12 +332,6 @@ export default function MiFichaPage() {
         spainProvince: country === 'ES' ? (formData.provincia || null) : null,
         spainMunicipality: country === 'ES' ? (formData.distrito || null) : null,
       });
-      if (verticalChanged) {
-        setFormData(prev => ({ ...prev, categoriaId: '' }));
-        setSavedCategoryId('');
-      } else if (formData.categoriaId) {
-        setSavedCategoryId(formData.categoriaId);
-      }
       if (typeChanged) {
         setSavedType(businessType);
         await refreshPlaces(); // menú y etiquetas del nuevo rubro
@@ -381,20 +371,34 @@ export default function MiFichaPage() {
       <PageHeader title="Mi ficha" subtitle="Lo que tus clientes ven de tu negocio en Wuarikes." />
 
       <Card padding="lg" className="space-y-4">
-        <CardTitle title="Tipo de negocio" subtitle="Define qué secciones del panel ves y cómo se llaman." />
-        <Select
-          label="Tipo de negocio"
-          value={businessType}
-          onChange={(e) => { setBusinessType(e.target.value); setIsDirty(true); }}
-          hint={selectedVertical ? `Rubro: ${selectedVertical.label}` : undefined}
-        >
-          {!businessType && <option value="">Elige el tipo de negocio</option>}
-          {verticals.map(v => (
-            <optgroup key={v.key} label={v.label}>
-              {v.types.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-            </optgroup>
-          ))}
-        </Select>
+        <CardTitle title="Tipo de negocio" subtitle="El rubro define qué secciones del panel ves y cómo se llaman." />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select
+            label="Rubro"
+            value={selectedVertical?.key ?? ''}
+            onChange={(e) => {
+              const next = verticals.find(v => v.key === e.target.value);
+              if (!next) return;
+              // El tipo interno se mantiene si ya es del rubro; si no, se toma el primero del rubro.
+              if (!next.types.some(t => t.key === businessType)) setBusinessType(next.types[0]?.key ?? '');
+              setIsDirty(true);
+            }}
+          >
+            {!selectedVertical && <option value="">Elige el rubro</option>}
+            {verticals.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+          </Select>
+          <Select
+            label="Especialidad"
+            value={formData.categoriaId}
+            onChange={(e) => update({ categoriaId: e.target.value })}
+            disabled={!selectedVertical}
+          >
+            {!formData.categoriaId && <option value="">Elige una especialidad</option>}
+            {dbCategories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </Select>
+        </div>
       </Card>
 
       <Card padding="lg" className="space-y-4">
@@ -405,17 +409,6 @@ export default function MiFichaPage() {
           onChange={(e) => update({ nombre: e.target.value })}
           placeholder="Ej. La Picantería del Sur"
         />
-        <Select
-          label="Especialidad"
-          value={formData.categoriaId}
-          onChange={(e) => update({ categoriaId: e.target.value })}
-          hint={verticalChanged ? 'Al guardar el nuevo rubro elegirás una especialidad de ese rubro.' : undefined}
-        >
-          {!formData.categoriaId && <option value="">Elige una especialidad</option>}
-          {dbCategories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </Select>
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-text">Comodidades</legend>
           <div className="flex flex-wrap gap-2">
