@@ -385,7 +385,7 @@ export default function PublicMenuPage() {
   const totalDishes = categories.reduce((n, c) => n + c.dishes.length, 0);
 
   return (
-    <TableOrderingProvider qrToken={mesa}>
+    <TableOrderingProvider qrToken={mesa} placeId={id}>
     <PalContext.Provider value={C}>
     <div className={shell} style={shellStyle}>
       <style>{FONTS_CSS + '.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>

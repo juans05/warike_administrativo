@@ -22,7 +22,9 @@ export default function OrderTrackingPage({ params }: { params: { token: string 
     <main className="mx-auto max-w-md space-y-6 p-6">
       <h1 className="text-2xl font-bold">Pedido #{order.number}</h1>
       <p className="text-lg font-semibold" aria-live="polite">{STATUS_LABEL[order.status as OrderStatus]}</p>
-      {order.status !== 'CANCELADO' && order.status !== 'PENDIENTE_PAGO' && (
+      {order.status === 'POR_CONFIRMAR' && <p className="rounded-2xl bg-orange-50 p-4 text-sm text-gray-700">El local está confirmando tu pedido. Esta pantalla se actualiza sola.</p>}
+      {order.status === 'CANCELADO' && order.cancelReason && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">{order.cancelReason}</p>}
+      {current >= 0 && (
         <ol className="flex gap-2" aria-label="Avance del pedido">
           {STEPS.map((s, i) => (
             <li key={s} className={`h-2 flex-1 rounded-full ${i <= current ? 'bg-[#F26122]' : 'bg-gray-200'}`} aria-label={STATUS_LABEL[s]} />

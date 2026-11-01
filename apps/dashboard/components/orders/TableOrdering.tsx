@@ -3,9 +3,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
-import { publicOrdersApi } from '../../lib/api-client';
+import { publicOrdersApi, type WebOrdering } from '../../lib/api-client';
 import { soles } from '../../lib/orders-format';
 import CulqiPay from './CulqiPay';
+import WebCheckout from './WebCheckout';
 
 interface Line { dishId: string; name: string; unitPrice: number; quantity: number; note: string }
 interface TableInfo { place: { id: string; name: string }; table: { name: string }; ordering: { enabled: boolean; tablePaymentMode: 'CUENTA_ABIERTA' | 'PREPAGO'; cashPaymentEnabled: boolean }; pinRequired: boolean }
@@ -16,8 +17,10 @@ export const useTableOrdering = () => useContext(Ctx);
 
 const toCents = (price: string | null) => Math.round(Number(price ?? 0) * 100);
 
-export function TableOrderingProvider({ qrToken, children }: { qrToken: string | null; children: React.ReactNode }) {
+// Con qrToken (?mesa=) es el pedido en mesa de siempre; sin él, la carta del QR general/NFC pide por WebCheckout si el local ofrece alguna opción.
+export function TableOrderingProvider({ qrToken, placeId, children }: { qrToken: string | null; placeId: string; children: React.ReactNode }) {
   const [info, setInfo] = useState<TableInfo | null>(null);
+  const [web, setWeb] = useState<WebOrdering | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -37,7 +40,13 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
     publicOrdersApi.table(qrToken).then(setInfo).catch(() => toast.error('Este código QR ya no es válido. Pide ayuda al personal.'));
   }, [qrToken]);
 
-  const enabled = !!info?.ordering.enabled;
+  useEffect(() => {
+    if (qrToken) return;
+    publicOrdersApi.actions(placeId).then((a) => setWeb(a.webOrdering)).catch(() => { /* sin datos: la carta queda solo de lectura */ });
+  }, [qrToken, placeId]);
+
+  const webEnabled = !!web && (web.dineIn || web.pickup || web.delivery);
+  const enabled = qrToken ? !!info?.ordering.enabled : webEnabled;
   const add = useCallback((dish: { id: string; name: string; price: string | null }) => {
     if (!dish.price) return;
     setLines((prev) => {
@@ -79,6 +88,26 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
     }
   };
 
+  const cartList = (
+    <ul className="space-y-4">
+      {lines.map((l) => (
+        <li key={l.dishId} className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold">{l.name}</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setQty(l.dishId, -1)} aria-label={`Quitar uno de ${l.name}`} className="rounded-full border p-1"><Minus size={16} /></button>
+              <span className="w-5 text-center font-bold">{l.quantity}</span>
+              <button onClick={() => setQty(l.dishId, 1)} aria-label={`Agregar uno de ${l.name}`} className="rounded-full border p-1"><Plus size={16} /></button>
+            </div>
+          </div>
+          <input value={l.note} maxLength={200} placeholder="Nota para cocina (ej. sin cebolla)" aria-label={`Nota para ${l.name}`}
+            onChange={(e) => setLines((prev) => prev.map((x) => (x.dishId === l.dishId ? { ...x, note: e.target.value } : x)))}
+            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+        </li>
+      ))}
+    </ul>
+  );
+
   const value = useMemo(() => ({ enabled, add }), [enabled, add]);
   const tabToken = (qrToken && typeof window !== 'undefined' ? (() => { try { return localStorage.getItem(`wuarike:tab:${qrToken}`); } catch { return null; } })() : null);
 
@@ -98,7 +127,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
           )}
         </div>
       )}
-      {open && (
+      {open && qrToken && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" role="dialog" aria-modal="true" aria-label="Tu pedido">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-6 space-y-5">
             <div className="flex items-center justify-between">
@@ -116,23 +145,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
                     placeholder="4 dígitos" aria-label="PIN de la mesa" className="w-full rounded-xl border border-gray-200 px-3 py-3 text-center text-lg tracking-[0.5em]" />
                   <span className="block text-xs text-gray-500">Pídelo al personal del local. Solo se pide una vez.</span>
                 </label>
-                <ul className="space-y-4">
-                  {lines.map((l) => (
-                    <li key={l.dishId} className="space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-semibold">{l.name}</span>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => setQty(l.dishId, -1)} aria-label={`Quitar uno de ${l.name}`} className="rounded-full border p-1"><Minus size={16} /></button>
-                          <span className="w-5 text-center font-bold">{l.quantity}</span>
-                          <button onClick={() => setQty(l.dishId, 1)} aria-label={`Agregar uno de ${l.name}`} className="rounded-full border p-1"><Plus size={16} /></button>
-                        </div>
-                      </div>
-                      <input value={l.note} maxLength={200} placeholder="Nota para cocina (ej. sin cebolla)" aria-label={`Nota para ${l.name}`}
-                        onChange={(e) => setLines((prev) => prev.map((x) => (x.dishId === l.dishId ? { ...x, note: e.target.value } : x)))}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
-                    </li>
-                  ))}
-                </ul>
+                {cartList}
                 <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre (opcional)" aria-label="Tu nombre" className="w-full rounded-xl border border-gray-200 px-3 py-3" />
                 <input value={phone} maxLength={30} inputMode="tel" onChange={(e) => setPhone(e.target.value)} placeholder="Tu WhatsApp para sumar puntos (opcional)" aria-label="Tu WhatsApp" className="w-full rounded-xl border border-gray-200 px-3 py-3" />
                 <div className="flex items-center justify-between text-lg font-bold"><span>Total</span><span>{soles(total)}</span></div>
@@ -144,6 +157,7 @@ export function TableOrderingProvider({ qrToken, children }: { qrToken: string |
           </div>
         </div>
       )}
+      {!qrToken && enabled && web && <WebCheckout open={open} onClose={() => setOpen(false)} placeId={placeId} web={web} lines={lines} total={total} cartList={cartList} onSent={() => setLines([])} />}
     </Ctx.Provider>
   );
 }
