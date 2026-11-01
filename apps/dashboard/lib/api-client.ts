@@ -1234,15 +1234,22 @@ export interface ReceiptRequest {
   customerAddress?: string;
 }
 
+export type WebPaymentMode = 'ONLINE' | 'ONLINE_O_ENTREGA';
+/** Ajustes de pedidos del local; solo se tipan los campos que el código usa, el resto llega tal cual. */
+export interface OrderSettings { webPaymentMode: WebPaymentMode; cashPaymentEnabled: boolean; [key: string]: any }
+
 export const ordersApi = {
   me: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/me`),
-  list: (placeId: string, params: { status?: string; channel?: string; q?: string; page?: number } = {}) => {
+  list: (placeId: string, params: { status?: string; channel?: string; unpaid?: boolean; q?: string; page?: number } = {}) => {
     const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
     return fetchWithAuth(`/business/places/${placeId}/orders?${qs}`);
   },
   kds: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/kds`),
   changeStatus: (placeId: string, orderId: string, status: string, reason?: string) =>
     fetchWithAuth(`/business/places/${placeId}/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+  /** Acepta un pedido web POR_CONFIRMAR: pasa a NUEVO y llega a cocina. */
+  confirmOrder: (placeId: string, orderId: string) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/${orderId}/confirm`, { method: 'POST' }),
   tablesBoard: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables-board`),
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
@@ -1264,12 +1271,15 @@ export const ordersApi = {
     fetchWithAuth(`/business/places/${placeId}/orders/cash/open`, { method: 'POST', body: JSON.stringify({ openingAmount }) }),
   cashCharge: (placeId: string, body: ReceiptRequest & { tabId: string; method: CashMethod }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/charge`, { method: 'POST', body: JSON.stringify(body) }),
+  /** Cobra un pedido web (recojo o delivery) con su comprobante. */
+  chargeOrder: (placeId: string, orderId: string, body: ReceiptRequest & { method: CashMethod }) =>
+    fetchWithAuth(`/business/places/${placeId}/orders/cash/orders/${orderId}/charge`, { method: 'POST', body: JSON.stringify(body) }),
   /** Venta directa (mostrador) o cobro de una cita (appointmentId agrega su servicio). */
   cashSale: (placeId: string, body: ReceiptRequest & { method: CashMethod; appointmentId?: string; items?: { dishId?: string; name?: string; unitPrice?: number; quantity: number }[] }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/sale`, { method: 'POST', body: JSON.stringify(body) }),
   cashClose: (placeId: string, countedCash?: number) =>
     fetchWithAuth(`/business/places/${placeId}/orders/cash/close`, { method: 'POST', body: JSON.stringify(countedCash == null ? {} : { countedCash }) }),
-  getSettings: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
+  getSettings: (placeId: string): Promise<OrderSettings> => fetchWithAuth(`/business/places/${placeId}/orders/settings`),
   updateSettings: (placeId: string, body: Record<string, unknown>) =>
     fetchWithAuth(`/business/places/${placeId}/orders/settings`, { method: 'PATCH', body: JSON.stringify(body) }),
   testCulqi: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/settings/test-culqi`, { method: 'POST' }),
@@ -1289,7 +1299,26 @@ export const ordersApi = {
     fetchWithAuth(`/admin/order-payouts/commission/${placeId}`, { method: 'PATCH', body: JSON.stringify({ wuarikesCommissionPct }) }),
 };
 
+/** Qué ofrece la carta sin ?mesa= (null: el local no recibe pedidos web). deliveryFee en céntimos. */
+export interface WebOrdering {
+  dineIn: boolean; pickup: boolean; delivery: boolean;
+  deliveryFee: number; deliveryNote: string | null;
+  payOnline: boolean; payOnDelivery: boolean;
+}
+export interface PlaceActions { bookingUrl: string | null; orderWhatsapp: string | null; webOrdering: WebOrdering | null }
+export interface CreateWebOrderBody {
+  fulfillment: 'RECOJO' | 'DELIVERY';
+  items: { dishId: string; quantity: number; note?: string }[];
+  customerName: string; customerPhone: string;
+  deliveryAddress?: string; deliveryReference?: string; notes?: string;
+  payOnDelivery: boolean;
+}
+
 export const publicOrdersApi = {
+  actions: (placeId: string): Promise<PlaceActions> => fetchPublic(`/public/places/${placeId}/actions`),
+  placeTables: (placeId: string): Promise<{ name: string; qrToken: string }[]> => fetchPublic(`/public/places/${placeId}/tables`),
+  createWebOrder: (placeId: string, body: CreateWebOrderBody): Promise<{ orderToken: string; requiresPayment: boolean; total: number }> =>
+    fetchPublic(`/public/places/${placeId}/orders`, { method: 'POST', body: JSON.stringify(body) }),
   table: (qrToken: string) => fetchPublic(`/public/tables/${qrToken}`),
   verifyPin: (qrToken: string, pin: string) =>
     fetchPublic(`/public/tables/${qrToken}/verify-pin`, { method: 'POST', body: JSON.stringify({ pin }) }),

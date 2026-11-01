@@ -1,8 +1,9 @@
-import { Bell, ChefHat, CheckCircle2, PackageCheck, Wallet, XCircle, type LucideIcon } from 'lucide-react';
+import { Bell, ChefHat, CheckCircle2, Clock, PackageCheck, Wallet, XCircle, type LucideIcon } from 'lucide-react';
 import { STATUS_LABEL, type OrderStatus } from '../../lib/orders-format';
 
 // Solo panel (Pedidos y Cocina). El estado se lee por color, ícono y texto: nunca solo por color.
 export const STATUS_META: Record<OrderStatus, { icon: LucideIcon; className: string }> = {
+  POR_CONFIRMAR: { icon: Clock, className: 'bg-secondary/20 text-text border-secondary/60' },
   PENDIENTE_PAGO: { icon: Wallet, className: 'bg-background text-text border-border' },
   NUEVO: { icon: Bell, className: 'bg-primary-soft text-primary-hover border-primary/30' },
   EN_PREPARACION: { icon: ChefHat, className: 'bg-secondary/20 text-text border-secondary/60' },

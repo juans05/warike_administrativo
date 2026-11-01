@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Banknote, ChefHat, CheckCircle2, CreditCard, DoorClosed, FileText, Minus, Plus, Printer, Search, Smartphone, Trash2, UserRound } from 'lucide-react';
 import { ordersApi, publicApi, type ReceiptRequest } from '../../lib/api-client';
-import { STATUS_LABEL, soles, type OrderStatus } from '../../lib/orders-format';
+import { CHANNEL_LABEL, STATUS_LABEL, soles, type OrderChannel, type OrderStatus } from '../../lib/orders-format';
 import { Badge, Button, Input, Select } from '../ui';
 import { DOC_LABEL, EMPTY_RECEIPT, ReceiptFields } from '../caja/ReceiptFields';
 import { precuentaHtml, printHtml } from '../../lib/print';
@@ -12,7 +12,6 @@ import { useRestaurant } from '../../context/RestaurantContext';
 
 type Line = { key: string; dishId?: string; name: string; unitPrice: number; quantity: number };
 const toCents = (v: unknown) => Math.round((parseFloat(String(v ?? '0').replace(',', '.')) || 0) * 100);
-const CHANNEL_LABEL: Record<string, string> = { MESA: 'Carta digital', MOZO: 'Mozo', WHATSAPP: 'WhatsApp' };
 
 /**
  * Mesa vista por el mozo (celular, tablet o caja): mozo asignado, comanda ya enviada (rondas de la carta digital
@@ -122,7 +121,7 @@ export function MesaPanel({ placeId, row, onChanged }: { placeId: string; row: a
           {detail.orders.filter((o: any) => o.status !== 'CANCELADO').map((o: any) => (
             <div key={o.id} className="rounded-control border border-border p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                <Badge tone={o.channel === 'MOZO' ? 'primary' : 'neutral'}>{o.channel === 'MOZO' ? <UserRound size={14} aria-hidden /> : <Smartphone size={14} aria-hidden />}{CHANNEL_LABEL[o.channel] ?? o.channel}</Badge>
+                <Badge tone={o.channel === 'MOZO' ? 'primary' : 'neutral'}>{o.channel === 'MOZO' ? <UserRound size={14} aria-hidden /> : <Smartphone size={14} aria-hidden />}{CHANNEL_LABEL[o.channel as OrderChannel] ?? o.channel}</Badge>
                 <Badge tone={o.status === 'LISTO' ? 'warning' : o.status === 'ENTREGADO' ? 'success' : 'neutral'}>{STATUS_LABEL[o.status as OrderStatus] ?? o.status}</Badge>
                 <span className="text-text-muted">#{o.number} · {new Date(o.createdAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>

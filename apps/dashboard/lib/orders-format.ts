@@ -1,6 +1,7 @@
-export type OrderStatus = 'PENDIENTE_PAGO' | 'NUEVO' | 'EN_PREPARACION' | 'LISTO' | 'ENTREGADO' | 'CANCELADO';
+export type OrderStatus = 'POR_CONFIRMAR' | 'PENDIENTE_PAGO' | 'NUEVO' | 'EN_PREPARACION' | 'LISTO' | 'ENTREGADO' | 'CANCELADO';
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
+  POR_CONFIRMAR: 'Por confirmar',
   PENDIENTE_PAGO: 'Pendiente de pago',
   NUEVO: 'Nuevo',
   EN_PREPARACION: 'En preparación',
@@ -8,6 +9,9 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   ENTREGADO: 'Entregado',
   CANCELADO: 'Cancelado',
 };
+
+export type OrderChannel = 'MESA' | 'MOZO' | 'WHATSAPP' | 'WEB';
+export const CHANNEL_LABEL: Record<OrderChannel, string> = { MESA: 'Carta digital', MOZO: 'Mozo', WHATSAPP: 'WhatsApp', WEB: 'Carta web' };
 
 export const soles = (cents: number) => `S/ ${(cents / 100).toFixed(2)}`;
 
