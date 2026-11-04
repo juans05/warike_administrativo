@@ -3,12 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Broadcast, useBroadcasts } from '../../../hooks/useBroadcasts';
-import { useTemplates } from '../../../hooks/useTemplates';
 import { CampaignList } from '../../../components/broadcasts/CampaignList';
 import { CampaignModal } from '../../../components/broadcasts/CampaignModal';
 import { CampaignView } from '../../../components/broadcasts/CampaignView';
-import { TemplateList } from '../../../components/broadcasts/TemplateList';
-import { TemplateModal } from '../../../components/broadcasts/TemplateModal';
 import { MetaTemplates } from '../../../components/broadcasts/MetaTemplates';
 import Link from 'next/link';
 import { plural } from '../../../lib/modules';
@@ -34,23 +31,10 @@ export default function BroadcastsPage() {
     handlePauseReminder, editingId, openNewCampaign, openEditCampaign,
   } = useBroadcasts();
 
-  const {
-    templates, filteredTemplates,
-    templateSearch, setTemplateSearch,
-    syncing, resendingId, deletingId, togglingId,
-    showTemplateModal, setShowTemplateModal,
-    templateStep, setTemplateStep,
-    templateForm, setTemplateForm,
-    creatingTemplate,
-    loadTemplates, syncTemplates,
-    handleResend, handleDelete, handleToggle, handleCreateTemplate,
-    bodyVariables, addVariable, removeVariable,
-  } = useTemplates();
-
   useEffect(() => {
     if (!activePlaceId) { setLoading(false); return; }
     setLoading(true);
-    Promise.all([loadBroadcasts(activePlaceId), loadTemplates(), loadMetaTemplates(activePlaceId)])
+    Promise.all([loadBroadcasts(activePlaceId), loadMetaTemplates(activePlaceId)])
       .finally(() => setLoading(false));
   }, [activePlaceId]);
 
@@ -100,26 +84,14 @@ export default function BroadcastsPage() {
             />
           )}
 
+          {tab === 'templates' && activePlaceId && !(metaEnabled && waNumbers.some(n => n.provider === 'meta')) && (
+            <Card><EmptyState icon={Lock} title="Conecta tu WhatsApp con Facebook" description="Las plantillas se crean en tu cuenta de WhatsApp Business. Conéctala para verlas aquí." action={<Link href="/whatsapp" className={buttonStyles('primary')}>Conectar WhatsApp</Link>} /></Card>
+          )}
+
           {tab === 'templates' && activePlaceId && metaEnabled && waNumbers.some(n => n.provider === 'meta') && (
             <MetaTemplates placeId={activePlaceId} templates={metaTemplates} onChanged={() => loadMetaTemplates(activePlaceId)} />
           )}
 
-          {tab === 'templates' && (
-            <TemplateList
-              templates={filteredTemplates}
-              search={templateSearch}
-              onSearch={setTemplateSearch}
-              syncing={syncing}
-              onSync={syncTemplates}
-              onNew={() => { setShowTemplateModal(true); setTemplateStep('info'); }}
-              resendingId={resendingId}
-              deletingId={deletingId}
-              togglingId={togglingId}
-              onResend={handleResend}
-              onDelete={handleDelete}
-              onToggle={handleToggle}
-            />
-          )}
         </>
       )}
 
@@ -131,7 +103,6 @@ export default function BroadcastsPage() {
         onSubmit={handleCreateCampaign}
         creating={creatingCampaign}
         waNumbers={waNumbers}
-        approvedTemplates={templates.filter(t => t.status === 'APPROVED')}
         metaTemplates={metaTemplates}
         metaEnabled={metaEnabled}
         imports={imports}
@@ -140,19 +111,6 @@ export default function BroadcastsPage() {
 
       <CampaignView broadcast={viewing} templates={metaTemplates} onClose={() => setViewing(null)} />
 
-      <TemplateModal
-        open={showTemplateModal}
-        onClose={() => { setShowTemplateModal(false); setTemplateStep('info'); }}
-        step={templateStep}
-        onStep={setTemplateStep}
-        form={templateForm}
-        onChange={setTemplateForm}
-        onSubmit={handleCreateTemplate}
-        creating={creatingTemplate}
-        bodyVariables={bodyVariables}
-        addVariable={addVariable}
-        removeVariable={removeVariable}
-      />
     </div>
   );
 }

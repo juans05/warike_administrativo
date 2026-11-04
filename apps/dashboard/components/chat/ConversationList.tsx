@@ -1,7 +1,7 @@
 'use client';
 
-import { MessageSquare, RefreshCw, Search } from 'lucide-react';
-import { Badge, Button, EmptyState, Input, Skeleton, Tabs } from '../ui';
+import { MessageSquare, Search } from 'lucide-react';
+import { Badge, EmptyState, Input, Skeleton, Tabs } from '../ui';
 import { avatarInitial, conversationName, timeOf } from './format';
 
 export type ConversationFilter = 'unassigned' | 'mine' | 'all';
@@ -24,12 +24,10 @@ interface ConversationListProps {
   selectedId: string | null;
   unreadById: Record<string, number>;
   onSelect(conversation: any): void;
-  syncing: boolean;
-  onSync(): void;
 }
 
 export function ConversationList({
-  conversations, loading, filter, onFilter, search, onSearch, selectedId, unreadById, onSelect, syncing, onSync,
+  conversations, loading, filter, onFilter, search, onSearch, selectedId, unreadById, onSelect, 
 }: ConversationListProps) {
   const query = search.trim().toLowerCase();
   const visible = query
@@ -69,7 +67,6 @@ export function ConversationList({
             title="Sin conversaciones"
             description="Cuando te escriban por WhatsApp, las verás aquí."
             headingLevel="h3"
-            action={<Button variant="secondary" size="sm" icon={RefreshCw} loading={syncing} onClick={onSync}>Sincronizar con PlazBot</Button>}
           />
         )
       ) : (

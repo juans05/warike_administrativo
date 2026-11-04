@@ -55,7 +55,7 @@ export function WhatsAppBookingCard({ className = '' }: { className?: string }) 
       <div className="flex items-center gap-2.5 pb-2 border-b border-[var(--border)]">
         <span className="w-8 h-8 rounded-full bg-[var(--text)] text-white flex items-center justify-center"><Bot size={16} /></span>
         <div>
-          <p className="text-[13px] font-semibold text-[var(--text)]">PlazBot · WhatsApp</p>
+          <p className="text-[13px] font-semibold text-[var(--text)]">Bot de WhatsApp</p>
           <p className="text-[11px] text-[var(--accent)]">Responde 24/7</p>
         </div>
       </div>
@@ -161,7 +161,7 @@ const TABS: Tab[] = [
   {
     key: 'reputacion', label: 'Reseñas y WhatsApp IA', icon: Star,
     title: 'Más reseñas de 5 estrellas y respuestas en segundos',
-    points: ['Tus clientes dejan su reseña en Google tocando el NFC o el QR', 'La IA te propone la respuesta y tú decides qué publicar', 'PlazBot responde preguntas y agenda por WhatsApp, día y noche'],
+    points: ['Tus clientes dejan su reseña en Google tocando el NFC o el QR', 'La IA te propone la respuesta y tú decides qué publicar', 'Tu bot responde preguntas y agenda por WhatsApp, día y noche'],
     visual: (
       <div className="relative flex flex-col items-center gap-5 sm:block">
         <img src="/images/touch_review.png" alt="Cliente tocando el soporte NFC para dejar su reseña en Google"

@@ -67,7 +67,7 @@ export default function WhatsAppConfigPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold tabular-nums text-text">+{num.phoneNumber}</h3>
                     <Badge tone={num.isActive ? 'success' : 'warning'}>{num.isActive ? 'Activo' : 'Pendiente'}</Badge>
-                    <Badge>{num.provider === 'meta' ? (num.isActive ? 'Facebook' : 'Facebook (pausado)') : 'PlazBot'}</Badge>
+                    <Badge>{num.provider === 'meta' ? (num.isActive ? 'Facebook' : 'Facebook (pausado)') : 'No conectado'}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-text-muted">Registrado el {new Date(num.createdAt).toLocaleDateString('es-PE')}</p>
                 </div>

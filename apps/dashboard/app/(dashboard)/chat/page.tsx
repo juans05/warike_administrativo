@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { businessApi, teamApi } from '../../../lib/api-client';
 import { toast } from 'sonner';
-import { MessageSquare, RefreshCw } from 'lucide-react';
-import { Button, EmptyState, InboxLayout, PageHeader } from '../../../components/ui';
+import { MessageSquare } from 'lucide-react';
+import { EmptyState, InboxLayout, PageHeader } from '../../../components/ui';
 import { BillingAlert } from '../../../components/whatsapp/BillingAlert';
 import { ConversationList, type ConversationFilter } from '../../../components/chat/ConversationList';
 import { ChatThread } from '../../../components/chat/ChatThread';
@@ -55,7 +55,6 @@ export default function ChatPage() {
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSendingFile, setIsSendingFile] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [filter, setFilter] = useState<ConversationFilter>('unassigned');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [newMessageCount, setNewMessageCount] = useState<Record<string, number>>({});
@@ -309,21 +308,6 @@ export default function ChatPage() {
     }
   };
 
-  const handleSync = async () => {
-    if (!activePlaceId || isSyncing) return;
-    setIsSyncing(true);
-    try {
-      const res = await businessApi.syncPlazbotConversations(activePlaceId);
-      toast.success(`Sincronizadas ${res.synced} conversaciones de PlazBot`);
-      const data = await loadConversations(activePlaceId);
-      if (!selectedConv && data.length > 0 && isDesktop()) setSelectedConv(data[0]);
-    } catch {
-      toast.error('Error al sincronizar con PlazBot');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const list = (
     <ConversationList
       conversations={conversations}
@@ -335,8 +319,6 @@ export default function ChatPage() {
       selectedId={selectedConv?.id ?? null}
       unreadById={newMessageCount}
       onSelect={setSelectedConv}
-      syncing={isSyncing}
-      onSync={handleSync}
     />
   );
 
@@ -371,11 +353,6 @@ export default function ChatPage() {
       <PageHeader
         title="Chats"
         subtitle={isLoading ? 'Tus conversaciones de WhatsApp' : `${conversations.length} ${conversations.length === 1 ? 'conversación' : 'conversaciones'}`}
-        action={
-          <Button variant="secondary" icon={RefreshCw} loading={isSyncing} onClick={handleSync}>
-            {isSyncing ? 'Sincronizando...' : 'Sincronizar PlazBot'}
-          </Button>
-        }
       />
       {activePlaceId && <div className="mb-4"><BillingAlert placeId={activePlaceId} /></div>}
       <InboxLayout

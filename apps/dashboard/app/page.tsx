@@ -225,7 +225,7 @@ function PlatformSection() {
               tone="dark"
               ai
               icon={Bot}
-              title="PlazBot — tu WhatsApp con IA"
+              title="Bot de WhatsApp con IA"
               desc="Un bot con inteligencia artificial responde preguntas y agenda reservas por WhatsApp, solo, todo el día."
             />
             <BentoCard tone="primary" icon={Star} title="Reputación Google" desc="Filtra quejas en privado y multiplica tus reseñas de 5 estrellas." />

@@ -8,7 +8,6 @@ import { Card, EmptyState, PageHeader } from '../../../../components/ui';
 import { ConnectExistingForm } from '../../../../components/admin/whatsapp/ConnectExistingForm';
 import { NumbersList, type WaNumber } from '../../../../components/admin/whatsapp/NumbersList';
 import { PlacePicker, type Place } from '../../../../components/admin/whatsapp/PlacePicker';
-import { RegisterNumberForm } from '../../../../components/admin/whatsapp/RegisterNumberForm';
 import { TestMessageCard } from '../../../../components/admin/whatsapp/TestMessageCard';
 import { WebhookNotice } from '../../../../components/admin/whatsapp/WebhookNotice';
 
@@ -18,7 +17,6 @@ export default function AdminWhatsappConfigPage() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   const [waNumbers, setWaNumbers] = useState<WaNumber[]>([]);
-  const [webhookUrl, setWebhookUrl] = useState('');
   const [metaWebhookUrl, setMetaWebhookUrl] = useState('');
   // Local elegido en este momento: descarta respuestas tardías de un local anterior.
   const currentPlaceId = useRef<string | null>(null);
@@ -32,7 +30,6 @@ export default function AdminWhatsappConfigPage() {
       const res = await adminApi.getWhatsappNumbers(placeId);
       if (currentPlaceId.current !== placeId) return;
       setWaNumbers(res.data || []);
-      setWebhookUrl(res.webhookUrl || '');
       setMetaWebhookUrl(res.metaWebhookUrl || '');
     } catch {
       if (currentPlaceId.current === placeId) setWaNumbers([]);
@@ -44,7 +41,6 @@ export default function AdminWhatsappConfigPage() {
     setSelectedPlace(place);
     // Se vacía ya: hasta que lleguen los números del nuevo local no debe quedar ninguno del anterior.
     setWaNumbers([]);
-    setWebhookUrl('');
     setMetaWebhookUrl('');
     loadWaNumbers(place.id);
   };
@@ -56,18 +52,6 @@ export default function AdminWhatsappConfigPage() {
       setWaNumbers(prev => prev.filter(n => n.id !== numberId));
     } catch {
       toast.error('Error al eliminar el número');
-    }
-  };
-
-  const handleSetProvider = async (num: WaNumber, provider: 'meta' | 'plazbot') => {
-    const label = provider === 'meta' ? 'la API de WhatsApp de Meta' : 'PlazBot';
-    if (!confirm(`¿Que ${num.phoneNumber} reciba y envíe mensajes por ${label}?`)) return;
-    try {
-      await adminApi.setWhatsappProvider(num.id, provider);
-      setWaNumbers(prev => prev.map(n => (n.id === num.id ? { ...n, provider } : n)));
-      toast.success(`Ahora usa ${label}`);
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo cambiar el proveedor');
     }
   };
 
@@ -88,32 +72,17 @@ export default function AdminWhatsappConfigPage() {
             <>
               <h2 className="text-base font-semibold text-text">{selectedPlace.name}</h2>
 
-              {webhookUrl && (
-                <WebhookNotice tone="attention" title="Paso manual requerido en PlazBot" url={webhookUrl}>
-                  PlazBot no tiene API para registrar webhooks automáticamente. Copia esta URL y pégala en su dashboard
-                  (o CLI: <code className="font-mono">plazbot whatsapp register-webhook</code>) para el canal de este número.
-                </WebhookNotice>
-              )}
-
               {metaWebhookUrl && (
                 <WebhookNotice tone="info" title="API de WhatsApp de Meta" url={metaWebhookUrl}>
-                  Para los números en &quot;API de Meta&quot;: en el panel de Meta (WhatsApp → Configuración → Webhook) pega esta URL y el token de verificación
+                  En el panel de Meta (WhatsApp → Configuración → Webhook) pega esta URL y el token de verificación
                   (<code className="font-mono">WHATSAPP_WEBHOOK_TOKEN</code>), y suscríbete al campo <code className="font-mono">messages</code>.
                 </WebhookNotice>
               )}
 
-              {waNumbers.length > 0 && <NumbersList numbers={waNumbers} onSetProvider={handleSetProvider} onDelete={handleDeleteWaNumber} />}
+              {waNumbers.length > 0 && <NumbersList numbers={waNumbers} onDelete={handleDeleteWaNumber} />}
 
               <ConnectExistingForm key={`connect-${selectedPlace.id}`} placeId={selectedPlace.id} onConnected={() => loadWaNumbers(selectedPlace.id)} />
 
-              <RegisterNumberForm
-                key={`register-${selectedPlace.id}`}
-                placeId={selectedPlace.id}
-                onRegistered={async (url) => {
-                  setWebhookUrl(url || webhookUrl);
-                  await loadWaNumbers(selectedPlace.id);
-                }}
-              />
             </>
           )}
         </Card>

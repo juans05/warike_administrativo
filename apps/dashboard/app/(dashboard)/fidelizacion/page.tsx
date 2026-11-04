@@ -337,7 +337,7 @@ export default function FidelizacionPage() {
             {notifStatus && !notifStatus.whatsappConfigured && (
               <Notice tone="warning" icon={AlertTriangle}>
                 Tu local no tiene un número de WhatsApp Business conectado, así que estos mensajes no se enviarán.{' '}
-                <Link href="/plazbot" className="font-medium text-primary-hover underline">Conectar WhatsApp</Link>
+                <Link href="/whatsapp" className="font-medium text-primary-hover underline">Conectar WhatsApp</Link>
               </Notice>
             )}
             <Switch label="Activar mensaje de reactivación" checked={form.winbackEnabled} onChange={(winbackEnabled) => set({ winbackEnabled })} />

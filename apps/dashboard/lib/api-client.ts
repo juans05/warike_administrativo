@@ -563,7 +563,7 @@ export const businessApi = {
       botConfigured: boolean;
       hasMenuOrKnowledge: boolean;
     }>,
-  // Checkbox por local: activa/desactiva el canal de Facebook. Mientras esté apagado todo sigue por PlazBot.
+  // Checkbox por local: activa/desactiva el WhatsApp (Facebook). Apagado, el local no envía ni responde.
   getWhatsappChannel: (placeId: string) =>
     fetchWithAuth(`/business/whatsapp/connect/channel?placeId=${placeId}`) as Promise<{ metaEnabled: boolean }>,
   setWhatsappChannel: (placeId: string, metaEnabled: boolean) =>
@@ -628,8 +628,6 @@ export const businessApi = {
     }),
   closeConversation: (conversationId: string) =>
     fetchWithAuth(`/business/conversations/${conversationId}/close`, { method: 'POST' }),
-  syncPlazbotConversations: (placeId: string) =>
-    fetchWithAuth(`/business/conversations/sync-plazbot/${placeId}`, { method: 'POST' }),
   getConversationMessages: (conversationId: string, before?: string) =>
     fetchWithAuth(`/business/conversations/${conversationId}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`),
   setConversationMode: (conversationId: string, mode: 'bot' | 'human') =>
@@ -916,12 +914,6 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }) as Promise<{ id: string; phoneNumber: string; verifiedName: string | null }>,
-  // Qué proveedor entrega los mensajes del número: API de WhatsApp Cloud (Meta) o PlazBot (legado).
-  setWhatsappProvider: (numberId: string, provider: 'meta' | 'plazbot') =>
-    fetchWithAuth(`/admin/whatsapp-numbers/${numberId}/provider`, {
-      method: 'PATCH',
-      body: JSON.stringify({ provider }),
-    }),
   // Mensaje de prueba por la API de Meta (también sirve para el video de revisión de la app).
   sendWhatsappTestMessage: (data: { to: string; text: string; whatsappNumberId?: string }) =>
     fetchWithAuth('/admin/whatsapp-numbers/test-message', {
@@ -1040,10 +1032,8 @@ export const whatsappCostsApi = {
     fetchWithAuth('/admin/whatsapp-consumption/rates', { method: 'PUT', body: JSON.stringify(rate) }),
 };
 
-// PlazBot API Integration
+// Configuración del bot de WhatsApp (la ruta conserva el nombre antiguo plazbot-setup)
 export const plazbotApi = {
-  getStatus: () => fetchWithAuth('/plazbot-setup/status'),
-
   getConfig: (placeId: string) => fetchWithAuth(`/plazbot-setup/config?placeId=${placeId}`),
   configure: (data: {
     placeId: string;
@@ -1064,29 +1054,6 @@ export const plazbotApi = {
 
   demoChat: (data: { placeId: string; message: string; history?: { role: 'user' | 'assistant'; content: string }[] }) =>
     fetchWithAuth('/plazbot-setup/demo-chat', { method: 'POST', body: JSON.stringify(data) }),
-
-  getMetrics: () => fetchWithAuth('/plazbot-setup/metrics'),
-
-  // Templates guardados en DB con estado (PENDING/SUBMITTED/APPROVED/REJECTED/FAILED)
-  getTemplates: () => fetchWithAuth('/plazbot-setup/templates'),
-  createTemplate: (data: any) =>
-    fetchWithAuth('/plazbot-setup/template', { method: 'POST', body: JSON.stringify(data) }),
-  resendTemplate: (id: string) =>
-    fetchWithAuth(`/plazbot-setup/templates/${id}/resend`, { method: 'POST' }),
-  syncTemplates: () =>
-    fetchWithAuth('/plazbot-setup/templates/sync', { method: 'POST' }),
-
-  deleteTemplate: (id: string) =>
-    fetchWithAuth(`/plazbot-setup/templates/${id}`, { method: 'DELETE' }),
-  toggleTemplate: (id: string) =>
-    fetchWithAuth(`/plazbot-setup/templates/${id}/toggle`, { method: 'POST' }),
-  updateTemplate: (id: string, data: any) =>
-    fetchWithAuth(`/plazbot-setup/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-
-  createCampaign: (data: { name: string; templateId: string; contacts: string[] }) =>
-    fetchWithAuth('/plazbot-setup/campaign', { method: 'POST', body: JSON.stringify(data) }),
-  sendTemplate: (data: { template: string; destination: string; variablesBody?: { variable: string; value: string }[] }) =>
-    fetchWithAuth('/plazbot-setup/send-template', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export const authApi = {

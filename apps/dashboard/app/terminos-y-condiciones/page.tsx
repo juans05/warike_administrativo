@@ -176,7 +176,7 @@ export default function TerminosPage() {
         <Section title="11. Plataformas de terceros (Google, Meta y otras)">
           <p>
             Algunas funciones dependen de servicios de terceros, como Google Maps y Google Business Profile, WhatsApp e
-            Instagram (Meta), PlazBot, Culqi, Apple Wallet y Google Wallet. Al conectarlos, el Cliente acepta además
+            Instagram (Meta), Culqi, Apple Wallet y Google Wallet. Al conectarlos, el Cliente acepta además
             los términos y políticas de esos servicios y es responsable de cumplirlos, en especial la política de
             contenido de reseñas de Google y las políticas de mensajería de WhatsApp Business.
           </p>

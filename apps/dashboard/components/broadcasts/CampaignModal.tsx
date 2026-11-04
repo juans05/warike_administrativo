@@ -3,10 +3,9 @@
 import React from 'react';
 import { CheckCircle2, Save } from 'lucide-react';
 import { allowsReminder, CampaignFormData, ContactImportItem, MetaTemplate, ReminderUnit, WaNumber } from '../../hooks/useBroadcasts';
-import { Template } from '../../hooks/useTemplates';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { plural } from '../../lib/modules';
-import { Badge, Button, Input, Select, Sheet } from '../ui';
+import { Button, Input, Select, Sheet } from '../ui';
 
 interface CampaignModalProps {
   open: boolean;
@@ -16,7 +15,6 @@ interface CampaignModalProps {
   onSubmit: () => void;
   creating: boolean;
   waNumbers: WaNumber[];
-  approvedTemplates: Template[];
   metaTemplates: MetaTemplate[];
   /** Flag del local: sin él no se muestra nada de Meta. */
   metaEnabled: boolean;
@@ -34,14 +32,14 @@ function optionStyles(selected: boolean) {
 }
 
 /** Creación y edición de una campaña en un panel lateral. Se guarda como borrador; se envía desde la lista. */
-export function CampaignModal({ open, onClose, form, onChange, onSubmit, creating, waNumbers, approvedTemplates, metaTemplates, metaEnabled, imports, editing }: CampaignModalProps) {
+export function CampaignModal({ open, onClose, form, onChange, onSubmit, creating, waNumbers, metaTemplates, metaEnabled, imports, editing }: CampaignModalProps) {
   const { activePlace } = useRestaurant();
   const reminder = form.kind === 'reminder';
   const customer = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
   const Customers = plural(customer);
   const customers = Customers.toLowerCase();
 
-  // El número elegido decide de dónde salen las plantillas: la cuenta de Meta o PlazBot.
+  // Las plantillas salen de la cuenta de WhatsApp Business (Facebook) del número elegido.
   const selected = waNumbers.find(n => n.id === form.whatsappNumberId);
   const useMeta = metaEnabled && selected?.provider === 'meta';
   const approvedMeta = metaTemplates.filter(t => t.status === 'APPROVED');
@@ -87,7 +85,7 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
                 onChange={e => onChange(p => ({ ...p, whatsappNumberId: e.target.value, templateId: '', templateName: '', bodyVariables: [], segment: 'all' }))}
               >
                 <option value="">Seleccionar número...</option>
-                {waNumbers.map(n => <option key={n.id} value={n.id}>{n.phoneNumber}{metaEnabled ? (n.provider === 'meta' ? ' · API de Meta' : ' · PlazBot') : ''}</option>)}
+                {waNumbers.map(n => <option key={n.id} value={n.id}>{n.phoneNumber}{n.provider === 'meta' ? '' : ' · no conectado con Facebook'}</option>)}
               </Select>
             )}
 
@@ -114,28 +112,10 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
                     ))}
                   </div>
                 )
-              ) : approvedTemplates.length === 0 ? (
-                <p className={notice}>
-                  No hay plantillas aprobadas por Meta. Ve a la pestaña <strong>Plantillas</strong>, crea una y espera la aprobación (24-72 h).
-                </p>
+              ) : selected ? (
+                <p className={notice}>Este número no está conectado con Facebook: conéctalo para enviar campañas.</p>
               ) : (
-                <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                  {approvedTemplates.map(t => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      aria-pressed={form.templateId === t.id}
-                      onClick={() => onChange(p => ({ ...p, templateId: t.id, templateName: t.name }))}
-                      className={optionStyles(form.templateId === t.id)}
-                    >
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-text">{t.name}</span>
-                        <Badge>{t.category}</Badge>
-                      </span>
-                      <p className="mt-0.5 text-xs text-text-muted">{t.languageCode?.toUpperCase()}</p>
-                    </button>
-                  ))}
-                </div>
+                <p className={notice}>Elige un número de WhatsApp para ver sus plantillas.</p>
               )}
               {form.templateName && (
                 <p className="flex items-center gap-1 text-xs font-medium text-success">
@@ -164,7 +144,7 @@ export function CampaignModal({ open, onClose, form, onChange, onSubmit, creatin
 
             {reminder && (
               <div className="space-y-2">
-                {selected && !useMeta && <p className={notice}>El recordatorio sale por un número de la <strong>API de Meta</strong>. Elige uno.</p>}
+                {selected && !useMeta && <p className={notice}>El recordatorio sale por un número conectado con <strong>Facebook</strong>. Elige uno.</p>}
                 <div className="grid grid-cols-2 gap-2">
                   <Input
                     label="Enviar antes de la cita"

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, Check, Clock, Trash2 } from 'lucide-react';
+import { Check, Clock, Trash2 } from 'lucide-react';
 import { Badge, Button } from '../../ui';
 
 export type WaNumber = {
@@ -13,9 +13,8 @@ export type WaNumber = {
   createdAt: string;
 };
 
-export function NumbersList({ numbers, onSetProvider, onDelete }: {
+export function NumbersList({ numbers, onDelete }: {
   numbers: WaNumber[];
-  onSetProvider(number: WaNumber, provider: 'meta' | 'plazbot'): void;
   onDelete(numberId: string): void;
 }) {
   return (
@@ -33,13 +32,12 @@ export function NumbersList({ numbers, onSetProvider, onDelete }: {
                 ) : (
                   <Badge tone="warning"><Clock size={16} aria-hidden />Pendiente</Badge>
                 )}
-                <Badge tone={viaMeta ? 'primary' : 'neutral'}>{viaMeta ? 'API de Meta' : 'PlazBot'}</Badge>
+                {viaMeta
+                  ? <Badge tone="primary">Facebook</Badge>
+                  : <Badge tone="warning">Antiguo, no envía: conéctalo con Facebook</Badge>}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" icon={ArrowLeftRight} onClick={() => onSetProvider(num, viaMeta ? 'plazbot' : 'meta')}>
-                {viaMeta ? 'Volver a PlazBot' : 'Pasar a API de Meta'}
-              </Button>
               <Button size="sm" variant="ghost" icon={Trash2} className="text-danger hover:text-danger" aria-label={`Eliminar ${num.phoneNumber}`} onClick={() => onDelete(num.id)}>
                 Eliminar
               </Button>

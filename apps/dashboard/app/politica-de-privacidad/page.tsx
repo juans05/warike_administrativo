@@ -78,7 +78,7 @@ const RECIPIENTS = [
   ['Cloudinary', 'Almacenamiento de fotos, videos y documentos que subes', 'Fuera del Perú (principalmente EE. UU.)'],
   ['Resend', 'Envío de correos transaccionales (verificación, recibos, reportes)', 'Fuera del Perú (principalmente EE. UU.)'],
   ['Sentry', 'Registro de errores técnicos para su corrección', 'Fuera del Perú (principalmente EE. UU.)'],
-  ['Meta (WhatsApp Business Platform e Instagram) y PlazBot', 'Envío y recepción de mensajes de WhatsApp y gestión de redes sociales del negocio', 'Fuera del Perú'],
+  ['Meta (WhatsApp Business Platform e Instagram)', 'Envío y recepción de mensajes de WhatsApp y gestión de redes sociales del negocio', 'Fuera del Perú'],
   ['Zernio', 'Conexión y publicación en redes sociales del negocio', 'Fuera del Perú'],
   ['Proveedores de inteligencia artificial: Anthropic, Google (Gemini), OpenRouter y xAI', 'Generar respuestas del asistente y sugerencias de contenido', 'Fuera del Perú (principalmente EE. UU.)'],
   ['Google (Maps, Business Profile, Wallet e inicio de sesión) y Apple (Wallet)', 'Datos públicos del local, gestión de reseñas, tarjetas de fidelización digitales e inicio de sesión con Google', 'Fuera del Perú (principalmente EE. UU.)'],

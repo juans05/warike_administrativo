@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { plazbotApi, businessApi } from '../../../lib/api-client';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { toast } from 'sonner';
@@ -10,7 +10,6 @@ import { Button, Card, EmptyState, Input, PageHeader, Select, Skeleton, Textarea
 import { BotTester } from '../../../components/bot/BotTester';
 import { MenuOptionsEditor, type MenuActionType, type MenuOptionForm } from '../../../components/bot/MenuOptionsEditor';
 import { plural } from '../../../lib/modules';
-import { PlazbotCampaignsCard, PlazbotMetricsCard, type PlazbotMetrics, type PlazbotTemplate } from '../../../components/bot/PlazbotWorkspace';
 
 type Tone = 'professional' | 'casual' | 'friendly';
 
@@ -22,12 +21,11 @@ const TONE_LABELS: Record<Tone, string> = {
 
 type ResponseMode = 'ai' | 'menu';
 
-export default function PlazbotSetupPage() {
+export default function BotSetupPage() {
   const { activePlaceId, activePlace } = useRestaurant();
   const customerLabel = activePlace?.verticalConfig?.labels.customer ?? 'Cliente';
   const catalogLabel = activePlace?.verticalConfig?.labels.catalog ?? 'Carta';
 
-  const [plazbotConnected, setPlazbotConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subscriptionBlocked, setSubscriptionBlocked] = useState<string | null>(null);
 
@@ -49,30 +47,9 @@ export default function PlazbotSetupPage() {
   const [savingMenu, setSavingMenu] = useState(false);
   const [uploadingOptionIndex, setUploadingOptionIndex] = useState<number | null>(null);
 
-  // Metrics & templates
-  const [metrics, setMetrics] = useState<PlazbotMetrics | null>(null);
-  const [templates, setTemplates] = useState<PlazbotTemplate[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    try { setIsAdmin(JSON.parse(localStorage.getItem('user') || '{}')?.role === 'admin'); } catch { setIsAdmin(false); }
-  }, []);
-
-  const loadMetricsAndTemplates = useCallback(async () => {
-    const [m, t] = await Promise.allSettled([
-      plazbotApi.getMetrics(),
-      plazbotApi.getTemplates(),
-    ]);
-    if (m.status === 'fulfilled' && m.value) setMetrics(m.value);
-    if (t.status === 'fulfilled' && Array.isArray(t.value)) setTemplates(t.value);
-  }, []);
-
   useEffect(() => {
     const load = async () => {
       try {
-        const status = await plazbotApi.getStatus();
-        setPlazbotConnected(status?.connected ?? false);
-
-        // La configuración del bot sirve para cualquier canal (Meta o PlazBot): no depende de PlazBot.
         if (activePlaceId) {
           const config = await plazbotApi.getConfig(activePlaceId);
           const loaded = {
@@ -93,7 +70,6 @@ export default function PlazbotSetupPage() {
             })),
           );
         }
-        if (status?.connected) await loadMetricsAndTemplates();
       } catch (err: any) {
         if (err?.message?.includes('suscripción activa') || err?.message?.includes('requiere el plan')) {
           setSubscriptionBlocked(err.message);
@@ -103,7 +79,7 @@ export default function PlazbotSetupPage() {
       finally { setLoading(false); }
     };
     load();
-  }, [activePlaceId, loadMetricsAndTemplates]);
+  }, [activePlaceId]);
 
   const handleSuggestPrompt = async () => {
     if (!activePlaceId) return;
@@ -301,10 +277,7 @@ export default function PlazbotSetupPage() {
         </div>
       )}
 
-      {plazbotConnected && metrics && <PlazbotMetricsCard metrics={metrics} />}
 
-      {/* Usan la cuenta global de PlazBot de Wuarikes: solo admin (el backend también lo exige). */}
-      {plazbotConnected && isAdmin && <PlazbotCampaignsCard templates={templates} />}
     </div>
   );
 }

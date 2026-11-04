@@ -34,7 +34,7 @@ export function ConnectExistingForm({ placeId, onConnected }: { placeId: string;
       <div>
         <h3 className="text-base font-semibold text-text">Conectar número que ya existe en Meta</h3>
         <p className="mt-0.5 text-sm text-text-muted">
-          Para un número que ya está registrado en tu cuenta de WhatsApp Business de Meta: se valida el token, se suscribe la app y queda como conexión directa (sin PlazBot).
+          Para un número que ya está registrado en tu cuenta de WhatsApp Business de Meta: se valida el token, se suscribe la app y queda conectado.
         </p>
       </div>
       <Input
