@@ -395,7 +395,7 @@ export default function PublicMenuPage() {
     <div className={shell} style={shellStyle}>
       <style>{FONTS_CSS + '.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>
       {staffTableId && (
-        <a href={`/mesas?place=${id}&mesa=${staffTableId}`} className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-[#1A1A1A] px-5 py-3 text-sm font-bold text-white">
+        <a href={`/mesas?${new URLSearchParams({ place: id, mesa: staffTableId })}`} className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-[#1A1A1A] px-5 py-3 text-sm font-bold text-white">
           <span>Eres del equipo de este local</span>
           <span className="rounded-lg bg-white px-3 py-1.5 text-[#1A1A1A]">Atender esta mesa</span>
         </a>

@@ -29,18 +29,19 @@ const useWide = () => useSyncExternalStore(
 );
 
 export default function TablesPage() {
-  const { activePlaceId, setActivePlaceId } = useRestaurant();
+  const { activePlaceId, setActivePlaceId, places } = useRestaurant();
   // null = todavía no llegó la primera carga (se muestra Skeleton).
   const [rows, setRows] = useState<any[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // ?place=&mesa=: el mozo llega desde el QR de la mesa (carta pública) y la mesa se abre directo.
+  // Solo se cambia a una sede que el usuario ya tiene (el enlace puede venir de cualquiera).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const place = params.get('place');
     const mesa = params.get('mesa');
-    if (place && place !== activePlaceId) setActivePlaceId(place);
-    if (mesa) setSelectedId(mesa);
-  }, []);
+    if (place && place !== activePlaceId && places.some((p) => p.id === place)) setActivePlaceId(place);
+    if (mesa && /^[0-9a-f-]{36}$/i.test(mesa)) setSelectedId(mesa);
+  }, [places]);
   const [editing, setEditing] = useState(false);
   const [tables, setTables] = useState<any[]>([]);
   const [role, setRole] = useState<string | null>(null);

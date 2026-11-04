@@ -1255,8 +1255,9 @@ export const ordersApi = {
   staffTable: async (placeId: string, qrToken: string): Promise<{ table: { id: string; name: string } } | null> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return null;
-    const res = await fetch(`${API_BASE_URL}/api/business/places/${placeId}/orders/tables/by-qr/${qrToken}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
-    return res?.ok ? res.json() : null;
+    const res = await fetch(`${API_BASE_URL}/api/business/places/${encodeURIComponent(placeId)}/orders/tables/by-qr/${encodeURIComponent(qrToken)}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    const view = res?.ok ? await res.json().catch(() => null) : null;
+    return typeof view?.table?.id === 'string' ? view : null;
   },
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
