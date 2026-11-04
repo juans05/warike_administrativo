@@ -323,19 +323,37 @@ export const botApi = {
     }),
 };
 
+export type ClaimDocuments = { fichaRuc: string; dni: string; manifiesto: string };
+export interface MyClaim { id: string; placeId: string; placeName: string | null; status: 'pending' | 'verified' | 'rejected'; createdAt: string }
+
 // Business Methods (Unified fachada for owners)
 export const businessApi = {
   // Onboarding (registration)
   searchOnboarding: (q: string) => fetchWithAuth(`/business/onboarding/search?q=${encodeURIComponent(q)}`),
   getBusinessTypes: () => fetchPublic('/places/business-types') as Promise<BusinessTypesResponse>,
-  claimPlace: (id: string, businessType: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, {
+  // Reclamar o importar un local crea una solicitud que Wuarikes valida con estos documentos.
+  claimPlace: (id: string, businessType: string, documents: ClaimDocuments, phone?: string) => fetchWithAuth(`/business/onboarding/claim/${id}`, {
     method: 'POST',
-    body: JSON.stringify({ businessType }),
+    body: JSON.stringify({ businessType, documents, phone }),
   }),
-  importPlace: (googlePlaceId: string, businessType: string) => fetchWithAuth('/business/onboarding/import', {
+  importPlace: (googlePlaceId: string, businessType: string, documents: ClaimDocuments, phone?: string) => fetchWithAuth('/business/onboarding/import', {
     method: 'POST',
-    body: JSON.stringify({ googlePlaceId, businessType }),
+    body: JSON.stringify({ googlePlaceId, businessType, documents, phone }),
   }),
+  getMyClaims: (): Promise<MyClaim[]> => fetchWithAuth('/business/onboarding/claims'),
+  /** Sube una foto o PDF (máx. 10MB) y devuelve su URL. */
+  uploadDocument: async (file: File): Promise<string> => {
+    const token = localStorage.getItem('token');
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/api/upload/document`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    if (!res.ok) throw new Error('No se pudo subir el archivo (foto o PDF, máx. 10MB)');
+    return (await res.json()).url;
+  },
   createIndependent: (body: CreateIndependentInput): Promise<{ placeId: string; professionalId: string; nickname: string }> =>
     fetchWithAuth('/business/onboarding/independent', { method: 'POST', body: JSON.stringify(body) }),
   checkNickname: (value: string): Promise<NicknameCheck> =>

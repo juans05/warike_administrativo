@@ -32,5 +32,6 @@ export interface PlaceClaim {
   businessEmail: string;
   businessPhone: string;
   documentUrls: string[] | null;
+  verificationMethod?: string | null;
   createdAt: string;
 }

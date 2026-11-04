@@ -5,9 +5,10 @@ import {
   AlertCircle, ArrowLeft, Car, CheckCircle2, Gamepad2, Loader2, MapPin, PawPrint, Scissors, Search,
   ShoppingBag, Stethoscope, Store, UtensilsCrossed, Wrench, type LucideIcon,
 } from 'lucide-react';
-import { businessApi, type BusinessTypesResponse } from '../lib/api-client';
+import { businessApi, type BusinessTypesResponse, type ClaimDocuments, type MyClaim } from '../lib/api-client';
 import { Badge, Button, EmptyState, Skeleton, cn } from './ui';
 import IndependentOnboarding from './onboarding/IndependentOnboarding';
+import ClaimDocumentsForm from './onboarding/ClaimDocumentsForm';
 
 interface OnboardingResult {
   id?: string;
@@ -50,6 +51,13 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [claiming, setClaiming] = useState<OnboardingResult | null>(null);
+  const [myClaims, setMyClaims] = useState<MyClaim[]>([]);
+
+  const loadClaims = useCallback(() => {
+    businessApi.getMyClaims().then((c) => setMyClaims(Array.isArray(c) ? c : [])).catch(() => {});
+  }, []);
+  useEffect(loadClaims, [loadClaims]);
 
   const loadTypes = useCallback(() => {
     setTypesError(false);
@@ -99,26 +107,26 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
     };
   }, []);
 
+  // Reclamar o importar un local existente pide documentos; Wuarikes lo valida antes de asignarlo.
+  const submitClaim = async (documents: ClaimDocuments, phone: string) => {
+    if (!businessType || !claiming) return;
+    if (claiming.source === 'wuarike') await businessApi.claimPlace(claiming.id!, businessType.key, documents, phone);
+    else await businessApi.importPlace(claiming.googlePlaceId, businessType.key, documents, phone);
+    setClaiming(null);
+    setQuery('');
+    loadClaims();
+    setStatus({ type: 'success', message: 'Recibimos tu solicitud. Wuarikes validará tus documentos y te avisará.' });
+  };
+
   const handleAction = async (item: OnboardingResult) => {
     if (!businessType) return; // sin tipo no se puede reclamar, importar ni crear
+    if (item.source !== 'manual') { setStatus(null); setClaiming(item); return; }
     setIsLoading(true);
     setStatus(null);
     try {
-      let placeId: string | undefined;
-
-      if (item.source === 'wuarike') {
-        const res = await businessApi.claimPlace(item.id!, businessType.key);
-        placeId = res.placeId || item.id;
-      } else if (item.source === 'google') {
-        const res = await businessApi.importPlace(item.googlePlaceId, businessType.key);
-        placeId = res.placeId;
-      } else {
-        const res = await businessApi.createPlace({ name: item.name, address: item.address, businessType: businessType.key });
-        placeId = res.placeId;
-      }
-
-      if (placeId) {
-        localStorage.setItem('activePlaceId', placeId);
+      const res = await businessApi.createPlace({ name: item.name, address: item.address, businessType: businessType.key });
+      if (res.placeId) {
+        localStorage.setItem('activePlaceId', res.placeId);
       }
 
       setStatus({ type: 'success', message: '¡Local asignado con éxito!' });
@@ -129,6 +137,18 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
       setIsLoading(false);
     }
   };
+
+  const pendingBanner = myClaims.some((c) => c.status === 'pending') && (
+    <div role="status" className="rounded-card border border-border bg-surface p-4 text-left text-sm text-text">
+      {myClaims.filter((c) => c.status === 'pending').map((c) => (
+        <p key={c.id}>Tu solicitud para <strong>{c.placeName || 'tu local'}</strong> está en revisión. Te avisaremos cuando Wuarikes la valide.</p>
+      ))}
+    </div>
+  );
+
+  if (claiming && businessType) {
+    return <ClaimDocumentsForm placeName={claiming.name} onSubmit={submitClaim} onBack={() => setClaiming(null)} />;
+  }
 
   if (independent) {
     return <IndependentOnboarding onComplete={onComplete} onBack={() => setIndependent(false)} />;
@@ -148,6 +168,7 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
     }
     return (
       <section className="space-y-4 text-left">
+        {pendingBanner}
         <button type="button" onClick={() => setIndependent(true)} className={cn(tileClass, 'w-full border-primary')}>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
             <Scissors size={20} aria-hidden />
@@ -199,6 +220,7 @@ export default function OnboardingSearch({ onComplete }: { onComplete: () => voi
   // Paso 3: buscar y reclamar / importar / crear
   return (
     <div className="space-y-6 text-left">
+      {pendingBanner}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm text-text-muted">
           Tipo de negocio: <Badge tone="primary">{vertical.label} · {businessType.label}</Badge>

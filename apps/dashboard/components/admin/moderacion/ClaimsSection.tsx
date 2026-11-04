@@ -14,6 +14,9 @@ function documentName(url: string) {
   }
 }
 
+// Reclamos del onboarding: los tres documentos llegan en este orden.
+const ONBOARDING_DOCS = ['Ficha RUC', 'DNI del representante legal', 'Manifiesto'];
+
 /** Los documentos los sube quien reclama el local: solo se enlazan si son https (un `javascript:` correría en la sesión del admin). */
 function isHttpsUrl(url: string) {
   try {
@@ -40,6 +43,7 @@ export function ClaimsSection({ claims, onVerify, onReject, readOnly }: {
           renderItem={(c) => {
             const docs = c.documentUrls ?? [];
             const docsOpen = openDocsFor === c.id;
+            const labels = c.verificationMethod?.startsWith('documentos') ? ONBOARDING_DOCS : [];
             return (
               <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-start">
                 <div className="min-w-0 flex-1">
@@ -61,7 +65,7 @@ export function ClaimsSection({ claims, onVerify, onReject, readOnly }: {
                       </Button>
                       {docsOpen && (
                         <ul className="mt-1 space-y-1">
-                          {docs.map((url) => (
+                          {docs.map((url, i) => (
                             <li key={url}>
                               {isHttpsUrl(url) ? (
                                 <a
@@ -71,7 +75,7 @@ export function ClaimsSection({ claims, onVerify, onReject, readOnly }: {
                                   className="inline-flex min-h-11 items-center gap-2 rounded-control text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:min-h-8"
                                 >
                                   <FileText size={16} aria-hidden className="shrink-0" />
-                                  <span className="truncate">{documentName(url)}</span>
+                                  <span className="truncate">{labels[i] ? `${labels[i]}: ` : ''}{documentName(url)}</span>
                                 </a>
                               ) : (
                                 <span className="inline-flex min-h-11 items-center gap-2 text-sm text-text-muted md:min-h-8" title="Enlace no seguro: no se abre desde aquí">
