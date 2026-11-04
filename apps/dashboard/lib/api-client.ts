@@ -489,6 +489,9 @@ export const businessApi = {
 
   // Google Business Profile OAuth (todas las reseñas)
   getGoogleAuthUrl: (placeId: string) => fetchWithAuth(`/business/google/auth-url?placeId=${placeId}`),
+  // Google vuelve al panel con code/state; se confirman con la sesión del dueño.
+  connectGoogle: (code: string, state: string) =>
+    fetchWithAuth('/business/google/connect', { method: 'POST', body: JSON.stringify({ code, state }) }),
   getGoogleLocations: (id: string) => fetchWithAuth(`/business/places/${id}/google-locations`),
   setGoogleLocation: (id: string, locationName: string) =>
     fetchWithAuth(`/business/places/${id}/google-location`, {

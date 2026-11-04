@@ -54,9 +54,13 @@ export default function GoogleReviews({ refreshKey, connectSlot }: { refreshKey?
       toast.error(ERROR_TEXT[oauthError] || 'No se pudo conectar con Google.');
       router.replace('/reputacion');
     }
-    if (GBP_API_ENABLED && searchParams.get('connected') === 'true') {
-      router.replace('/reputacion');
-      loadLocations();
+    const googleCode = searchParams.get('google_code');
+    const googleState = searchParams.get('google_state');
+    if (GBP_API_ENABLED && googleCode && googleState) {
+      router.replace('/reputacion'); // el código no queda en la barra ni en el historial
+      businessApi.connectGoogle(googleCode, googleState)
+        .then(() => loadLocations())
+        .catch(() => { toast.error('No se pudo conectar con Google. Inténtalo de nuevo.'); checkConnectionAndLoad(); });
     } else {
       checkConnectionAndLoad();
     }
