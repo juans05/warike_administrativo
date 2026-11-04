@@ -789,8 +789,20 @@ export const publicApi = {
     }),
   getLoyaltyCard: (placeId: string, phone: string) =>
     fetchPublic(`/public/loyalty/${placeId}/card/${phone}`),
-  getLoyaltyHistory: (cardId: string) =>
-    fetchPublic(`/public/loyalty/card/${cardId}/history`),
+  getLoyaltyHistory: (cardId: string, key: string) =>
+    fetchPublic(`/public/loyalty/card/${cardId}/history?k=${encodeURIComponent(key)}`),
+};
+
+// Clave de la tarjeta que da el escaneo: abre historial y Wallet. Se guarda en el celular del cliente
+// porque un escaneo dentro de la espera entre visitas no la vuelve a dar.
+const cardKeyName = (placeId: string, phone: string) => `wk_card_${placeId}_${phone}`;
+export const cardKeyStore = {
+  get: (placeId: string, phone: string): string | null => {
+    try { return localStorage.getItem(cardKeyName(placeId, phone)); } catch { return null; }
+  },
+  set: (placeId: string, phone: string, key: string) => {
+    try { localStorage.setItem(cardKeyName(placeId, phone), key); } catch { /* sin almacenamiento: queda el enlace */ }
+  },
 };
 
 export const subscriptionApi = {

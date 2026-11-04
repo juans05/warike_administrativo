@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { publicApi } from '../../../../lib/api-client';
+import { cardKeyStore, publicApi } from '../../../../lib/api-client';
 import { toast } from 'sonner';
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -22,17 +22,23 @@ export default function CustomerCardPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [place, setPlace] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [cardKey, setCardKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!placeId || !phone) return;
+    // La clave llega en el enlace del escaneo (?k=) y se recuerda en este celular para las próximas visitas.
+    const fromUrl = new URLSearchParams(window.location.search).get('k');
+    if (fromUrl) cardKeyStore.set(placeId, phone, fromUrl);
+    const key = fromUrl || cardKeyStore.get(placeId, phone);
+    setCardKey(key);
     Promise.all([
       publicApi.getLoyaltyCard(placeId, phone),
       publicApi.getPlace(placeId),
     ]).then(([cardData, placeData]) => {
       setData(cardData);
       setPlace(placeData);
-      if (cardData.card?.id) {
-        publicApi.getLoyaltyHistory(cardData.card.id).then(setHistory).catch(() => {});
+      if (cardData.card?.id && key) {
+        publicApi.getLoyaltyHistory(cardData.card.id, key).then(setHistory).catch(() => {});
       }
     }).catch(() => {}).finally(() => setIsLoading(false));
   }, [placeId, phone]);
@@ -166,7 +172,13 @@ export default function CustomerCardPage() {
         )}
 
         {/* Wallet */}
-        <WalletButtons placeId={placeId} phone={phone} />
+        {cardKey ? (
+          <WalletButtons placeId={placeId} phone={phone} cardKey={cardKey} />
+        ) : (
+          <p className="bg-white rounded-[2rem] p-5 text-center text-sm font-bold text-gray-500 shadow-sm">
+            Para ver tu historial y guardar la tarjeta en tu Wallet, ábrela desde el enlace que aparece al escanear en el local.
+          </p>
+        )}
 
         <a href={`/l/${placeId}`} className="block w-full text-center py-5 rounded-2xl bg-white text-orange-500 border border-orange-100 font-black text-xs uppercase tracking-widest shadow-sm">
           Volver al Restaurante →
@@ -178,7 +190,8 @@ export default function CustomerCardPage() {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
+function WalletButtons({ placeId, phone, cardKey }: { placeId: string; phone: string; cardKey: string }) {
+  const k = `?k=${encodeURIComponent(cardKey)}`;
   const [loadingGoogle, setLoadingGoogle] = React.useState(false);
   const [loadingApple, setLoadingApple] = React.useState(false);
   const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -187,7 +200,7 @@ function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
   const handleGoogle = async () => {
     setLoadingGoogle(true);
     try {
-      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/google/${phone}`);
+      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/google/${phone}${k}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         toast.error(err.message || 'Google Wallet no disponible aún');
@@ -205,7 +218,7 @@ function WalletButtons({ placeId, phone }: { placeId: string; phone: string }) {
   const handleApple = async () => {
     setLoadingApple(true);
     try {
-      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/apple/${phone}`);
+      const res = await fetch(`${API_BASE}/api/public/loyalty/${placeId}/wallet/apple/${phone}${k}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         toast.error(err.message || 'Apple Wallet no disponible aún');

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { businessApi, publicApi } from '../../lib/api-client';
+import { businessApi, cardKeyStore, publicApi } from '../../lib/api-client';
 import { toast } from 'sonner';
 import { copyText } from '../../lib/clipboard';
 
@@ -183,7 +183,10 @@ export default function ScanExperience({
     // El sello es un extra: si falla, la reseña ya quedó guardada y el cliente sigue su camino.
     if (hasPhone && loyaltyProgram?.isActive) {
       try {
-        setLoyaltyResult(await publicApi.loyaltyScan(placeId, { phone: phoneDigits, name: customerName || undefined, marketingConsent }));
+        const scan = await publicApi.loyaltyScan(placeId, { phone: phoneDigits, name: customerName || undefined, marketingConsent });
+        const savedKey = scan?.card?.customerPhone ? cardKeyStore.get(placeId, scan.card.customerPhone) : null;
+        if (scan?.cardKey && scan.card?.customerPhone) cardKeyStore.set(placeId, scan.card.customerPhone, scan.cardKey);
+        setLoyaltyResult({ ...scan, cardKey: scan?.cardKey || savedKey });
       } catch { /* sin sello */ }
     }
     setIsSending(false);
@@ -407,7 +410,7 @@ export default function ScanExperience({
 
           {loyaltyResult && (
             <a
-              href={`/tarjeta/${placeId}/${loyaltyResult.card?.customerPhone}`}
+              href={`/tarjeta/${placeId}/${loyaltyResult.card?.customerPhone}${loyaltyResult.cardKey ? `?k=${loyaltyResult.cardKey}` : ''}`}
               className="block w-full py-4 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest text-center min-h-[48px] flex items-center justify-center"
             >
               Ver mi Tarjeta Completa →
