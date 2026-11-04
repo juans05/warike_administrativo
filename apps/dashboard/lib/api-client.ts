@@ -1251,6 +1251,13 @@ export const ordersApi = {
   confirmOrder: (placeId: string, orderId: string) =>
     fetchWithAuth(`/business/places/${placeId}/orders/${orderId}/confirm`, { method: 'POST' }),
   tablesBoard: (placeId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tables-board`),
+  /** Mesa del QR si quien escanea es del equipo de esa sede; si no, null (sin redirigir a /login: lo usa la carta pública). */
+  staffTable: async (placeId: string, qrToken: string): Promise<{ table: { id: string; name: string } } | null> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return null;
+    const res = await fetch(`${API_BASE_URL}/api/business/places/${placeId}/orders/tables/by-qr/${qrToken}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    return res?.ok ? res.json() : null;
+  },
   closeTab: (placeId: string, tabId: string) => fetchWithAuth(`/business/places/${placeId}/orders/tabs/${tabId}/close`, { method: 'POST' }),
   manualPayment: (placeId: string, body: { tabId?: string; orderId?: string; method: 'EFECTIVO' | 'POS' }) =>
     fetchWithAuth(`/business/places/${placeId}/orders/payments/manual`, { method: 'POST', body: JSON.stringify(body) }),

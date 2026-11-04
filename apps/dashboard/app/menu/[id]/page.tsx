@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Image as ImageIcon, LayoutGrid, List, Play, Sparkles, X } from 'lucide-react';
-import { publicApi } from '../../../lib/api-client';
+import { ordersApi, publicApi } from '../../../lib/api-client';
 import { TableOrderingProvider, AddToCartButton } from '../../../components/orders/TableOrdering';
 import { buildPalette, type MenuTheme, type Palette } from '../../../lib/menuTheme';
 
@@ -294,6 +294,11 @@ export default function PublicMenuPage() {
   // ?mesa=<qr_token>: la carta entra en modo pedido para esa mesa.
   const [mesa, setMesa] = useState<string | null>(null);
   useEffect(() => { setMesa(new URLSearchParams(window.location.search).get('mesa')); }, []);
+  // El QR es el mismo para todos: si este celular tiene la sesión de alguien del equipo, puede atender la mesa en el panel.
+  const [staffTableId, setStaffTableId] = useState<string | null>(null);
+  useEffect(() => {
+    if (mesa && id) ordersApi.staffTable(id, mesa).then((v) => setStaffTableId(v?.table.id ?? null));
+  }, [mesa, id]);
 
   // La vista elegida se recuerda en el celular; si el almacenamiento falla, se usa la cuadrícula.
   useEffect(() => {
@@ -389,6 +394,12 @@ export default function PublicMenuPage() {
     <PalContext.Provider value={C}>
     <div className={shell} style={shellStyle}>
       <style>{FONTS_CSS + '.scrollbar-none{scrollbar-width:none}.scrollbar-none::-webkit-scrollbar{display:none}'}</style>
+      {staffTableId && (
+        <a href={`/mesas?place=${id}&mesa=${staffTableId}`} className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-[#1A1A1A] px-5 py-3 text-sm font-bold text-white">
+          <span>Eres del equipo de este local</span>
+          <span className="rounded-lg bg-white px-3 py-1.5 text-[#1A1A1A]">Atender esta mesa</span>
+        </a>
+      )}
       {/* Portada: el color del encabezado y el logo los define el restaurante */}
       <header className="relative" style={{ background: C.headerBg, color: C.headerText }}>
         {place.coverImageUrl ? (

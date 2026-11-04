@@ -40,6 +40,13 @@ export default function TabPage({ params }: { params: { token: string } }) {
         <p className="rounded-2xl bg-green-50 p-4 text-center font-bold text-green-700">¡Cuenta pagada! Gracias por tu visita.</p>
       ) : paying ? (
         <CulqiPay target={{ tabToken: params.token }} label={`Pagar ${soles(tab.due)}`} onPaid={() => { setPaying(false); load(); }} />
+      ) : tab.onlinePaymentEnabled === false ? (
+        // El local no cobra la cuenta de mesa desde el celular: solo se llama al mozo.
+        tab.status === 'CUENTA_PEDIDA' ? (
+          <p className="rounded-2xl bg-orange-50 p-4 text-center font-bold text-orange-800">Listo, un mozo viene a tu mesa a cobrarte.</p>
+        ) : (
+          <button onClick={() => requestBill(false)} disabled={tab.due === 0} className="w-full rounded-2xl bg-[#F26122] py-4 font-bold text-white disabled:opacity-50">Pedir la cuenta</button>
+        )
       ) : (
         <div className="space-y-3">
           <button onClick={() => requestBill(true)} disabled={tab.due === 0} className="w-full rounded-2xl bg-[#F26122] py-4 font-bold text-white disabled:opacity-50">Pedir la cuenta y pagar aquí</button>
