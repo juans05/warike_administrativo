@@ -65,11 +65,13 @@ export default function ModeracionPage() {
   }, []);
 
   // Aparte de loadData: si falla (o el backend aún no tiene la ruta), el resto de Moderación sigue funcionando.
+  // Solo quien puede gestionar (Moderador/Administrador); al comercial el backend le daría 403.
   useEffect(() => {
+    if (readOnly) return;
     adminApi.nowReported()
       .then(setNowPosts)
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Error cargando las publicaciones Ahora reportadas'));
-  }, []);
+  }, [readOnly]);
 
   const toggleVerification = async (place: Place) => {
     try {
