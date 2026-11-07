@@ -69,12 +69,7 @@ export default async function RootLayout({
         "applicationCategory": "BusinessApplication",
         "applicationSubCategory": "SaaS",
         "operatingSystem": "Web, iOS, Android",
-        "description": "Software como servicio (SaaS) por suscripción mensual para restaurantes: gestión de reputación en Google Maps, fidelización de clientes y asistente de WhatsApp con IA. Incluye venta complementaria de hardware NFC.",
-        "offers": [
-          { "@type": "Offer", "name": "Rankeado", "price": "254.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "254.90", "priceCurrency": "PEN", "unitText": "mes" } },
-          { "@type": "Offer", "name": "Caserito", "price": "439.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "439.90", "priceCurrency": "PEN", "unitText": "mes" } },
-          { "@type": "Offer", "name": "Taypá", "price": "749.90", "priceCurrency": "PEN", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "749.90", "priceCurrency": "PEN", "unitText": "mes" } }
-        ]
+        "description": "Software como servicio (SaaS) por suscripción mensual para restaurantes: gestión de reputación en Google Maps, fidelización de clientes y asistente de WhatsApp con IA. Incluye venta complementaria de hardware NFC."
       },
       {
         "@type": "Organization",

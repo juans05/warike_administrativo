@@ -12,9 +12,7 @@ import {
   Camera,
   UtensilsCrossed,
   ShieldCheck,
-  Check,
   Sparkles,
-  Flame,
   LayoutGrid,
   Tag,
   Users,
@@ -22,6 +20,8 @@ import {
   Facebook,
   Twitter,
   Music2,
+  Scissors,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { publicApi } from '../lib/api-client';
@@ -29,24 +29,6 @@ import { ChannelsMarquee, OldVsNew, ProductTour, ShowcaseHero, VerticalsStrip } 
 
 const WHATSAPP_NUMBER = '51902191948';
 const waLink = (message: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-interface PlanInfo {
-  tier: string;
-  name: string;
-  price: number;
-  currency: string;
-  features: string[];
-}
-
-// Shown immediately and kept if the live API is slow/unavailable, so the
-// pricing section is never empty — values mirror the backend defaults.
-const FALLBACK_PLANS: PlanInfo[] = [
-  { tier: 'reputacion', name: 'Rankeado', price: 254.9, currency: 'PEN', features: ['Solicitud de reseñas en Google por NFC y QR', 'Instagram IA ilimitado', 'Buzón privado de feedback', 'Carta digital interactiva', 'Agenda de citas'] },
-  { tier: 'fidelizacion', name: 'Caserito', price: 439.9, currency: 'PEN', features: ['Todo lo de Rankeado', 'Programa de fidelización con sellos o puntos', 'Tarjeta digital en Apple Wallet y Google Wallet', 'Clientes CRM', 'Pedidos en mesa'] },
-  { tier: 'ia_total', name: 'Taypá', price: 749.9, currency: 'PEN', features: ['Todo lo de Caserito', 'Bot de WhatsApp con IA', 'Chat en vivo', 'Campañas de WhatsApp', 'Email marketing', 'Base de conocimiento IA (RAG)', 'Reportes'] },
-];
 
 // --- Scroll reveal (transform/opacity only, respects reduced-motion) ---
 
@@ -238,7 +220,7 @@ function PlatformSection() {
 
         <Reveal delay={120} className="text-center">
           <a href="#planes" className="inline-flex items-center gap-2 text-[15px] font-medium text-[var(--primary)] hover:gap-3 transition-all">
-            Ver Membresías <ArrowRight size={16} />
+            Ver planes <ArrowRight size={16} />
           </a>
         </Reveal>
       </div>
@@ -283,93 +265,53 @@ function FAQSection() {
   );
 }
 
-// --- Pricing ---
+// --- Planes por rubro ---
+// Sin precios públicos: cada rubro escribe por WhatsApp y ventas le muestra
+// los planes que le corresponden (barbería/spa: Wawa · Rankeado · Al Toque;
+// restaurante: Rankeado · Caserito · Taypá).
 
-const PLAN_ICONS: Record<string, LucideIcon> = {
-  reputacion: ShieldCheck,
-  fidelizacion: Gift,
-  ia_total: Bot,
-};
-
-const PLAN_IMAGES: Record<string, string> = {
-  reputacion: '/images/reputation_shield.png',
-  fidelizacion: '/images/touch_review.png',
-  ia_total: '/images/growth_chart.png',
-};
-
-function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boolean }) {
-  const PlanIcon = PLAN_ICONS[plan.tier] || Sparkles;
-  const checkoutHref = `/login?next=${encodeURIComponent(`/suscripcion?plan=${plan.tier}`)}`;
-  return (
-    <div
-      className={`relative rounded-[28px] p-8 flex flex-col transition-transform duration-300 ${
-        highlighted
-          ? 'bg-gradient-to-b from-[var(--primary)]/[0.07] to-white border-2 border-[var(--primary)] shadow-[0_16px_44px_rgba(200,75,49,0.22)] lg:-translate-y-5 lg:scale-[1.05] z-10'
-          : 'bg-white border border-[var(--border)] shadow-[0_2px_20px_rgba(45,36,36,0.05)]'
-      }`}
-    >
-      {highlighted && (
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[var(--primary)] text-white text-xs font-bold px-4 py-2 rounded-full shadow-[0_8px_20px_rgba(200,75,49,0.35)] whitespace-nowrap">
-          <Flame size={14} className="shrink-0" />
-          El más elegido
-        </div>
-      )}
-      {PLAN_IMAGES[plan.tier] && (
-        <div className="aspect-[16/9] rounded-2xl bg-[var(--background)] overflow-hidden mb-5">
-          <img src={PLAN_IMAGES[plan.tier]} alt={plan.name} className="w-full h-full object-cover" />
-        </div>
-      )}
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${highlighted ? 'bg-[var(--primary)] text-white' : 'bg-[var(--background)] text-[var(--primary)]'}`}>
-        <PlanIcon size={22} strokeWidth={2.2} />
-      </div>
-      <p className={`text-sm font-medium mb-3 ${highlighted ? 'text-[var(--primary)] font-semibold' : 'text-[var(--text-muted)]'}`}>{plan.name}</p>
-      <div className="flex items-end gap-1 mb-7">
-        <span className="text-4xl font-semibold text-[var(--text)] tracking-tight">S/. {Number(plan.price).toFixed(2)}</span>
-        <span className="text-sm text-[var(--text-muted)] mb-1">/mes</span>
-      </div>
-      <ul className="space-y-3 mb-8 flex-1">
-        {plan.features.map((f, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <Check size={16} className="text-[var(--primary)] shrink-0 mt-0.5" strokeWidth={2.5} />
-            <span className="text-sm text-[var(--text-muted)] leading-snug">{f}</span>
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={checkoutHref}
-        className={`w-full text-center py-3.5 rounded-full text-sm font-semibold transition-all ${
-          highlighted
-            ? 'bg-[var(--primary)] text-white shadow-[0_10px_24px_rgba(200,75,49,0.35)] hover:bg-[var(--primary-light)] hover:scale-[1.03] active:scale-95'
-            : 'bg-[var(--text)] text-white hover:opacity-90'
-        }`}
-      >
-        Comprar membresía
-      </Link>
-    </div>
-  );
-}
+const RUBROS: { icon: LucideIcon; title: string; desc: string; message: string }[] = [
+  { icon: Scissors, title: 'Barbería o spa', desc: 'Agenda, recordatorios y bot que reserva por ti.', message: 'Hola equipo Wuarikes, tengo una barbería/spa y quiero conocer los planes.' },
+  { icon: UtensilsCrossed, title: 'Restaurante', desc: 'Reseñas, carta digital, fidelización y pedidos.', message: 'Hola equipo Wuarikes, tengo un restaurante y quiero conocer los planes.' },
+  { icon: Store, title: 'Otro negocio', desc: 'Cuéntanos qué haces y te armamos el plan.', message: 'Hola equipo Wuarikes, tengo un negocio de ' },
+];
 
 function PricingSection() {
-  const [plans, setPlans] = useState<PlanInfo[]>(FALLBACK_PLANS);
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/subscriptions/plans`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (Array.isArray(data) && data.length === 3) setPlans(data); })
-      .catch(() => { /* keep fallback pricing */ });
-  }, []);
-
   return (
     <section id="planes" className="py-28 md:py-36 px-6 md:px-8 bg-[var(--background)]">
-      <div className="max-w-6xl mx-auto space-y-16">
+      <div className="max-w-5xl mx-auto space-y-14">
         <Reveal className="text-center space-y-4 max-w-xl mx-auto">
-          <SectionEyebrow>Membresías</SectionEyebrow>
-          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-[var(--text)] font-warike">Elige tu membresía.</h2>
-          <p className="text-lg text-[var(--text-muted)]">Mensual, sin permanencia forzada. Cancela cuando quieras.</p>
+          <SectionEyebrow>Planes</SectionEyebrow>
+          <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-[var(--text)] font-warike">Un plan a la medida de tu negocio.</h2>
+          <p className="text-lg text-[var(--text-muted)]">
+            Desde <strong className="text-[var(--text)]">S/ 69,90 al mes</strong> + IGV. Dinos qué negocio tienes y te mostramos el plan que te conviene por WhatsApp.
+          </p>
         </Reveal>
-        <Reveal delay={80} className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {plans.map((plan) => <PricingCard key={plan.tier} plan={plan} highlighted={plan.tier === 'ia_total'} />)}
+        <Reveal delay={80} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {RUBROS.map(({ icon: Icon, title, desc, message }) => (
+            <a
+              key={title}
+              href={waLink(message)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col gap-4 rounded-[28px] bg-white border border-[var(--border)] p-7 shadow-[0_2px_20px_rgba(45,36,36,0.05)] transition-all hover:-translate-y-1 hover:border-[var(--primary)] hover:shadow-[0_16px_44px_rgba(200,75,49,0.18)]"
+            >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[var(--background)] text-[var(--primary)] transition-colors group-hover:bg-[var(--primary)] group-hover:text-white">
+                <Icon size={22} strokeWidth={2.2} />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <p className="text-lg font-semibold text-[var(--text)]">{title}</p>
+                <p className="text-sm text-[var(--text-muted)] leading-snug">{desc}</p>
+              </div>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--primary)]">
+                Ver planes por WhatsApp <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+              </span>
+            </a>
+          ))}
         </Reveal>
+        <p className="text-center text-sm text-[var(--text-muted)]">
+          ¿Ya tienes cuenta? <Link href="/login" className="font-semibold text-[var(--primary)] hover:underline">Inicia sesión</Link>
+        </p>
       </div>
     </section>
   );
@@ -481,7 +423,7 @@ function MobileStickyCTA() {
       style={{ paddingBottom: 'max(0.9rem, env(safe-area-inset-bottom))' }}
     >
       <a href="#planes" className="w-full bg-[var(--primary)] text-white text-[15px] font-medium py-3.5 rounded-full flex items-center justify-center gap-2">
-        Ver Membresías <ArrowRight size={16} />
+        Ver planes <ArrowRight size={16} />
       </a>
     </div>
   );
@@ -610,7 +552,7 @@ export default function LandingPage() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[var(--text-muted)]">
             <a href="#producto" className="hover:text-[var(--text)] transition-colors">Plataforma</a>
-            <a href="#planes" className="hover:text-[var(--text)] transition-colors">Membresías</a>
+            <a href="#planes" className="hover:text-[var(--text)] transition-colors">Planes</a>
             <a href="#hardware" className="hover:text-[var(--text)] transition-colors">Hardware</a>
           </div>
           <Link href="/login" className="text-sm font-medium bg-[var(--text)] text-white px-5 py-2 rounded-full hover:opacity-85 transition-opacity whitespace-nowrap">
@@ -625,7 +567,7 @@ export default function LandingPage() {
         <ShowcaseHero
           primaryCta={
             <a href="#planes" className="bg-[var(--primary)] text-white text-[15px] font-medium px-8 py-4 rounded-full hover:bg-[var(--primary-light)] transition-colors inline-flex items-center justify-center gap-2">
-              Ver Membresías <ArrowRight size={16} />
+              Ver planes <ArrowRight size={16} />
             </a>
           }
           secondaryCta={
@@ -667,7 +609,7 @@ export default function LandingPage() {
           <h2 className="text-4xl md:text-6xl font-semibold tracking-tight font-warike italic">¿Listo para ser el nº1?</h2>
           <p className="text-white/60 text-lg">Únete al Club <strong className="text-white font-semibold">Wuarike</strong> hoy y empieza a proteger tu reputación desde el primer día.</p>
           <a href="#planes" className="inline-flex items-center gap-2 bg-[var(--primary)] text-white text-[15px] font-medium px-8 py-4 rounded-full hover:bg-[var(--primary-light)] transition-colors">
-            Ver Membresías <ArrowRight size={16} />
+            Ver planes <ArrowRight size={16} />
           </a>
           <p className="flex items-center justify-center gap-2 text-white/40 text-sm pt-2">
             <ShieldCheck size={15} /> Sin permanencia · Cancela cuando quieras
