@@ -78,7 +78,7 @@ export function NowReportsSection({ posts, onRestore, onDelete, readOnly }: {
                       {p.author.fullName} · {formatDate(p.createdAt)}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {p.hiddenReason && <Badge tone={p.hiddenReason === 'reports' ? 'danger' : 'warning'}>{REASONS[p.hiddenReason]}</Badge>}
+                      {p.hiddenReason && <Badge tone={p.hiddenReason === 'reports' ? 'danger' : 'warning'}>{REASONS[p.hiddenReason] ?? p.hiddenReason}</Badge>}
                       <span className="text-xs text-text-muted">
                         {p.reports} reporte{p.reports === 1 ? '' : 's'} · {p.likes + p.checks} a favor · {p.dislikes} en contra
                       </span>
@@ -89,7 +89,7 @@ export function NowReportsSection({ posts, onRestore, onDelete, readOnly }: {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-text">¿Seguro?</span>
                     <Button size="sm" variant="danger" loading={busy} onClick={() => run(p.id, onDelete)}>Sí</Button>
-                    <Button size="sm" variant="secondary" disabled={busy} onClick={() => setConfirmId(null)}>No</Button>
+                    <Button size="sm" variant="secondary" autoFocus disabled={busy} onClick={() => setConfirmId(null)}>No</Button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
