@@ -936,7 +936,32 @@ export const adminApi = {
     fetchWithAuth(`/admin/whatsapp-numbers/${numberId}`, {
       method: 'DELETE',
     }),
+
+  // "Ahora": publicaciones ocultas por votos o reportes.
+  nowReported: () => fetchWithAuth('/admin/now/reported') as Promise<NowReportedPost[]>,
+  nowRestore: (id: string) => fetchWithAuth(`/admin/now/posts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ hidden: false }),
+  }),
+  nowDelete: (id: string) => fetchWithAuth(`/admin/now/posts/${id}`, { method: 'DELETE' }),
 };
+
+/** `GET /admin/now/reported`: una publicación de "Ahora" oculta, con sus reportes y el motivo. */
+export interface NowReportedPost {
+  id: string;
+  kind: 'photo' | 'video' | 'text';
+  text: string | null;
+  mediaUrl: string | null;
+  visibility: 'all' | 'followers' | 'friends';
+  expiresAt: string;
+  createdAt: string;
+  likes: number;
+  dislikes: number;
+  checks: number;
+  author: { id: string; fullName: string; avatarUrl: string | null };
+  reports: number;
+  hiddenReason: 'votes' | 'reports' | null;
+}
 
 // Banco de QR (SuperAdmin) — generar, asignar/reasignar, historial
 export const qrApi = {

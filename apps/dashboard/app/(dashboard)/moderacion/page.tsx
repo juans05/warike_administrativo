@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { adminApi, businessApi } from '../../../lib/api-client';
+import { adminApi, businessApi, type NowReportedPost } from '../../../lib/api-client';
 import { toast } from 'sonner';
 import { PageHeader, Skeleton, StatTile } from '../../../components/ui';
 import { can, usePlatformPermissions } from '../../../lib/platform';
 import { LoadingRows } from '../../../components/admin/Table';
 import { ClaimsSection } from '../../../components/admin/moderacion/ClaimsSection';
+import { NowReportsSection } from '../../../components/admin/moderacion/NowReportsSection';
 import { PlacesSection } from '../../../components/admin/moderacion/PlacesSection';
 import { RejectReasonModal } from '../../../components/admin/moderacion/RejectReasonModal';
 import { SubmissionsSection } from '../../../components/admin/moderacion/SubmissionsSection';
@@ -21,6 +22,8 @@ export default function ModeracionPage() {
   const [placesTotal, setPlacesTotal] = useState(0);
   const [submissions, setSubmissions] = useState<PlaceSubmission[]>([]);
   const [claims, setClaims] = useState<PlaceClaim[]>([]);
+  // null = aún no cargó o falló: la sección no se muestra (no se confunde con "sin reportadas").
+  const [nowPosts, setNowPosts] = useState<NowReportedPost[] | null>(null);
   const [verticals, setVerticals] = useState<Verticals>([]);
   const [loading, setLoading] = useState(true);
   // Solo la primera carga reemplaza la página por el esqueleto; al buscar se conserva el buscador.
@@ -59,6 +62,13 @@ export default function ModeracionPage() {
   // Rubros y tipos de negocio para el selector de cada local; si falla, el selector se oculta.
   useEffect(() => {
     businessApi.getBusinessTypes().then((res) => setVerticals(res.verticals)).catch(() => setVerticals([]));
+  }, []);
+
+  // Aparte de loadData: si falla (o el backend aún no tiene la ruta), el resto de Moderación sigue funcionando.
+  useEffect(() => {
+    adminApi.nowReported()
+      .then(setNowPosts)
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Error cargando las publicaciones Ahora reportadas'));
   }, []);
 
   const toggleVerification = async (place: Place) => {
@@ -131,6 +141,26 @@ export default function ModeracionPage() {
     }
   };
 
+  const restoreNowPost = async (id: string) => {
+    try {
+      await adminApi.nowRestore(id);
+      toast.success('Publicación restaurada');
+      setNowPosts((posts) => posts && posts.filter((p) => p.id !== id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error restaurando la publicación');
+    }
+  };
+
+  const deleteNowPost = async (id: string) => {
+    try {
+      await adminApi.nowDelete(id);
+      toast.success('Publicación borrada');
+      setNowPosts((posts) => posts && posts.filter((p) => p.id !== id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error borrando la publicación');
+    }
+  };
+
   const header = <PageHeader title="Moderación" subtitle="Revisa lo que llega y controla los locales registrados en la plataforma." />;
 
   if (!loaded) {
@@ -157,6 +187,7 @@ export default function ModeracionPage() {
 
       <SubmissionsSection submissions={submissions} onApprove={approveSubmission} onReject={setRejectSubmissionId} readOnly={readOnly} />
       <ClaimsSection claims={claims} onVerify={verifyClaim} onReject={rejectClaim} readOnly={readOnly} />
+      {nowPosts && <NowReportsSection posts={nowPosts} onRestore={restoreNowPost} onDelete={deleteNowPost} readOnly={readOnly} />}
       <PlacesSection
         readOnly={readOnly}
         places={places}
