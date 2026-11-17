@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { businessApi, cardKeyStore, publicApi } from '../../lib/api-client';
 import { toast } from 'sonner';
 import { copyText } from '../../lib/clipboard';
+import { cldImage } from '../../lib/cloudinary';
 
 type Step = 'welcome' | 'rating' | 'detail' | 'result';
 
@@ -111,7 +112,7 @@ export default function ScanExperience({
             .catch(() => {});
         }
       })
-      .catch(() => setProfile({ id: placeId, name: 'El Huarique', coverImageUrl: '/images/interior.png', category: { name: 'Restaurante' } }));
+      .catch(() => setProfile({ id: placeId, name: 'El Huarique', coverImageUrl: '/images/interior.webp', category: { name: 'Restaurante' } }));
 
     publicApi.getLoyaltyProgram(placeId).then(setLoyaltyProgram).catch(() => setLoyaltyProgram(null));
     publicApi.getScanPromo(placeId).then(setScanPromo).catch(() => {});
@@ -220,7 +221,7 @@ export default function ScanExperience({
       {/* Marca del restaurante — siempre visible, ancla de confianza */}
       <div className="text-center space-y-4">
         <div className="w-24 h-24 mx-auto rounded-[2rem] border-4 border-white shadow-2xl overflow-hidden ring-1 ring-border">
-          <img src={profile.coverImageUrl || '/images/interior.png'} className="w-full h-full object-cover" alt={profile.name} />
+          <img src={cldImage(profile.coverImageUrl || '/images/interior.webp', 192)} className="w-full h-full object-cover" alt={profile.name} />
         </div>
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-text font-warike uppercase tracking-tight">{profile.name}</h1>

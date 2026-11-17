@@ -2,13 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Lock, Mail, Plus } from 'lucide-react';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useEmailCampaigns } from '../../../hooks/useEmailCampaigns';
 import { useCustomerLabels } from '../../../hooks/useCustomerLabels';
 import { EmailCampaignList } from '../../../components/email-marketing/EmailCampaignList';
-import { EmailCampaignModal } from '../../../components/email-marketing/EmailCampaignModal';
 import { Button, Card, PageHeader, buttonStyles } from '../../../components/ui';
+
+// El editor del correo (tiptap, ~130 KB) baja aparte: la lista de campañas pinta sin esperarlo.
+const EmailCampaignModal = dynamic(
+  () => import('../../../components/email-marketing/EmailCampaignModal').then((m) => m.EmailCampaignModal),
+  { ssr: false },
+);
 
 export default function EmailMarketingPage() {
   const { activePlaceId } = useRestaurant();

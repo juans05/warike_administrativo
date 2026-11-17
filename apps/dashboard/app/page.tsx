@@ -292,9 +292,9 @@ const PLAN_ICONS: Record<string, LucideIcon> = {
 };
 
 const PLAN_IMAGES: Record<string, string> = {
-  reputacion: '/images/reputation_shield.png',
-  fidelizacion: '/images/touch_review.png',
-  ia_total: '/images/growth_chart.png',
+  reputacion: '/images/reputation_shield.webp',
+  fidelizacion: '/images/touch_review.webp',
+  ia_total: '/images/growth_chart.webp',
 };
 
 function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boolean }) {
@@ -316,7 +316,7 @@ function PricingCard({ plan, highlighted }: { plan: PlanInfo; highlighted: boole
       )}
       {PLAN_IMAGES[plan.tier] && (
         <div className="aspect-[16/9] rounded-2xl bg-[var(--background)] overflow-hidden mb-5">
-          <img src={PLAN_IMAGES[plan.tier]} alt={plan.name} className="w-full h-full object-cover" />
+          <img loading="lazy" decoding="async" src={PLAN_IMAGES[plan.tier]} alt={plan.name} className="w-full h-full object-cover" />
         </div>
       )}
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${highlighted ? 'bg-[var(--primary)] text-white' : 'bg-[var(--background)] text-[var(--primary)]'}`}>
@@ -382,7 +382,7 @@ function ProductCard({ id, title, desc, img, reviews, price, oldPrice }: { id: s
   return (
     <div className="rounded-[28px] bg-white border border-[var(--border)] shadow-[0_2px_20px_rgba(45,36,36,0.05)] p-8 text-center space-y-5 hover:shadow-[0_8px_30px_rgba(45,36,36,0.1)] transition-shadow duration-300">
       <div className="aspect-square rounded-2xl bg-[var(--background)] flex items-center justify-center overflow-hidden">
-        <img src={img} alt={title} className="w-3/4 h-3/4 object-contain mix-blend-multiply" />
+        <img loading="lazy" decoding="async" src={img} alt={title} className="w-3/4 h-3/4 object-contain mix-blend-multiply" />
       </div>
       <div className="space-y-1.5">
         <h3 className="text-base font-medium text-[var(--text)]">{title}</h3>
@@ -416,9 +416,9 @@ function ProductsSection() {
           <p className="text-lg text-[var(--text-muted)] leading-relaxed">Tu membresía ya incluye un link y un QR digital. Si prefieres algo físico, estos stands premium con NFC tienen descuento exclusivo para miembros del Club.</p>
         </Reveal>
         <Reveal delay={80} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ProductCard id="expositor-nfc" title="Expositor Reseñas Google NFC" desc="Expositor de mesa con chip NFC y QR: tus clientes acercan el celular y dejan su reseña en Google al instante." img="/images/warike_expositor_clean.png" reviews={370} price="129" oldPrice="169" />
-          <ProductCard id="stand-madera" title="Stand Premium de Madera" desc="Stand de madera para caja o barra, con chip NFC y QR grabados, que lleva a tus clientes directo a reseñar." img="/images/warike_madera_clean.png" reviews={512} price="169" oldPrice="219" />
-          <ProductCard id="placa-google" title="Placa Reseñas de Google" desc="Placa adhesiva compacta con NFC y QR para pegar en mesas, mostradores o la puerta del local." img="/images/warike_placa_clean.png" reviews={79} price="99" oldPrice="139" />
+          <ProductCard id="expositor-nfc" title="Expositor Reseñas Google NFC" desc="Expositor de mesa con chip NFC y QR: tus clientes acercan el celular y dejan su reseña en Google al instante." img="/images/warike_expositor_clean.webp" reviews={370} price="129" oldPrice="169" />
+          <ProductCard id="stand-madera" title="Stand Premium de Madera" desc="Stand de madera para caja o barra, con chip NFC y QR grabados, que lleva a tus clientes directo a reseñar." img="/images/warike_madera_clean.webp" reviews={512} price="169" oldPrice="219" />
+          <ProductCard id="placa-google" title="Placa Reseñas de Google" desc="Placa adhesiva compacta con NFC y QR para pegar en mesas, mostradores o la puerta del local." img="/images/warike_placa_clean.webp" reviews={79} price="99" oldPrice="139" />
         </Reveal>
       </div>
     </section>

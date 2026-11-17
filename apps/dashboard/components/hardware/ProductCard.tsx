@@ -9,9 +9,9 @@ export interface HardwareProduct {
 }
 
 const PRODUCT_IMAGES: Record<string, string> = {
-  'expositor-nfc': '/images/warike_expositor_clean.png',
-  'stand-madera': '/images/warike_madera_clean.png',
-  'placa-google': '/images/warike_placa_clean.png',
+  'expositor-nfc': '/images/warike_expositor_clean.webp',
+  'stand-madera': '/images/warike_madera_clean.webp',
+  'placa-google': '/images/warike_placa_clean.webp',
 };
 
 /** Producto del catálogo; se elige con un toque (radio), y lo elegido se marca con ícono y texto, no solo con color. */
@@ -31,7 +31,7 @@ export function ProductCard({ product, selected, onSelect }: { product: Hardware
     >
       {image && (
         // eslint-disable-next-line @next/next/no-img-element -- imágenes estáticas del catálogo
-        <img src={image} alt={product.name} className="aspect-square w-full rounded-control object-contain" />
+        <img loading="lazy" decoding="async" src={image} alt={product.name} className="aspect-square w-full rounded-control object-contain" />
       )}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

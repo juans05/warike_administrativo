@@ -62,8 +62,10 @@ export function EmailCampaignModal({ open, onClose, form, onChange, onSubmit, cr
     if (open && editor) {
       editor.commands.setContent(form.bodyHtml || '');
     }
+    // `editor` en las dependencias: el modal se carga bajo demanda y puede montarse ya abierto,
+    // cuando el editor (immediatelyRender: false) todavía no existe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, editor]);
 
   if (!open) return null;
 

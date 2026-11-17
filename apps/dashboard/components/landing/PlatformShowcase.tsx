@@ -164,7 +164,7 @@ const TABS: Tab[] = [
     points: ['Tus clientes dejan su reseña en Google tocando el NFC o el QR', 'La IA te propone la respuesta y tú decides qué publicar', 'Tu bot responde preguntas y agenda por WhatsApp, día y noche'],
     visual: (
       <div className="relative flex flex-col items-center gap-5 sm:block">
-        <img src="/images/touch_review.png" alt="Cliente tocando el soporte NFC para dejar su reseña en Google"
+        <img src="/images/touch_review.webp" alt="Cliente tocando el soporte NFC para dejar su reseña en Google"
           className="w-full h-[300px] sm:h-[400px] object-cover rounded-[28px] shadow-[0_30px_80px_rgba(45,36,36,0.18)]" loading="lazy" />
         <ReviewAlertCard className="sm:absolute sm:-top-8 sm:-left-6" />
         <WhatsAppBookingCard className="sm:absolute sm:-bottom-10 sm:-right-4" />

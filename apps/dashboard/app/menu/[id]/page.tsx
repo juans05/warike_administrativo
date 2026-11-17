@@ -6,6 +6,7 @@ import { Image as ImageIcon, LayoutGrid, List, Play, Sparkles, X } from 'lucide-
 import { ordersApi, publicApi } from '../../../lib/api-client';
 import { TableOrderingProvider, AddToCartButton } from '../../../components/orders/TableOrdering';
 import { buildPalette, type MenuTheme, type Palette } from '../../../lib/menuTheme';
+import { cldImage } from '../../../lib/cloudinary';
 
 // Las tipografías se piden desde el navegador (no con next/font): si Google Fonts falla durante el build del servidor,
 // el despliegue ya no se cae. Mientras cargan se ve una tipografía del sistema.
@@ -92,7 +93,7 @@ function PhotoStrip({ photos, alt, className }: { photos: string[]; alt: string;
     <div className="relative">
       <div ref={ref} onScroll={onScroll} className="flex snap-x snap-mandatory overflow-x-auto scrollbar-none">
         {photos.map((src, i) => (
-          <img key={src + i} src={src} alt={`${alt} ${i + 1}`} loading="lazy" className={`${className} w-full shrink-0 snap-center object-cover`} />
+          <img key={src + i} src={cldImage(src, 800)} alt={`${alt} ${i + 1}`} loading="lazy" className={`${className} w-full shrink-0 snap-center object-cover`} />
         ))}
       </div>
       {photos.length > 1 && (
@@ -182,7 +183,7 @@ function GridTile({ dish, color, onOpen }: { dish: Dish; color: string; onOpen: 
     >
       <div className="relative">
         {photo ? (
-          <img src={photo} alt={dish.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none" />
+          <img src={cldImage(photo, 480)} alt={dish.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none" />
         ) : (
           <NoPhoto name={dish.name} color={color} className="aspect-square w-full" />
         )}
@@ -209,7 +210,7 @@ function ListRow({ dish, color, onOpen }: { dish: Dish; color: string; onOpen: (
   return (
     <button id={`dish-${dish.id}`} onClick={onOpen} className="flex w-full gap-4 py-4 text-left" style={{ borderBottom: `1px solid ${C.line}` }}>
       {photo ? (
-        <img src={photo} alt="" loading="lazy" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+        <img src={cldImage(photo, 160)} alt="" loading="lazy" className="h-16 w-16 shrink-0 rounded-xl object-cover" />
       ) : (
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold" style={{ background: `${color}22`, color, fontFamily: 'var(--font-display)' }}>
           {dish.name.charAt(0)}
@@ -403,7 +404,7 @@ export default function PublicMenuPage() {
       {/* Portada: el color del encabezado y el logo los define el restaurante */}
       <header className="relative" style={{ background: C.headerBg, color: C.headerText }}>
         {place.coverImageUrl ? (
-          <img src={place.coverImageUrl} alt="" className="h-56 w-full object-cover md:h-80" />
+          <img src={cldImage(place.coverImageUrl, 1200)} alt="" className="h-56 w-full object-cover md:h-80" />
         ) : (
           <div className="h-56 w-full md:h-80" style={{ background: `linear-gradient(135deg, ${C.headerBg}, ${C.accent}55)` }} />
         )}
@@ -411,7 +412,7 @@ export default function PublicMenuPage() {
         <div className="absolute inset-x-0 bottom-0">
           <div className="mx-auto flex max-w-6xl items-end gap-4 px-4 pb-5 md:gap-6 md:pb-8">
             {place.logoUrl && (
-              <img src={place.logoUrl} alt={`Logo de ${place.name}`} className="h-16 w-16 shrink-0 rounded-2xl object-cover md:h-24 md:w-24" style={{ border: `3px solid ${C.headerBg}`, background: C.headerBg }} />
+              <img src={cldImage(place.logoUrl, 192)} alt={`Logo de ${place.name}`} className="h-16 w-16 shrink-0 rounded-2xl object-cover md:h-24 md:w-24" style={{ border: `3px solid ${C.headerBg}`, background: C.headerBg }} />
             )}
             <div className="min-w-0">
               <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight md:text-6xl" style={{ fontFamily: 'var(--font-display)' }}>{place.name}</h1>
@@ -425,7 +426,7 @@ export default function PublicMenuPage() {
       {!hasMenu ? (
         place.menuImageUrl ? (
           <div className="mx-auto max-w-2xl px-4 pb-16 pt-4">
-            <img src={place.menuImageUrl} alt={`Carta de ${place.name}`} className="w-full rounded-2xl" style={{ border: `1px solid ${C.line}` }} />
+            <img src={cldImage(place.menuImageUrl, 1000)} alt={`Carta de ${place.name}`} className="w-full rounded-2xl" style={{ border: `1px solid ${C.line}` }} />
           </div>
         ) : (
           <div className="px-6 py-24 text-center">
@@ -556,7 +557,7 @@ export default function PublicMenuPage() {
                   const thumb = dish ? photosOf(dish)[0] : null;
                   return dish && (
                     <button key={did} onClick={() => goToDish(did)} className="mt-2 flex w-full items-center gap-3 rounded-xl p-2 text-left" style={{ background: C.bg, border: `1px solid ${C.line}` }}>
-                      {thumb && <img src={thumb} alt="" className="h-12 w-12 rounded-lg object-cover" />}
+                      {thumb && <img src={cldImage(thumb, 120)} alt="" className="h-12 w-12 rounded-lg object-cover" />}
                       <span className="flex-1 text-sm font-semibold">{dish.name}</span>
                       {money(dish.price) && <span className="text-sm font-bold" style={{ color: C.accent }}>{money(dish.price)}</span>}
                     </button>

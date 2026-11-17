@@ -11,7 +11,7 @@ const MOCK_RESTAURANTS = [
     location: "Lima, Perú",
     rating: 4.9,
     reviews: 1250,
-    image: "/images/hero.png",
+    image: "/images/hero.webp",
     latestReview: "El mejor ceviche carretillero, el ají está en su punto exacto."
   },
   {
@@ -21,7 +21,7 @@ const MOCK_RESTAURANTS = [
     location: "Madrid, España",
     rating: 4.8,
     reviews: 843,
-    image: "/images/interior.png",
+    image: "/images/interior.webp",
     latestReview: "Ambiente increíble y las bravas son de otro planeta."
   },
   {
@@ -31,7 +31,7 @@ const MOCK_RESTAURANTS = [
     location: "Lima, Perú",
     rating: 4.7,
     reviews: 512,
-    image: "/images/stand.png", // using available mock image
+    image: "/images/stand.webp", // using available mock image
     latestReview: "Sabor tradicional. Valió la pena la cola de 20 minutos."
   }
 ];
@@ -109,7 +109,7 @@ export default function ExplorarPage() {
             <Link href={`/l/${place.id}`} key={place.id} className="group cursor-pointer">
               <div className="bg-white rounded-[3rem] p-4 border border-[var(--border)] shadow-sm hover:shadow-2xl hover:border-[var(--primary)]/30 transition-all duration-500 hover:-translate-y-2">
                 <div className="relative h-64 rounded-[2.5rem] overflow-hidden mb-6">
-                  <img src={place.image} alt={place.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <img loading="lazy" decoding="async" src={place.image} alt={place.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg">
                     <span className="text-yellow-500 text-sm">⭐</span>
                     <span className="font-black text-sm">{place.rating}</span>

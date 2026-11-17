@@ -1,22 +1,41 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import { useReports } from '../../../hooks/useReports';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { teamApi } from '../../../lib/api-client';
 import { exportReportToCsv } from '../../../lib/reports-export';
-import { Button, PageHeader } from '../../../components/ui';
+import { Button, Card, PageHeader } from '../../../components/ui';
 import { DateRangeSelector } from '../../../components/reports/DateRangeSelector';
 import { FiltersPanel } from '../../../components/reports/FiltersPanel';
 import { KpiTiles, ResponseTimeTiles } from '../../../components/reports/KpiTiles';
-import { ConversationsByDayChart } from '../../../components/reports/ConversationsByDayChart';
-import { ConversationsByHourChart } from '../../../components/reports/ConversationsByHourChart';
-import { StatusDonutChart } from '../../../components/reports/StatusDonutChart';
 import { ConversationsByPhoneTable } from '../../../components/reports/ConversationsByPhoneTable';
 import { AgentRankingTable } from '../../../components/reports/AgentRankingTable';
 import { PeriodSummary } from '../../../components/reports/PeriodSummary';
+import { ChartSkeleton } from '../../../components/reports/ChartCard';
 import { useCustomerLabels } from '../../../hooks/useCustomerLabels';
+
+// Las gráficas usan recharts (~130 KB): bajan aparte para que filtros y KPIs pinten primero.
+// El esqueleto reserva la altura de la tarjeta para que no salte el diseño al llegar.
+const chartLoading = () => (
+  <Card padding="lg">
+    <ChartSkeleton className="h-80" />
+  </Card>
+);
+const ConversationsByDayChart = dynamic(
+  () => import('../../../components/reports/ConversationsByDayChart').then((m) => m.ConversationsByDayChart),
+  { ssr: false, loading: chartLoading },
+);
+const ConversationsByHourChart = dynamic(
+  () => import('../../../components/reports/ConversationsByHourChart').then((m) => m.ConversationsByHourChart),
+  { ssr: false, loading: chartLoading },
+);
+const StatusDonutChart = dynamic(
+  () => import('../../../components/reports/StatusDonutChart').then((m) => m.StatusDonutChart),
+  { ssr: false, loading: chartLoading },
+);
 
 export default function ReportesPage() {
   const { activePlaceId } = useRestaurant();
